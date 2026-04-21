@@ -7,13 +7,16 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "seed-matches": "node scripts/seed-matches.js"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.3",
     "bcryptjs": "^3.0.3",
+    "dotenv": "^17.4.2",
     "googleapis": "^171.4.0",
     "jsonwebtoken": "^9.0.3",
+    "node-fetch": "^3.3.2",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "react-router-dom": "^7.14.2",
