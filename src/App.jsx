@@ -5,6 +5,9 @@ import Login from './pages/Login'
 import Register from './pages/Register'
 import Matches from './pages/Matches'
 import Leaderboard from './pages/Leaderboard'
+import Questions from './pages/Questions'
+
+
 
 
 
@@ -20,6 +23,7 @@ export default function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/matches" element={<Matches />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
+          <Route path="/questions" element={<Questions />} />
         </Routes>
       </main>
     </div>

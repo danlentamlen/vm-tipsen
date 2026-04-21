@@ -44,6 +44,7 @@ export default function Leaderboard() {
           <div className="col-span-2 text-center">Poäng</div>
           <div className="col-span-2 text-center">Exakta</div>
           <div className="col-span-2 text-center">Rätta</div>
+          <div className="col-span-2 text-center">Frågor</div>
         </div>
 
         {/* Rader */}
@@ -51,32 +52,29 @@ export default function Leaderboard() {
           const ärJag = användare?.user_id === rad.user_id
           return (
             <div
-              key={rad.user_id}
-              className={`grid grid-cols-12 px-6 py-4 border-b border-gray-100 items-center
-                ${ärJag ? 'bg-green-50 font-semibold' : 'hover:bg-gray-50'}
-              `}
-            >
-              <div className="col-span-1 text-lg">
-                {rad.plats <= 3 ? medaljer[rad.plats - 1] : rad.plats}
-              </div>
-              <div className="col-span-5 flex items-center gap-2">
-                {rad.namn}
-                {ärJag && (
-                  <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
-                    Du
-                  </span>
-                )}
-              </div>
-              <div className="col-span-2 text-center font-bold text-green-700 text-lg">
-                {rad.poäng}
-              </div>
-              <div className="col-span-2 text-center text-gray-600">
-                {rad.exakta}
-              </div>
-              <div className="col-span-2 text-center text-gray-600">
-                {rad.rätta}
-              </div>
-            </div>
+          key={rad.user_id}
+          className={`grid grid-cols-12 px-6 py-4 border-b border-gray-100 items-center
+            ${ärJag ? 'bg-green-50 font-semibold' : 'hover:bg-gray-50'}
+          `}
+        >
+          <div className="col-span-1 text-lg">
+            {rad.plats <= 3 ? medaljer[rad.plats - 1] : rad.plats}
+          </div>
+          <div className="col-span-4 flex items-center gap-2">
+            {rad.namn}
+            {ärJag && (
+              <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                Du
+              </span>
+            )}
+          </div>
+          <div className="col-span-2 text-center font-bold text-green-700 text-lg">
+            {rad.poäng}
+          </div>
+          <div className="col-span-2 text-center text-gray-600">{rad.exakta}</div>
+          <div className="col-span-1 text-center text-gray-600">{rad.rätta}</div>
+          <div className="col-span-2 text-center text-gray-600">{rad.frågepoäng}</div>
+        </div>
           )
         })}
       </div>
