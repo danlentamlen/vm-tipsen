@@ -27,3 +27,6 @@ dist-ssr
 google-credentials.json
 .env
 .env.local
+
+# Local Netlify folder
+.netlify
