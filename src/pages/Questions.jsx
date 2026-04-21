@@ -137,7 +137,7 @@ function FrågeKort({ fråga, lag, inloggad, sparar, nySparad, onSpara }) {
           lag={lag}
           värde={svar}
           onChange={setSvar}
-          onSpara={() => onSpara(fråga.fråga_id, svar)}
+          onSpara={(valtLag) => onSpara(fråga.fråga_id, valtLag || svar)}
           sparar={sparar}
           nySparad={nySparad}
           harSvarat={harSvarat}
@@ -226,6 +226,7 @@ function TeamVäljare({ lag, värde, onChange, onSpara, sparar, nySparad, harSva
     onChange(valtLag)
     setSök('')
     setÖppen(false)
+    onSpara(valtLag) // skicka valtLag direkt istället för att vänta på state
   }
 
   return (

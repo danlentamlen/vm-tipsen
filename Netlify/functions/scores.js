@@ -32,16 +32,18 @@ export default async (req) => {
     // Hämta alla tips
     const tipsRader = await getRows(sheets, 'Tips!A2:E1000')
 
-    // Hämta frågor med rätt svar
-    const frågorRader = await getRows(sheets, 'Frågor!A2:D1000')
+    // Hämta frågor (typ och rätt_svar är sammanslagna i kolumn D med | som separator)
+    const frågor = await getRows(sheets, 'Frågor!A2:D1000')
     const frågorMap = {}
-    frågorRader.forEach((rad) => {
-        if (rad[0] && rad[4]) {
-            frågorMap[rad[0]] = {
-            poäng: parseInt(rad[2]),
-            rätt_svar: rad[4].trim().toLowerCase(),
+    frågor.forEach((rad) => {
+      if (!rad[0]) return
+      const [, rättSvar] = (rad[3] || '').split('|')
+      if (rättSvar?.trim()) {
+        frågorMap[rad[0]] = {
+          poäng: parseInt(rad[2]),
+          rätt_svar: rättSvar.trim().toLowerCase(),
         }
-    }
+      }
     })
 
     // Hämta frågesvar
@@ -59,12 +61,7 @@ export default async (req) => {
 
     function initAnvändare(user_id) {
       if (!poängMap[user_id]) {
-        poängMap[user_id] = {
-          poäng: 0,
-          exakta: 0,
-          rätta: 0,
-          frågepoäng: 0,
-        }
+        poängMap[user_id] = { poäng: 0, exakta: 0, rätta: 0, frågepoäng: 0 }
       }
     }
 
@@ -76,10 +73,7 @@ export default async (req) => {
       if (!resultat) return
 
       initAnvändare(user_id)
-      const poäng = räknaMatchPoäng(
-        rad[3], rad[4],
-        resultat.hemma_mål, resultat.borta_mål
-      )
+      const poäng = räknaMatchPoäng(rad[3], rad[4], resultat.hemma_mål, resultat.borta_mål)
       poängMap[user_id].poäng += poäng
       if (poäng === 5) poängMap[user_id].exakta += 1
       if (poäng === 2) poängMap[user_id].rätta += 1

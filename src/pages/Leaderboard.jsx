@@ -40,10 +40,10 @@ export default function Leaderboard() {
         {/* Header */}
         <div className="grid grid-cols-12 bg-green-700 text-white text-sm font-medium px-6 py-3">
           <div className="col-span-1">#</div>
-          <div className="col-span-5">Namn</div>
+          <div className="col-span-4">Namn</div>
           <div className="col-span-2 text-center">Poäng</div>
           <div className="col-span-2 text-center">Exakta</div>
-          <div className="col-span-2 text-center">Rätta</div>
+          <div className="col-span-1 text-center">Rätta</div>
           <div className="col-span-2 text-center">Frågor</div>
         </div>
 

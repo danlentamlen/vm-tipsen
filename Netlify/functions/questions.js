@@ -36,8 +36,8 @@ export default async (req) => {
         fråga_id: rad[0],
         fråga: rad[1],
         poäng: parseInt(rad[2]),
-        typ: rad[3] || 'text',
-        har_rätt_svar: !!rad[4],
+        typ: (rad[3] || '').split('|')[0] || 'text',
+        har_rätt_svar: false, // låser aldrig för användaren, admin ser svaret i Sheets
         mitt_svar: minaSvar[rad[0]] || null,
     }))
 
