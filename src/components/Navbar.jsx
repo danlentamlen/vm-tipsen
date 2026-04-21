@@ -12,6 +12,9 @@ export default function Navbar() {
       <Link to="/matches" className="hover:text-green-200">
         Matcher
       </Link>
+      <Link to="/leaderboard" className="hover:text-green-200">
+        Topplista
+      </Link>
       <div className="flex gap-4 items-center">
         {användare ? (
           <>
