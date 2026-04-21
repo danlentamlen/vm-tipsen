@@ -9,6 +9,9 @@ export default function Navbar() {
       <Link to="/" className="text-xl font-bold">
         ⚽ VM-tipsen 2026
       </Link>
+      <Link to="/matches" className="hover:text-green-200">
+        Matcher
+      </Link>
       <div className="flex gap-4 items-center">
         {användare ? (
           <>
