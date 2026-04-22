@@ -1,12 +1,14 @@
-import { useSettings } from '../hooks/useSettings'
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { useSettings } from '../hooks/useSettings'
+import DistributionModal from '../components/DistributionModal'
 
 export default function Matches() {
   const [matcher, setMatcher] = useState([])
   const [minaTips, setMinaTips] = useState({})
   const [laddar, setLaddar] = useState(true)
   const [sparar, setSparar] = useState(null)
+  const [valdMatch, setValdMatch] = useState(null)
   const { användare } = useAuth()
   const { tipsLåst } = useSettings()
 
@@ -53,7 +55,6 @@ export default function Matches() {
     hämtaMinaTips()
   }
 
-  // Gruppera matcher per grupp/omgång
   const grupperadematcher = matcher.reduce((acc, match) => {
     const nyckel = match.grupp
     if (!acc[nyckel]) acc[nyckel] = []
@@ -72,16 +73,19 @@ export default function Matches() {
   return (
     <div>
       <h2 className="text-3xl font-bold text-green-700 mb-8">Matchschema</h2>
+
       {!användare && (
         <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-lg mb-6">
           Logga in för att lämna dina tips!
         </div>
       )}
+
       {användare && tipsLåst && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
-            🔒 Tips är låsta – du kan inte längre ändra dina gissningar.
+          🔒 Tips är låsta – du kan inte längre ändra dina gissningar. Klicka på en match för att se tipsfördelningen!
         </div>
       )}
+
       {Object.entries(grupperadematcher).map(([grupp, gruppsMatcherna]) => (
         <div key={grupp} className="mb-8">
           <h3 className="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">
@@ -97,16 +101,26 @@ export default function Matches() {
                 tipsLåst={tipsLåst}
                 sparar={sparar === match.match_id}
                 onSpara={sparaTips}
+                onKlick={tipsLåst ? () => setValdMatch(match) : null}
               />
             ))}
           </div>
         </div>
       ))}
+
+      {valdMatch && (
+        <DistributionModal
+          typ="match"
+          id={valdMatch.match_id}
+          titel={`${valdMatch.hemmalag} vs ${valdMatch.bortalag}`}
+          onStäng={() => setValdMatch(null)}
+        />
+      )}
     </div>
   )
 }
 
-function MatchKort({ match, tip, inloggad, tipsLåst, sparar, onSpara }) {
+function MatchKort({ match, tip, inloggad, tipsLåst, sparar, onSpara, onKlick }) {
   const [hemma, setHemma] = useState(tip?.hemma_mål ?? '')
   const [borta, setBorta] = useState(tip?.borta_mål ?? '')
 
@@ -118,14 +132,22 @@ function MatchKort({ match, tip, inloggad, tipsLåst, sparar, onSpara }) {
   const harTips = tip !== undefined
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+    <div
+      className={`bg-white rounded-xl shadow-sm border border-gray-100 p-4 ${
+        onKlick ? 'cursor-pointer hover:border-green-400 hover:shadow-md transition-all' : ''
+      }`}
+      onClick={onKlick || undefined}
+    >
       <div className="flex items-center justify-between gap-4">
         <div className="flex-1 text-right font-semibold text-gray-800">
           {match.hemmalag}
         </div>
 
         {inloggad && !tipsLåst ? (
-          <div className="flex items-center gap-2">
+          <div
+            className="flex items-center gap-2"
+            onClick={(e) => e.stopPropagation()}
+          >
             <input
               type="number"
               min="0"

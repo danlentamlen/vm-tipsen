@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { Link } from 'react-router-dom'
 import { useSettings } from '../hooks/useSettings'
+import DistributionModal from '../components/DistributionModal'
 
 export default function Questions() {
   const [frågor, setFrågor] = useState([])
@@ -9,6 +10,7 @@ export default function Questions() {
   const [laddar, setLaddar] = useState(true)
   const [sparar, setSparar] = useState(null)
   const [sparat, setSparat] = useState({})
+  const [valdFråga, setValdFråga] = useState(null)
   const { användare } = useAuth()
   const { tipsLåst } = useSettings()
 
@@ -92,7 +94,7 @@ export default function Questions() {
 
       {användare && tipsLåst && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
-          🔒 Frågorna är låsta – du kan inte längre ändra dina svar.
+          🔒 Frågorna är låsta – du kan inte längre ändra dina svar. Klicka på en fråga för att se svarsfördelningen!
         </div>
       )}
 
@@ -107,14 +109,24 @@ export default function Questions() {
             sparar={sparar === f.fråga_id}
             nySparad={sparat[f.fråga_id]}
             onSpara={sparaSvar}
+            onKlick={tipsLåst ? () => setValdFråga(f) : null}
           />
         ))}
       </div>
+
+      {valdFråga && (
+        <DistributionModal
+          typ="fråga"
+          id={valdFråga.fråga_id}
+          titel={valdFråga.fråga}
+          onStäng={() => setValdFråga(null)}
+        />
+      )}
     </div>
   )
 }
 
-function FrågeKort({ fråga, lag, inloggad, tipsLåst, sparar, nySparad, onSpara }) {
+function FrågeKort({ fråga, lag, inloggad, tipsLåst, sparar, nySparad, onSpara, onKlick }) {
   const [svar, setSvar] = useState(fråga.mitt_svar || '')
 
   useEffect(() => {
@@ -168,7 +180,7 @@ function FrågeKort({ fråga, lag, inloggad, tipsLåst, sparar, nySparad, onSpar
 
     if (ärChoice) {
       return (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2" onClick={(e) => e.stopPropagation()}>
           {alternativ.map((alt) => (
             <button
               key={alt}
@@ -194,7 +206,7 @@ function FrågeKort({ fråga, lag, inloggad, tipsLåst, sparar, nySparad, onSpar
     }
 
     return (
-      <div className="flex gap-2">
+      <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
         <input
           type={ärNumber ? 'number' : 'text'}
           min={ärNumber ? 0 : undefined}
@@ -221,7 +233,12 @@ function FrågeKort({ fråga, lag, inloggad, tipsLåst, sparar, nySparad, onSpar
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+    <div
+      className={`bg-white rounded-xl shadow-sm border border-gray-100 p-6 ${
+        onKlick ? 'cursor-pointer hover:border-green-400 hover:shadow-md transition-all' : ''
+      }`}
+      onClick={onKlick || undefined}
+    >
       <div className="flex justify-between items-start mb-4">
         <p className="font-semibold text-gray-800 text-lg flex-1 pr-4">
           {fråga.fråga}
@@ -251,7 +268,7 @@ function TeamVäljare({ lag, värde, onChange, onSpara, sparar, nySparad, harSva
   }
 
   return (
-    <div className="flex gap-2 items-start">
+    <div className="flex gap-2 items-start" onClick={(e) => e.stopPropagation()}>
       <div className="flex-1 relative">
         <div
           className="w-full border border-gray-300 rounded-lg px-4 py-2 cursor-pointer flex justify-between items-center bg-white"
