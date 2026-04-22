@@ -56,7 +56,15 @@ export default async (req) => {
         { status: 401, headers: { 'Content-Type': 'application/json' } }
       )
     }
-
+    const { getSettings } = await import('./_settings.js')
+    const settings = await getSettings()
+    if (settings.tips_låst === 'true') {
+        return new Response(
+            JSON.stringify({ error: 'Frågorna är låsta och kan inte längre ändras' }),
+            { status: 403, headers: { 'Content-Type': 'application/json' } }
+        )
+    }
+    
     const { fråga_id, svar } = await req.json()
 
     if (!fråga_id || !svar) {

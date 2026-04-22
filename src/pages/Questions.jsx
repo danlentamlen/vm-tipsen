@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { Link } from 'react-router-dom'
+import { useSettings } from '../hooks/useSettings'
 
 export default function Questions() {
   const [frågor, setFrågor] = useState([])
@@ -9,6 +10,7 @@ export default function Questions() {
   const [sparar, setSparar] = useState(null)
   const [sparat, setSparat] = useState({})
   const { användare } = useAuth()
+  const { tipsLåst } = useSettings()
 
   useEffect(() => {
     hämtaAllt()
@@ -88,6 +90,12 @@ export default function Questions() {
         </div>
       )}
 
+      {användare && tipsLåst && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+          🔒 Frågorna är låsta – du kan inte längre ändra dina svar.
+        </div>
+      )}
+
       <div className="flex flex-col gap-4">
         {frågor.map((f) => (
           <FrågeKort
@@ -95,6 +103,7 @@ export default function Questions() {
             fråga={f}
             lag={lag}
             inloggad={!!användare}
+            tipsLåst={tipsLåst}
             sparar={sparar === f.fråga_id}
             nySparad={sparat[f.fråga_id]}
             onSpara={sparaSvar}
@@ -105,7 +114,7 @@ export default function Questions() {
   )
 }
 
-function FrågeKort({ fråga, lag, inloggad, sparar, nySparad, onSpara }) {
+function FrågeKort({ fråga, lag, inloggad, tipsLåst, sparar, nySparad, onSpara }) {
   const [svar, setSvar] = useState(fråga.mitt_svar || '')
 
   useEffect(() => {
@@ -125,6 +134,18 @@ function FrågeKort({ fråga, lag, inloggad, sparar, nySparad, onSpara }) {
         <div className="bg-gray-50 rounded-lg p-3">
           <p className="text-sm text-gray-500 mb-1">Ditt svar:</p>
           <p className="font-medium text-gray-700">{fråga.mitt_svar || '–'}</p>
+        </div>
+      )
+    }
+
+    if (tipsLåst) {
+      return (
+        <div className="bg-gray-50 rounded-lg p-3 flex items-center justify-between">
+          <div>
+            <p className="text-sm text-gray-500 mb-1">Ditt svar:</p>
+            <p className="font-medium text-gray-700">{fråga.mitt_svar || '–'}</p>
+          </div>
+          <span className="text-gray-400">🔒</span>
         </div>
       )
     }
@@ -226,7 +247,7 @@ function TeamVäljare({ lag, värde, onChange, onSpara, sparar, nySparad, harSva
     onChange(valtLag)
     setSök('')
     setÖppen(false)
-    onSpara(valtLag) // skicka valtLag direkt istället för att vänta på state
+    onSpara(valtLag)
   }
 
   return (
@@ -277,7 +298,7 @@ function TeamVäljare({ lag, värde, onChange, onSpara, sparar, nySparad, harSva
       </div>
 
       <button
-        onClick={onSpara}
+        onClick={() => onSpara(värde)}
         disabled={sparar || !värde}
         className={`px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap ${
           nySparad

@@ -1,3 +1,4 @@
+import { useSettings } from '../hooks/useSettings'
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 
@@ -7,6 +8,7 @@ export default function Matches() {
   const [laddar, setLaddar] = useState(true)
   const [sparar, setSparar] = useState(null)
   const { användare } = useAuth()
+  const { tipsLåst } = useSettings()
 
   useEffect(() => {
     hämtaMatcher()
@@ -75,6 +77,11 @@ export default function Matches() {
           Logga in för att lämna dina tips!
         </div>
       )}
+      {användare && tipsLåst && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+            🔒 Tips är låsta – du kan inte längre ändra dina gissningar.
+        </div>
+      )}
       {Object.entries(grupperadematcher).map(([grupp, gruppsMatcherna]) => (
         <div key={grupp} className="mb-8">
           <h3 className="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">
@@ -87,6 +94,7 @@ export default function Matches() {
                 match={match}
                 tip={minaTips[match.match_id]}
                 inloggad={!!användare}
+                tipsLåst={tipsLåst}
                 sparar={sparar === match.match_id}
                 onSpara={sparaTips}
               />
@@ -98,7 +106,7 @@ export default function Matches() {
   )
 }
 
-function MatchKort({ match, tip, inloggad, sparar, onSpara }) {
+function MatchKort({ match, tip, inloggad, tipsLåst, sparar, onSpara }) {
   const [hemma, setHemma] = useState(tip?.hemma_mål ?? '')
   const [borta, setBorta] = useState(tip?.borta_mål ?? '')
 
@@ -115,7 +123,8 @@ function MatchKort({ match, tip, inloggad, sparar, onSpara }) {
         <div className="flex-1 text-right font-semibold text-gray-800">
           {match.hemmalag}
         </div>
-        {inloggad ? (
+
+        {inloggad && !tipsLåst ? (
           <div className="flex items-center gap-2">
             <input
               type="number"
@@ -146,9 +155,21 @@ function MatchKort({ match, tip, inloggad, sparar, onSpara }) {
               {sparar ? '...' : harTips ? 'Uppdatera' : 'Spara'}
             </button>
           </div>
+        ) : inloggad && tipsLåst && harTips ? (
+          <div className="flex items-center gap-2">
+            <span className="w-12 text-center text-lg font-bold text-gray-700 bg-gray-50 border border-gray-200 rounded-lg py-1">
+              {hemma}
+            </span>
+            <span className="text-gray-400 font-bold">–</span>
+            <span className="w-12 text-center text-lg font-bold text-gray-700 bg-gray-50 border border-gray-200 rounded-lg py-1">
+              {borta}
+            </span>
+            <span className="text-gray-400 text-xs px-2">🔒</span>
+          </div>
         ) : (
           <span className="text-gray-300 font-bold px-4">vs</span>
         )}
+
         <div className="flex-1 font-semibold text-gray-800">
           {match.bortalag}
         </div>

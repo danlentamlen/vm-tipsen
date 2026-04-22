@@ -53,6 +53,15 @@ export default async (req) => {
       })
     }
 
+    // Kolla om tips är låsta
+    const { getSettings } = await import('./_settings.js')
+    const settings = await getSettings()
+    if (settings.tips_låst === 'true') {
+    return new Response(
+        JSON.stringify({ error: 'Tips är låsta och kan inte längre ändras' }),
+        { status: 403, headers: { 'Content-Type': 'application/json' } }
+    )
+    }
     const { match_id, hemma_mål, borta_mål } = await req.json()
 
     if (!match_id || hemma_mål === undefined || borta_mål === undefined) {
