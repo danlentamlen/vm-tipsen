@@ -7,6 +7,8 @@ import Matches from './pages/Matches'
 import Leaderboard from './pages/Leaderboard'
 import Questions from './pages/Questions'
 import Admin from './pages/Admin'
+import Participants from './pages/Participants'
+import ParticipantProfile from './pages/ParticipantProfile'
 
 
 export default function App() {
@@ -22,6 +24,8 @@ export default function App() {
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/questions" element={<Questions />} />
           <Route path="/admin" element={<Admin />} />
+          <Route path="/participants" element={<Participants />} />
+          <Route path="/participant/:user_id" element={<ParticipantProfile />} />
         </Routes>
       </main>
     </div>

@@ -18,6 +18,9 @@ export default function Navbar() {
       <Link to="/questions" className="hover:text-green-200">
         Bonusfrågor
       </Link>
+      <Link to="/participants" className="hover:text-green-200">
+        Deltagare
+      </Link>
       <div className="flex gap-4 items-center">
         {användare ? (
           <>
