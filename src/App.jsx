@@ -13,6 +13,7 @@ import ParticipantProfile from './pages/ParticipantProfile'
 import MinVin from './pages/MinVin'
 import Vinpotten from './pages/Vinpotten'
 import Info from './pages/Info'
+import Scorers from './pages/Scorers'
 
 export default function App() {
   return (
@@ -33,6 +34,7 @@ export default function App() {
           <Route path="/mitt-vin" element={<MinVin />} />
           <Route path="/vinpotten" element={<Vinpotten />} />
           <Route path="/info" element={<Info />} />
+          <Route path="/skytteliga" element={<Scorers />} />
         </Routes>
       </main>
     </div>

@@ -165,6 +165,41 @@ const STYLES = `
     font-size: 0.88rem; color: #aaa;
   }
 
+  /* Prize breakdown */
+  .vp-prizes {
+    background: linear-gradient(135deg, #0a1628, #1a2e4a);
+    border-radius: 12px; padding: 1.25rem 1.5rem; margin-bottom: 2rem;
+  }
+  .vp-prizes-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.72rem; font-weight: 600; letter-spacing: 0.2em;
+    text-transform: uppercase; color: rgba(255,255,255,0.4); margin-bottom: 0.875rem;
+  }
+  .vp-prizes-grid {
+    display: flex; gap: 0.5rem; flex-wrap: wrap;
+  }
+  .vp-prize-item {
+    flex: 1; min-width: 70px; text-align: center;
+    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px; padding: 0.75rem 0.5rem;
+  }
+  .vp-prize-item.first { background: rgba(197,160,40,0.15); border-color: rgba(197,160,40,0.3); }
+  .vp-prize-place {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em;
+    text-transform: uppercase; color: rgba(255,255,255,0.4); display: block; margin-bottom: 4px;
+  }
+  .vp-prize-item.first .vp-prize-place { color: #F0D060; }
+  .vp-prize-pct {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 1.3rem; font-weight: 700; color: #fff; line-height: 1; display: block;
+  }
+  .vp-prize-item.first .vp-prize-pct { color: #F0D060; font-size: 1.6rem; }
+  .vp-prize-kr {
+    font-family: 'Barlow', sans-serif;
+    font-size: 0.72rem; color: rgba(255,255,255,0.4); display: block; margin-top: 3px;
+  }
+
   @media (max-width: 480px) {
     .vp-hero { padding: 1.25rem; }
     .vp-hero-value { font-size: 1.8rem; }
@@ -257,6 +292,54 @@ export default function Vinpotten() {
             </div>
           </div>
         )}
+
+        {/* Prize breakdown */}
+        {totalFlaskor > 0 && (() => {
+          const priser = [
+            { plats: '1:a', emoji: '🥇', pct: 60 },
+            { plats: '2:a', emoji: '🥈', pct: 20 },
+            { plats: '3:e', emoji: '🥉', pct: 10 },
+            { plats: '4:e', emoji: '',   pct: 7  },
+            { plats: '5:e', emoji: '',   pct: 3  },
+          ]
+          return (
+            <div className="vp-prizes">
+              <p className="vp-prizes-title">Prisfördelning av vinpotten</p>
+              <div className="vp-prizes-grid">
+                {priser.map((p) => (
+                  <div key={p.plats} className={`vp-prize-item ${p.plats === '1:a' ? 'first' : ''}`}>
+                    <span className="vp-prize-place">{p.emoji} {p.plats}</span>
+                    <span className="vp-prize-pct">{p.pct}%</span>
+                    {totalPris > 0 && (
+                      <span className="vp-prize-kr">{Math.round(totalPris * p.pct / 100)} kr</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        })()}
+
+        {/* Extra prize */}
+        <div style={{
+          background:'#fff', border:'1px solid rgba(0,0,0,0.07)', borderRadius:12,
+          padding:'1.1rem 1.5rem', marginBottom:'2rem',
+          boxShadow:'0 1px 4px rgba(0,0,0,0.04)',
+          display:'flex', alignItems:'flex-start', gap:12
+        }}>
+          <span style={{ fontSize:'1.5rem', flexShrink:0 }}>⚽</span>
+          <div>
+            <p style={{ fontFamily:"'Barlow Condensed',sans-serif", fontSize:'0.8rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'#C8102E', marginBottom:4 }}>
+              Extrapris
+            </p>
+            <p style={{ fontFamily:"'Barlow',sans-serif", fontSize:'0.88rem', color:'#0a1628', fontWeight:500, marginBottom:3 }}>
+              Närmast totalt antal mål i VM
+            </p>
+            <p style={{ fontFamily:"'Barlow',sans-serif", fontSize:'0.8rem', color:'#888', lineHeight:1.5 }}>
+              Den deltagare som är närmast rätt antal totalt antal mål i turneringen vinner ett separat extrapris. Vid lika differens avgörs det av flest poäng i övrigt.
+            </p>
+          </div>
+        </div>
 
         {/* Wine list */}
         {grupperade.length === 0 ? (

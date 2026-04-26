@@ -8,6 +8,7 @@ const navLinks = [
   { to: '/questions', label: 'Tilläggsfrågor', icon: '🎯' },
   { to: '/participants', label: 'Deltagare', icon: '👥' },
   { to: '/vinpotten', label: 'Vinpotten', icon: '🍷' },
+  { to: '/skytteliga', label: 'Skytteliga', icon: '👟' },
   { to: '/info', label: 'Regler', icon: '📋' },
 ]
 

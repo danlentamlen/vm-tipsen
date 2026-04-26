@@ -5,16 +5,21 @@ import { useAuth } from '../context/AuthContext'
 export default function Home() {
   const { användare } = useAuth()
   const [ticker, setTicker] = useState(null)
+  const [målData, setMålData] = useState(null)
 
   useEffect(() => {
     Promise.all([
       fetch('/.netlify/functions/participants').then((r) => r.json()).catch(() => []),
       fetch('/.netlify/functions/viner-hamta').then((r) => r.json()).catch(() => []),
-    ]).then(([deltagare, viner]) => {
+      fetch('/.netlify/functions/total-mal').then((r) => r.json()).catch(() => null),
+      fetch('/.netlify/functions/questions').then((r) => r.json()).catch(() => []),
+      fetch('/.netlify/functions/FrågorSvar' ).then(() => null).catch(() => null), // ignoreras
+    ]).then(([deltagare, viner, malData, frågor]) => {
       const antalDeltagare = Array.isArray(deltagare) ? deltagare.length : 0
       const betalda = Array.isArray(viner) ? viner.filter((v) => v.betalt === 'betalt') : []
       const pottVärde = betalda.reduce((s, v) => s + (Number(v.vin_pris) || 0), 0)
       setTicker({ antalDeltagare, antalBetalda: betalda.length, pottVärde })
+      if (malData) setMålData(malData)
     })
   }, [])
 
@@ -385,6 +390,33 @@ export default function Home() {
           .stat-num { font-size: 1.6rem; }
           .steps-grid, .points-grid { grid-template-columns: 1fr; }
         }
+
+        /* Goal tracker */
+        .goal-tracker {
+          background: rgba(255,255,255,0.05);
+          border: 1px solid rgba(197,160,40,0.2);
+          border-radius: 12px;
+          padding: 1.25rem 1.5rem;
+          margin: 1.5rem auto 0;
+          max-width: 500px;
+          text-align: center;
+        }
+        .goal-tracker-label {
+          font-family: 'Barlow Condensed', sans-serif;
+          font-size: 0.72rem; font-weight: 600; letter-spacing: 0.2em;
+          text-transform: uppercase; color: rgba(255,255,255,0.4);
+          margin-bottom: 0.5rem;
+        }
+        .goal-tracker-num {
+          font-family: 'Barlow Condensed', sans-serif;
+          font-size: 3rem; font-weight: 700; color: #F0D060;
+          line-height: 1; display: block; margin-bottom: 0.25rem;
+        }
+        .goal-tracker-sub {
+          font-family: 'Barlow', sans-serif;
+          font-size: 0.78rem; color: rgba(255,255,255,0.35);
+        }
+        .goal-tracker-sub strong { color: rgba(255,255,255,0.6); }
       `}</style>
 
       {/* Hero */}
@@ -400,6 +432,20 @@ export default function Home() {
             Tippa matchresultaten, svara på tilläggsfrågor och klättra på topplistan.
             Varje deltagare satsar en vinflaska — den med flest poäng tar hem hela potten!
           </p>
+          {/* Goal tracker — visas när VM pågår */}
+          {målData && målData.totalMål > 0 && (
+            <div className="goal-tracker">
+              <p className="goal-tracker-label">⚽ Totalt antal mål i VM</p>
+              <span className="goal-tracker-num">{målData.totalMål}</span>
+              <p className="goal-tracker-sub">
+                på {målData.speladeMatcher} matcher
+                {målData.snitMålPerMatch > 0 && (
+                  <> · snitt <strong>{målData.snitMålPerMatch}</strong> mål/match</>
+                )}
+              </p>
+            </div>
+          )}
+
           <div className="hero-actions">
             {!användare ? (
               <>

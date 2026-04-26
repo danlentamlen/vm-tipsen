@@ -282,6 +282,37 @@ export default function Info() {
 
         <div className="info-divider" />
 
+        {/* Prisfördelning */}
+        <div className="info-section">
+          <div className="info-section-header">
+            <div className="info-section-icon">🏆</div>
+            <h2 className="info-section-title">Prisfördelning</h2>
+          </div>
+          <div style={{ display:'flex', flexDirection:'column', gap:'0.5rem' }}>
+            {[
+              { plats:'1:a plats', emoji:'🥇', pct:60 },
+              { plats:'2:a plats', emoji:'🥈', pct:20 },
+              { plats:'3:e plats', emoji:'🥉', pct:10 },
+              { plats:'4:e plats', emoji:'',   pct:7  },
+              { plats:'5:e plats', emoji:'',   pct:3  },
+            ].map((p) => (
+              <div key={p.plats} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', background:'#fff', border:'1px solid rgba(0,0,0,0.07)', borderRadius:10, padding:'0.875rem 1rem', boxShadow:'0 1px 3px rgba(0,0,0,0.03)' }}>
+                <span style={{ fontFamily:"'Barlow',sans-serif", fontSize:'0.9rem', fontWeight:500, color:'#0a1628' }}>
+                  {p.emoji} {p.plats}
+                </span>
+                <span style={{ fontFamily:"'Barlow Condensed',sans-serif", fontSize:'1.2rem', fontWeight:700, color:'#C8102E' }}>
+                  {p.pct}%
+                </span>
+              </div>
+            ))}
+          </div>
+          <p style={{ fontFamily:"'Barlow',sans-serif", fontSize:'0.82rem', color:'#888', marginTop:'0.75rem', lineHeight:1.5 }}>
+            Procentandelarna beräknas på det totala värdet av alla betalda vinflaskor i potten.
+          </p>
+        </div>
+
+        <div className="info-divider" />
+
         {/* Regler */}
         <div className="info-section">
           <div className="info-section-header">
@@ -316,7 +347,13 @@ export default function Info() {
             <div className="rule-item">
               <span className="rule-icon">🏅</span>
               <p className="rule-text">
-                <strong>Vid lika poäng:</strong> Vid delad placering avgörs ordningen av antal exakta resultat, sedan antal rätta utgångar och slutligen antal rätt på tilläggsfrågor.
+                <strong>Vid lika poäng:</strong> Delad placering avgörs i denna ordning — (1) den som tippat rätt lag som vinnare av VM, (2) flest exakta 5-poängare, (3) dyraste vinflaska.
+              </p>
+            </div>
+            <div className="rule-item">
+              <span className="rule-icon">⚽</span>
+              <p className="rule-text">
+                <strong>Extrapris — totala VM-mål:</strong> Den deltagare som är närmast rätt antal totalt antal mål i VM vinner ett separat extrapris. Vid lika (samma differens) vinner den med flest poäng i övrigt.
               </p>
             </div>
             <div className="rule-item">

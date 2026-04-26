@@ -1,9 +1,15 @@
 [build]
   command = "npm run build"
   publish = "dist"
-  functions = "netlify/functions"
+  functions = "Netlify/functions"
 
 [dev]
   command = "npm run dev"
   port = 8888
   targetPort = 5173
+
+# Kör var 15:e minut under VM (11 jun – 19 jul 2026)
+# 100 anrop/dag = ett var 14:e minut — vi kör var 15:e för säkerhets skull
+[[scheduled-functions]]
+  name = "sync-results"
+  schedule = "*/15 * * * *"
