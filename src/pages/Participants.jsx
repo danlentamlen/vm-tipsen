@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 
 export default function Participants() {
   const [deltagare, setDeltagare] = useState([])
+  const [viner, setViner] = useState({})
   const [laddar, setLaddar] = useState(true)
   const { användare } = useAuth()
 
@@ -14,6 +15,17 @@ export default function Participants() {
         setDeltagare(data)
         setLaddar(false)
       })
+
+    fetch('/.netlify/functions/viner-hamta')
+      .then((r) => r.json())
+      .then((data) => {
+        const map = {}
+        data.forEach((v) => {
+          if (v.vin_namn) map[v.user_id] = v
+        })
+        setViner(map)
+      })
+      .catch(() => {})
   }, [])
 
   if (laddar) {
@@ -40,6 +52,18 @@ export default function Participants() {
             <p className="font-semibold text-gray-800 truncate">{d.namn}</p>
             {användare?.user_id === d.user_id && (
               <span className="text-xs text-green-600 font-medium">Du</span>
+            )}
+            {viner[d.user_id] && (
+              <a
+                href={viner[d.user_id].vin_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="text-xs text-green-600 hover:underline mt-1 block truncate"
+                title={viner[d.user_id].vin_namn}
+              >
+                🍷 {viner[d.user_id].vin_namn}
+              </a>
             )}
           </Link>
         ))}

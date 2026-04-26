@@ -1,6 +1,107 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 
+function VinBetalningar({ adminSecret }) {
+  const [viner, setViner] = useState([])
+  const [uppdaterar, setUppdaterar] = useState(null)
+
+  useEffect(() => {
+    fetch('/.netlify/functions/viner-hamta')
+      .then((r) => r.json())
+      .then(setViner)
+      .catch(() => {})
+  }, [])
+
+  async function växlaBetalning(user_id, erBetalt) {
+    setUppdaterar(user_id)
+    try {
+      const res = await fetch('/.netlify/functions/admin-betalning', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${adminSecret}`,
+        },
+        body: JSON.stringify({ user_id, betalt: !erBetalt }),
+      })
+      if (res.ok) {
+        setViner((prev) =>
+          prev.map((v) =>
+            v.user_id === user_id
+              ? { ...v, betalt: !erBetalt ? 'betalt' : 'ej_betalt' }
+              : v
+          )
+        )
+      }
+    } catch {}
+    setUppdaterar(null)
+  }
+
+  if (viner.length === 0) {
+    return <p className="text-gray-400 text-sm">Inga viner registrerade ännu.</p>
+  }
+
+  return (
+    <table className="w-full text-sm">
+      <thead className="text-left text-gray-500 border-b">
+        <tr>
+          <th className="pb-2 font-medium">Deltagare</th>
+          <th className="pb-2 font-medium">Vin</th>
+          <th className="pb-2 font-medium">Pris</th>
+          <th className="pb-2 font-medium">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {viner.map((v) => {
+          const erBetalt = v.betalt === 'betalt'
+          return (
+            <tr key={v.user_id} className="border-t border-gray-50">
+              <td className="py-2 font-medium text-gray-800">{v.namn}</td>
+              <td className="py-2">
+                {v.vin_namn ? (
+                  <a
+                    href={v.vin_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-green-700 hover:underline"
+                  >
+                    {v.vin_namn}
+                  </a>
+                ) : (
+                  <span className="text-gray-400 italic">Inget vin angivet</span>
+                )}
+              </td>
+              <td className="py-2 text-gray-500">
+                {v.vin_pris ? `${v.vin_pris} kr` : '—'}
+              </td>
+              <td className="py-2">
+                {v.vin_namn ? (
+                  <button
+                    onClick={() => växlaBetalning(v.user_id, erBetalt)}
+                    disabled={uppdaterar === v.user_id}
+                    className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
+                      erBetalt
+                        ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                        : 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
+                    } disabled:opacity-50`}
+                  >
+                    {uppdaterar === v.user_id
+                      ? '...'
+                      : erBetalt
+                      ? '✅ Betalt'
+                      : '⏳ Ej betalt'}
+                  </button>
+                ) : (
+                  <span className="text-gray-300 text-xs">—</span>
+                )}
+              </td>
+            </tr>
+          )
+        })}
+      </tbody>
+    </table>
+  )
+}
+
 export default function Admin() {
   const [lösenord, setLösenord] = useState('')
   const [inloggad, setInloggad] = useState(false)
@@ -157,7 +258,7 @@ export default function Admin() {
       </div>
 
       {/* Mata in resultat */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
         <h3 className="text-xl font-semibold text-gray-700 mb-4">Mata in matchresultat</h3>
         <form onSubmit={sparaResultat} className="flex flex-col gap-4">
           <div>
@@ -208,6 +309,12 @@ export default function Admin() {
             Spara resultat
           </button>
         </form>
+      </div>
+
+      {/* Vinbetalningar */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <h3 className="text-xl font-semibold text-gray-700 mb-4">🍷 Vinbetalningar</h3>
+        <VinBetalningar adminSecret={localStorage.getItem('admin_secret')} />
       </div>
     </div>
   )

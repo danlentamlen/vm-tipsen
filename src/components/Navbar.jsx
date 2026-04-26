@@ -21,9 +21,15 @@ export default function Navbar() {
       <Link to="/participants" className="hover:text-green-200">
         Deltagare
       </Link>
+       <Link to="/vinpotten" className="hover:text-green-200">
++        🍷 Vinpotten
++      </Link>
       <div className="flex gap-4 items-center">
         {användare ? (
           <>
+           <Link to="/mitt-vin" className="hover:text-green-200">
++              Min vinflaska
++            </Link>
             <span className="text-green-200">Hej, {användare.namn}!</span>
             <button
               onClick={logga_ut}
