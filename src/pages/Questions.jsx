@@ -4,6 +4,313 @@ import { Link } from 'react-router-dom'
 import { useSettings } from '../hooks/useSettings'
 import DistributionModal from '../components/DistributionModal'
 
+const STYLES = `
+  @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500&display=swap');
+
+  .q-wrap {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 2rem 1rem 4rem;
+  }
+  .q-eyebrow {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: #C8102E;
+    margin-bottom: 0.3rem;
+  }
+  .q-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: clamp(1.8rem, 6vw, 2.8rem);
+    font-weight: 700;
+    color: #0a1628;
+    letter-spacing: 0.02em;
+    line-height: 1;
+    margin-bottom: 0.5rem;
+  }
+  .q-subtitle {
+    font-family: 'Barlow', sans-serif;
+    font-size: 0.9rem;
+    color: #888;
+    margin-bottom: 1.75rem;
+  }
+
+  /* Banners */
+  .q-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 0.875rem 1.1rem;
+    border-radius: 10px;
+    margin-bottom: 1.25rem;
+    font-family: 'Barlow', sans-serif;
+    font-size: 0.88rem;
+    line-height: 1.5;
+  }
+  .q-banner-icon { font-size: 1rem; flex-shrink: 0; margin-top: 1px; }
+  .q-banner.warning {
+    background: rgba(197,160,40,0.1);
+    border: 1px solid rgba(197,160,40,0.3);
+    color: #7a5e10;
+  }
+  .q-banner.locked {
+    background: rgba(200,16,46,0.07);
+    border: 1px solid rgba(200,16,46,0.2);
+    color: #8a1020;
+  }
+
+  /* Cards */
+  .q-card {
+    background: #fff;
+    border: 1px solid rgba(0,0,0,0.07);
+    border-radius: 12px;
+    padding: 1.4rem 1.5rem;
+    margin-bottom: 0.875rem;
+    transition: box-shadow 0.15s, border-color 0.15s;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  }
+  .q-card.clickable {
+    cursor: pointer;
+  }
+  .q-card.clickable:hover {
+    border-color: rgba(197,160,40,0.5);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  }
+  .q-card.answered {
+    border-left: 3px solid #C5A028;
+  }
+
+  .q-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  .q-question {
+    font-family: 'Barlow', sans-serif;
+    font-size: 0.98rem;
+    font-weight: 500;
+    color: #0a1628;
+    line-height: 1.5;
+    flex: 1;
+  }
+  .q-points-badge {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    background: linear-gradient(135deg, #0a1628, #1a2e4a);
+    color: #F0D060;
+    padding: 4px 10px;
+    border-radius: 6px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* Answered display */
+  .q-answer-display {
+    background: #f8f7f4;
+    border: 1px solid rgba(0,0,0,0.06);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .q-answer-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #aaa;
+    margin-bottom: 2px;
+  }
+  .q-answer-value {
+    font-family: 'Barlow', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: #0a1628;
+  }
+  .q-lock-icon { font-size: 0.9rem; color: #ccc; }
+
+  /* Choice buttons */
+  .q-choices {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .q-choice-btn {
+    font-family: 'Barlow', sans-serif;
+    font-size: 0.88rem;
+    font-weight: 500;
+    padding: 8px 18px;
+    border-radius: 8px;
+    border: 1.5px solid rgba(0,0,0,0.12);
+    background: #fff;
+    color: #444;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .q-choice-btn:hover:not(:disabled) {
+    border-color: #C5A028;
+    color: #0a1628;
+  }
+  .q-choice-btn.selected {
+    background: linear-gradient(135deg, #0a1628, #1a2e4a);
+    color: #F0D060;
+    border-color: transparent;
+  }
+  .q-choice-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* Text/number input row */
+  .q-input-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .q-input {
+    flex: 1;
+    font-family: 'Barlow', sans-serif;
+    font-size: 0.9rem;
+    padding: 9px 14px;
+    border: 1.5px solid rgba(0,0,0,0.12);
+    border-radius: 8px;
+    background: #fff;
+    color: #0a1628;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .q-input:focus { border-color: #C5A028; }
+
+  /* Save button */
+  .q-save-btn {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 9px 18px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s;
+  }
+  .q-save-btn.default {
+    background: linear-gradient(135deg, #0a1628, #1a2e4a);
+    color: #F0D060;
+  }
+  .q-save-btn.default:hover:not(:disabled) { opacity: 0.88; }
+  .q-save-btn.update {
+    background: #f0ede6;
+    color: #666;
+  }
+  .q-save-btn.update:hover:not(:disabled) { background: #e8e4dc; }
+  .q-save-btn.saved {
+    background: rgba(197,160,40,0.15);
+    color: #8a6e1a;
+    border: 1px solid rgba(197,160,40,0.3);
+  }
+  .q-save-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .q-saved-inline {
+    font-size: 0.8rem;
+    color: #8a6e1a;
+    font-family: 'Barlow', sans-serif;
+    align-self: center;
+  }
+
+  /* Team picker */
+  .q-team-wrap { position: relative; flex: 1; }
+  .q-team-trigger {
+    width: 100%;
+    font-family: 'Barlow', sans-serif;
+    font-size: 0.9rem;
+    padding: 9px 14px;
+    border: 1.5px solid rgba(0,0,0,0.12);
+    border-radius: 8px;
+    background: #fff;
+    color: #0a1628;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: border-color 0.15s;
+    text-align: left;
+  }
+  .q-team-trigger:hover { border-color: #C5A028; }
+  .q-team-trigger.placeholder { color: #aaa; }
+  .q-team-dropdown {
+    position: absolute;
+    z-index: 20;
+    top: calc(100% + 4px);
+    left: 0; right: 0;
+    background: #fff;
+    border: 1px solid rgba(0,0,0,0.1);
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    overflow: hidden;
+  }
+  .q-team-search {
+    padding: 8px;
+    border-bottom: 1px solid rgba(0,0,0,0.06);
+  }
+  .q-team-search input {
+    width: 100%;
+    font-family: 'Barlow', sans-serif;
+    font-size: 0.85rem;
+    padding: 7px 10px;
+    border: 1px solid rgba(0,0,0,0.1);
+    border-radius: 6px;
+    outline: none;
+  }
+  .q-team-list { max-height: 200px; overflow-y: auto; }
+  .q-team-item {
+    padding: 9px 14px;
+    font-family: 'Barlow', sans-serif;
+    font-size: 0.88rem;
+    cursor: pointer;
+    color: #333;
+    transition: background 0.1s;
+  }
+  .q-team-item:hover { background: rgba(197,160,40,0.08); }
+  .q-team-item.active { background: rgba(197,160,40,0.12); color: #0a1628; font-weight: 500; }
+  .q-team-empty { padding: 10px 14px; font-size: 0.85rem; color: #aaa; }
+
+  /* Progress bar */
+  .q-progress-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 1.5rem;
+  }
+  .q-progress-bar {
+    flex: 1;
+    height: 4px;
+    background: rgba(0,0,0,0.07);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .q-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #C8102E, #C5A028);
+    border-radius: 2px;
+    transition: width 0.4s ease;
+  }
+  .q-progress-label {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    color: #aaa;
+    white-space: nowrap;
+  }
+`
+
 export default function Questions() {
   const [frågor, setFrågor] = useState([])
   const [lag, setLag] = useState([])
@@ -14,9 +321,7 @@ export default function Questions() {
   const { användare } = useAuth()
   const { tipsLåst } = useSettings()
 
-  useEffect(() => {
-    hämtaAllt()
-  }, [användare])
+  useEffect(() => { hämtaAllt() }, [användare])
 
   async function hämtaAllt() {
     const headers = {}
@@ -26,7 +331,6 @@ export default function Questions() {
       fetch('/.netlify/functions/questions', { headers }),
       fetch('/.netlify/functions/matches'),
     ])
-
     const frågorData = await frågorRes.json()
     const matcherData = await matcherRes.json()
 
@@ -36,17 +340,15 @@ export default function Questions() {
       if (ärRiktigt(match.hemmalag)) lagSet.add(match.hemmalag)
       if (ärRiktigt(match.bortalag)) lagSet.add(match.bortalag)
     })
-    const sorterade = [...lagSet].sort()
 
     setFrågor(frågorData)
-    setLag(sorterade)
+    setLag([...lagSet].sort())
     setLaddar(false)
   }
 
   async function sparaSvar(fråga_id, svar) {
     if (!användare || !svar.toString().trim()) return
     setSparar(fråga_id)
-
     await fetch('/.netlify/functions/questions', {
       method: 'POST',
       headers: {
@@ -55,83 +357,95 @@ export default function Questions() {
       },
       body: JSON.stringify({ fråga_id, svar }),
     })
-
     setSparat((prev) => ({ ...prev, [fråga_id]: true }))
     setSparar(null)
-    setTimeout(() => {
-      setSparat((prev) => ({ ...prev, [fråga_id]: false }))
-    }, 2000)
+    setTimeout(() => setSparat((prev) => ({ ...prev, [fråga_id]: false })), 2000)
     hämtaAllt()
   }
 
   if (laddar) {
-    return <div className="text-center py-16 text-gray-500">Laddar frågor...</div>
+    return <div style={{ textAlign: 'center', padding: '4rem 1rem', color: '#888' }}>Laddar frågor...</div>
   }
 
   if (frågor.length === 0) {
     return (
-      <div className="text-center py-16">
-        <p className="text-4xl mb-4">❓</p>
-        <h2 className="text-2xl font-bold text-gray-700 mb-2">Inga frågor än</h2>
-        <p className="text-gray-500">Frågorna publiceras innan VM startar.</p>
+      <div style={{ textAlign: 'center', padding: '4rem 1rem' }}>
+        <p style={{ fontSize: '3rem', marginBottom: '1rem' }}>❓</p>
+        <h2 style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: '1.5rem', fontWeight: 700, color: '#0a1628', marginBottom: '0.5rem' }}>Inga frågor än</h2>
+        <p style={{ color: '#888' }}>Frågorna publiceras innan VM startar.</p>
       </div>
     )
   }
 
+  const besvarade = frågor.filter((f) => !!f.mitt_svar).length
+  const progress = Math.round((besvarade / frågor.length) * 100)
+
   return (
-    <div>
-      <h2 className="text-3xl font-bold text-green-700 mb-2">Bonusfrågor</h2>
-      <p className="text-gray-500 mb-8">
-        Svara på frågorna innan VM startar. Rätt svar ger bonuspoäng!
-      </p>
+    <>
+      <style>{STYLES}</style>
+      <div className="q-wrap">
+        <p className="q-eyebrow">VM-tipsen 2026</p>
+        <h2 className="q-title">Tilläggsfrågor</h2>
+        <p className="q-subtitle">Svara på frågorna innan VM startar — rätt svar ger bonuspoäng!</p>
 
-      {!användare && (
-        <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-lg mb-6">
-          <Link to="/login" className="font-medium hover:underline">Logga in</Link>{' '}
-          för att svara på frågorna!
+        {/* Progress */}
+        {användare && (
+          <div className="q-progress-wrap">
+            <div className="q-progress-bar">
+              <div className="q-progress-fill" style={{ width: `${progress}%` }} />
+            </div>
+            <span className="q-progress-label">{besvarade} / {frågor.length} besvarade</span>
+          </div>
+        )}
+
+        {/* Banners */}
+        {!användare && (
+          <div className="q-banner warning">
+            <span className="q-banner-icon">🔑</span>
+            <span><Link to="/login" style={{ color: '#7a5e10', fontWeight: 600 }}>Logga in</Link> för att svara på frågorna!</span>
+          </div>
+        )}
+        {användare && tipsLåst && (
+          <div className="q-banner locked">
+            <span className="q-banner-icon">🔒</span>
+            <span>Frågorna är låsta — du kan inte längre ändra dina svar. Klicka på en fråga för att se svarsfördelningen.</span>
+          </div>
+        )}
+
+        {/* Fråge-kort */}
+        <div>
+          {frågor.map((f) => (
+            <FrågeKort
+              key={f.fråga_id}
+              fråga={f}
+              lag={lag}
+              inloggad={!!användare}
+              tipsLåst={tipsLåst}
+              sparar={sparar === f.fråga_id}
+              nySparad={sparat[f.fråga_id]}
+              onSpara={sparaSvar}
+              onKlick={tipsLåst ? () => setValdFråga(f) : null}
+            />
+          ))}
         </div>
-      )}
 
-      {användare && tipsLåst && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
-          🔒 Frågorna är låsta – du kan inte längre ändra dina svar. Klicka på en fråga för att se svarsfördelningen!
-        </div>
-      )}
-
-      <div className="flex flex-col gap-4">
-        {frågor.map((f) => (
-          <FrågeKort
-            key={f.fråga_id}
-            fråga={f}
-            lag={lag}
-            inloggad={!!användare}
-            tipsLåst={tipsLåst}
-            sparar={sparar === f.fråga_id}
-            nySparad={sparat[f.fråga_id]}
-            onSpara={sparaSvar}
-            onKlick={tipsLåst ? () => setValdFråga(f) : null}
+        {valdFråga && (
+          <DistributionModal
+            typ="fråga"
+            id={valdFråga.fråga_id}
+            titel={valdFråga.fråga}
+            onStäng={() => setValdFråga(null)}
           />
-        ))}
+        )}
       </div>
-
-      {valdFråga && (
-        <DistributionModal
-          typ="fråga"
-          id={valdFråga.fråga_id}
-          titel={valdFråga.fråga}
-          onStäng={() => setValdFråga(null)}
-        />
-      )}
-    </div>
+    </>
   )
 }
 
 function FrågeKort({ fråga, lag, inloggad, tipsLåst, sparar, nySparad, onSpara, onKlick }) {
   const [svar, setSvar] = useState(fråga.mitt_svar || '')
 
-  useEffect(() => {
-    setSvar(fråga.mitt_svar || '')
-  }, [fråga.mitt_svar])
+  useEffect(() => { setSvar(fråga.mitt_svar || '') }, [fråga.mitt_svar])
 
   const harSvarat = !!fråga.mitt_svar
   const rättSvarVisat = fråga.har_rätt_svar
@@ -141,23 +455,14 @@ function FrågeKort({ fråga, lag, inloggad, tipsLåst, sparar, nySparad, onSpar
   const alternativ = ärChoice ? fråga.typ.split(':')[1]?.split('/') || [] : []
 
   function renderInput() {
-    if (rättSvarVisat) {
+    if (rättSvarVisat || tipsLåst) {
       return (
-        <div className="bg-gray-50 rounded-lg p-3">
-          <p className="text-sm text-gray-500 mb-1">Ditt svar:</p>
-          <p className="font-medium text-gray-700">{fråga.mitt_svar || '–'}</p>
-        </div>
-      )
-    }
-
-    if (tipsLåst) {
-      return (
-        <div className="bg-gray-50 rounded-lg p-3 flex items-center justify-between">
+        <div className="q-answer-display">
           <div>
-            <p className="text-sm text-gray-500 mb-1">Ditt svar:</p>
-            <p className="font-medium text-gray-700">{fråga.mitt_svar || '–'}</p>
+            <div className="q-answer-label">Ditt svar</div>
+            <div className="q-answer-value">{fråga.mitt_svar || '–'}</div>
           </div>
-          <span className="text-gray-400">🔒</span>
+          {tipsLåst && <span className="q-lock-icon">🔒</span>}
         </div>
       )
     }
@@ -166,65 +471,54 @@ function FrågeKort({ fråga, lag, inloggad, tipsLåst, sparar, nySparad, onSpar
 
     if (ärTeam) {
       return (
-        <TeamVäljare
-          lag={lag}
-          värde={svar}
-          onChange={setSvar}
-          onSpara={(valtLag) => onSpara(fråga.fråga_id, valtLag || svar)}
-          sparar={sparar}
-          nySparad={nySparad}
-          harSvarat={harSvarat}
-        />
+        <div className="q-input-row" onClick={(e) => e.stopPropagation()}>
+          <TeamVäljare
+            lag={lag}
+            värde={svar}
+            onChange={setSvar}
+            onSpara={(valt) => onSpara(fråga.fråga_id, valt || svar)}
+            sparar={sparar}
+            nySparad={nySparad}
+            harSvarat={harSvarat}
+          />
+        </div>
       )
     }
 
     if (ärChoice) {
       return (
-        <div className="flex flex-wrap gap-2" onClick={(e) => e.stopPropagation()}>
-          {alternativ.map((alt) => (
-            <button
-              key={alt}
-              onClick={() => {
-                setSvar(alt)
-                onSpara(fråga.fråga_id, alt)
-              }}
-              disabled={sparar}
-              className={`px-4 py-2 rounded-lg font-medium text-sm border-2 transition-colors ${
-                svar === alt
-                  ? 'bg-green-700 text-white border-green-700'
-                  : 'bg-white text-gray-700 border-gray-300 hover:border-green-500'
-              }`}
-            >
-              {alt}
-            </button>
-          ))}
-          {nySparad && (
-            <span className="text-green-600 text-sm self-center">✓ Sparat!</span>
-          )}
+        <div onClick={(e) => e.stopPropagation()}>
+          <div className="q-choices">
+            {alternativ.map((alt) => (
+              <button
+                key={alt}
+                onClick={() => { setSvar(alt); onSpara(fråga.fråga_id, alt) }}
+                disabled={sparar}
+                className={`q-choice-btn ${svar === alt ? 'selected' : ''}`}
+              >
+                {alt}
+              </button>
+            ))}
+          </div>
+          {nySparad && <span className="q-saved-inline" style={{ display: 'block', marginTop: 8 }}>✓ Sparat!</span>}
         </div>
       )
     }
 
     return (
-      <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+      <div className="q-input-row" onClick={(e) => e.stopPropagation()}>
         <input
           type={ärNumber ? 'number' : 'text'}
           min={ärNumber ? 0 : undefined}
           value={svar}
           onChange={(e) => setSvar(e.target.value)}
           placeholder={ärNumber ? 'Ange ett tal...' : 'Ditt svar...'}
-          className="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+          className="q-input"
         />
         <button
           onClick={() => onSpara(fråga.fråga_id, svar)}
           disabled={sparar || !svar.toString().trim()}
-          className={`px-4 py-2 rounded-lg font-medium text-sm ${
-            nySparad
-              ? 'bg-green-100 text-green-700'
-              : harSvarat
-              ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              : 'bg-green-700 text-white hover:bg-green-600'
-          } disabled:opacity-40`}
+          className={`q-save-btn ${nySparad ? 'saved' : harSvarat ? 'update' : 'default'}`}
         >
           {sparar ? '...' : nySparad ? '✓ Sparat!' : harSvarat ? 'Uppdatera' : 'Spara'}
         </button>
@@ -234,18 +528,12 @@ function FrågeKort({ fråga, lag, inloggad, tipsLåst, sparar, nySparad, onSpar
 
   return (
     <div
-      className={`bg-white rounded-xl shadow-sm border border-gray-100 p-6 ${
-        onKlick ? 'cursor-pointer hover:border-green-400 hover:shadow-md transition-all' : ''
-      }`}
+      className={`q-card ${onKlick ? 'clickable' : ''} ${harSvarat ? 'answered' : ''}`}
       onClick={onKlick || undefined}
     >
-      <div className="flex justify-between items-start mb-4">
-        <p className="font-semibold text-gray-800 text-lg flex-1 pr-4">
-          {fråga.fråga}
-        </p>
-        <span className="bg-green-100 text-green-700 font-bold px-3 py-1 rounded-full text-sm whitespace-nowrap">
-          {fråga.poäng}p
-        </span>
+      <div className="q-card-top">
+        <p className="q-question">{fråga.fråga}</p>
+        <span className="q-points-badge">{fråga.poäng}p</span>
       </div>
       {renderInput()}
     </div>
@@ -256,9 +544,7 @@ function TeamVäljare({ lag, värde, onChange, onSpara, sparar, nySparad, harSva
   const [sök, setSök] = useState('')
   const [öppen, setÖppen] = useState(false)
 
-  const filtrerade = lag.filter((l) =>
-    l.toLowerCase().includes(sök.toLowerCase())
-  )
+  const filtrerade = lag.filter((l) => l.toLowerCase().includes(sök.toLowerCase()))
 
   function välj(valtLag) {
     onChange(valtLag)
@@ -268,42 +554,37 @@ function TeamVäljare({ lag, värde, onChange, onSpara, sparar, nySparad, harSva
   }
 
   return (
-    <div className="flex gap-2 items-start" onClick={(e) => e.stopPropagation()}>
-      <div className="flex-1 relative">
-        <div
-          className="w-full border border-gray-300 rounded-lg px-4 py-2 cursor-pointer flex justify-between items-center bg-white"
+    <div className="q-input-row" style={{ width: '100%' }}>
+      <div className="q-team-wrap">
+        <button
+          type="button"
+          className={`q-team-trigger ${!värde ? 'placeholder' : ''}`}
           onClick={() => setÖppen(!öppen)}
         >
-          <span className={värde ? 'text-gray-800' : 'text-gray-400'}>
-            {värde || 'Välj ett lag...'}
-          </span>
-          <span className="text-gray-400 text-xs">{öppen ? '▲' : '▼'}</span>
-        </div>
-
+          <span>{värde || 'Välj ett lag...'}</span>
+          <span style={{ fontSize: '0.7rem', color: '#aaa' }}>{öppen ? '▲' : '▼'}</span>
+        </button>
         {öppen && (
-          <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg">
-            <div className="p-2 border-b border-gray-100">
+          <div className="q-team-dropdown">
+            <div className="q-team-search">
               <input
                 type="text"
                 value={sök}
                 onChange={(e) => setSök(e.target.value)}
                 placeholder="Sök lag..."
                 autoFocus
-                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
                 onClick={(e) => e.stopPropagation()}
               />
             </div>
-            <ul className="max-h-48 overflow-y-auto">
+            <ul className="q-team-list" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
               {filtrerade.length === 0 ? (
-                <li className="px-4 py-2 text-sm text-gray-400">Inga lag hittades</li>
+                <li className="q-team-empty">Inga lag hittades</li>
               ) : (
                 filtrerade.map((l) => (
                   <li
                     key={l}
                     onClick={() => välj(l)}
-                    className={`px-4 py-2 text-sm cursor-pointer hover:bg-green-50 ${
-                      l === värde ? 'bg-green-50 font-medium text-green-700' : 'text-gray-700'
-                    }`}
+                    className={`q-team-item ${l === värde ? 'active' : ''}`}
                   >
                     {l}
                   </li>
@@ -313,17 +594,10 @@ function TeamVäljare({ lag, värde, onChange, onSpara, sparar, nySparad, harSva
           </div>
         )}
       </div>
-
       <button
         onClick={() => onSpara(värde)}
         disabled={sparar || !värde}
-        className={`px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap ${
-          nySparad
-            ? 'bg-green-100 text-green-700'
-            : harSvarat
-            ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            : 'bg-green-700 text-white hover:bg-green-600'
-        } disabled:opacity-40`}
+        className={`q-save-btn ${nySparad ? 'saved' : harSvarat ? 'update' : 'default'}`}
       >
         {sparar ? '...' : nySparad ? '✓ Sparat!' : harSvarat ? 'Uppdatera' : 'Spara'}
       </button>

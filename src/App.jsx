@@ -3,6 +3,7 @@ import Navbar from './components/Navbar'
 import Home from './pages/Home'
 import Login from './pages/Login'
 import Register from './pages/Register'
+import Welcome from './pages/Welcome'
 import Matches from './pages/Matches'
 import Leaderboard from './pages/Leaderboard'
 import Questions from './pages/Questions'
@@ -11,17 +12,18 @@ import Participants from './pages/Participants'
 import ParticipantProfile from './pages/ParticipantProfile'
 import MinVin from './pages/MinVin'
 import Vinpotten from './pages/Vinpotten'
-
+import Info from './pages/Info'
 
 export default function App() {
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div style={{ minHeight: '100vh', background: '#f8f7f4' }}>
       <Navbar />
-      <main className="max-w-4xl mx-auto px-4 py-8">
+      <main style={{ paddingTop: 60 }}>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/välkommen" element={<Welcome />} />
           <Route path="/matches" element={<Matches />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/questions" element={<Questions />} />
@@ -30,6 +32,7 @@ export default function App() {
           <Route path="/participant/:user_id" element={<ParticipantProfile />} />
           <Route path="/mitt-vin" element={<MinVin />} />
           <Route path="/vinpotten" element={<Vinpotten />} />
+          <Route path="/info" element={<Info />} />
         </Routes>
       </main>
     </div>

@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs'
 import { v4 as uuidv4 } from 'uuid'
 import { getSheets, appendRow, getRows } from './_sheets.js'
+import { välkomstMail, skickaMail } from './_mail.js'
 
 export default async (req) => {
   if (req.method !== 'POST') {
@@ -18,7 +19,6 @@ export default async (req) => {
     }
 
     const sheets = await getSheets()
-
     const befintliga = await getRows(sheets, 'Användare!A:E')
     const emailFinns = befintliga.some((rad) => rad[2] === email)
 
@@ -40,6 +40,12 @@ export default async (req) => {
       lösenord_hash,
       skapad,
     ])
+
+    // Skicka välkomstmail (fire-and-forget — blockerar inte svaret)
+    const { subject, html } = välkomstMail(namn)
+    skickaMail(email, subject, html).catch((err) =>
+      console.error('[auth-register] Kunde inte skicka välkomstmail:', err.message)
+    )
 
     return new Response(
       JSON.stringify({ message: 'Konto skapat!', user_id }),
