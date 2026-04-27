@@ -267,7 +267,13 @@ export default function Login() {
               </button>
             </form>
 
-            <div className="login-divider">
+            <div style={{ textAlign:'right', marginTop:'0.5rem', marginBottom:'0.25rem' }}>
+              <Link to="/glomt-losenord" style={{ fontFamily:"'Barlow',sans-serif", fontSize:'0.8rem', color:'#aaa', textDecoration:'none' }}>
+                Glömt lösenordet?
+              </Link>
+            </div>
+
+          <div className="login-divider">
               <div className="login-divider-line" />
               <span className="login-divider-text">Nytt här?</span>
               <div className="login-divider-line" />

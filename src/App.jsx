@@ -14,6 +14,8 @@ import MinVin from './pages/MinVin'
 import Vinpotten from './pages/Vinpotten'
 import Info from './pages/Info'
 import Scorers from './pages/Scorers'
+import ForgotPassword from './pages/ForgotPassword'
+import ResetPassword from './pages/ResetPassword'
 
 export default function App() {
   return (
@@ -35,6 +37,8 @@ export default function App() {
           <Route path="/vinpotten" element={<Vinpotten />} />
           <Route path="/info" element={<Info />} />
           <Route path="/skytteliga" element={<Scorers />} />
+          <Route path="/glomt-losenord" element={<ForgotPassword />} />
+          <Route path="/nytt-losenord" element={<ResetPassword />} />
         </Routes>
       </main>
     </div>
