@@ -8,7 +8,13 @@ export function useSettings() {
     fetch('/.netlify/functions/settings')
       .then((res) => res.json())
       .then((data) => {
-        setTipsLåst(data.tips_låst)
+        // Sheets returnerar strängen "true"/"false" — konvertera till boolean
+        setTipsLåst(data.tips_låst === 'true' || data.tips_låst === true)
+        setLaddar(false)
+      })
+      .catch(() => {
+        // Vid fel — anta att tips är öppna
+        setTipsLåst(false)
         setLaddar(false)
       })
   }, [])
