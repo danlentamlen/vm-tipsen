@@ -8,8 +8,13 @@
   port = 8888
   targetPort = 5173
 
+# SPA fallback — alla routes pekar på index.html så React Router kan hantera dem
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
 # Kör var 15:e minut under VM (11 jun – 19 jul 2026)
-# 100 anrop/dag = ett var 14:e minut — vi kör var 15:e för säkerhets skull
 [[scheduled-functions]]
   name = "sync-results"
   schedule = "*/15 * * * *"

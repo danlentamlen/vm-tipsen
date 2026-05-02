@@ -50,7 +50,7 @@ export default async (req) => {
     const frågorSvarRader = await getRows(sheets, 'FrågorSvar!A2:D1000')
 
     // Hämta användare
-    const användareRader = await getRows(sheets, 'Användare!A:B')
+    const användareRader = await getRows(sheets, 'Användare!A2:B1000')
     const användareMap = {}
     användareRader.forEach((rad) => {
       if (rad[0]) användareMap[rad[0]] = rad[1]
