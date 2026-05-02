@@ -290,11 +290,12 @@ export default function Info() {
           </div>
           <div style={{ display:'flex', flexDirection:'column', gap:'0.5rem' }}>
             {[
-              { plats:'1:a plats', emoji:'🥇', pct:60 },
-              { plats:'2:a plats', emoji:'🥈', pct:20 },
+              { plats:'1:a plats', emoji:'🥇', pct:50 },
+              { plats:'2:a plats', emoji:'🥈', pct:25 },
               { plats:'3:e plats', emoji:'🥉', pct:10 },
-              { plats:'4:e plats', emoji:'',   pct:7  },
-              { plats:'5:e plats', emoji:'',   pct:3  },
+              { plats:'4:e plats', emoji:'4️⃣',   pct:5  },
+              { plats:'5:e plats', emoji:'5️⃣',   pct:3  },
+              { plats:'Specialpriser', emoji:'⚽⚽⚽',   pct:10  }
             ].map((p) => (
               <div key={p.plats} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', background:'#fff', border:'1px solid rgba(0,0,0,0.07)', borderRadius:10, padding:'0.875rem 1rem', boxShadow:'0 1px 3px rgba(0,0,0,0.03)' }}>
                 <span style={{ fontFamily:"'Barlow',sans-serif", fontSize:'0.9rem', fontWeight:500, color:'#0a1628' }}>

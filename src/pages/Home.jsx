@@ -430,7 +430,7 @@ export default function Home() {
           <p className="hero-subtitle">Tippa · Tävla · Vinn</p>
           <p className="hero-desc">
             Tippa matchresultaten, svara på tilläggsfrågor och klättra på topplistan.
-            Varje deltagare satsar en vinflaska — den med flest poäng tar hem hela potten!
+            Varje deltagare satsar en vinflaska — den med flest poäng tar hem 50% av potten!
           </p>
           {/* Goal tracker — visas när VM pågår */}
           {målData && målData.totalMål > 0 && (
@@ -528,7 +528,7 @@ export default function Home() {
                   <span className="step-num">3</span>
                   <span className="step-icon">🍷</span>
                   <div className="step-title">Vinn vinpotten</div>
-                  <p className="step-desc">Den som toppar listan efter VM-finalen den 19 juli tar hem alla deltagarnas vinflaskor.</p>
+                  <p className="step-desc">Den som toppar listan efter VM-finalen den 19 juli tar hem alla 50% av vinpotten.</p>
                 </div>
               </div>
             </div>
@@ -577,7 +577,7 @@ export default function Home() {
                 </div>
                 <div className="wine-step">
                   <span className="wine-step-num">3</span>
-                  <p className="wine-step-text">Den som toppar topplistan efter finalen den 19 juli vinner allt.</p>
+                  <p className="wine-step-text">Den som toppar topplistan efter finalen den 19 juli vinner 50% av vinpotten.</p>
                 </div>
               </div>
             </div>

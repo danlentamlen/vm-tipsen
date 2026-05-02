@@ -16,6 +16,7 @@ import Info from './pages/Info'
 import Scorers from './pages/Scorers'
 import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
+import Forum from './pages/Forum'   // ← NY
 
 export default function App() {
   return (
@@ -39,6 +40,7 @@ export default function App() {
           <Route path="/skytteliga" element={<Scorers />} />
           <Route path="/glomt-losenord" element={<ForgotPassword />} />
           <Route path="/nytt-losenord" element={<ResetPassword />} />
+          <Route path="/forum" element={<Forum />} />   {/* ← NY */}
         </Routes>
       </main>
     </div>
