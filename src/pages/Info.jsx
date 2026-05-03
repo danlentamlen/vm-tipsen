@@ -1,3 +1,4 @@
+import React from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
@@ -10,7 +11,6 @@ const STYLES = `
     padding: 2rem 1rem 5rem;
   }
 
-  /* Page header */
   .info-eyebrow {
     font-family: 'Barlow Condensed', sans-serif;
     font-size: 0.72rem; font-weight: 600; letter-spacing: 0.22em;
@@ -28,7 +28,6 @@ const STYLES = `
     margin-bottom: 2.5rem; max-width: 600px;
   }
 
-  /* Sections */
   .info-section { margin-bottom: 2.5rem; }
   .info-section-header {
     display: flex; align-items: center; gap: 12px; margin-bottom: 1.25rem;
@@ -45,7 +44,6 @@ const STYLES = `
     text-transform: uppercase; color: #0a1628;
   }
 
-  /* Points cards */
   .points-row {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -76,7 +74,6 @@ const STYLES = `
     font-size: 0.78rem; color: #888; line-height: 1.5;
   }
 
-  /* Rules list */
   .rules-list {
     display: flex; flex-direction: column; gap: 0.625rem;
   }
@@ -95,14 +92,12 @@ const STYLES = `
   }
   .rule-text strong { color: #0a1628; font-weight: 600; }
 
-  /* Wine section */
   .wine-card {
     background: linear-gradient(135deg, #0a1628, #1a2e4a);
     border-radius: 12px; padding: 1.75rem;
     display: flex; gap: 1.25rem; align-items: flex-start;
   }
   .wine-emoji { font-size: 2.5rem; flex-shrink: 0; line-height: 1; }
-  .wine-body {}
   .wine-card-title {
     font-family: 'Barlow Condensed', sans-serif;
     font-size: 1.1rem; font-weight: 700; letter-spacing: 0.06em;
@@ -116,17 +111,14 @@ const STYLES = `
 
   /* Timeline */
   .timeline { display: flex; flex-direction: column; gap: 0; }
-  .tl-item {
-    display: flex; gap: 0; position: relative;
-  }
+  .tl-item { display: flex; gap: 0; position: relative; }
   .tl-left {
-    width: 100px; flex-shrink: 0; padding: 0 1rem 0 0;
-    text-align: right;
+    width: 110px; flex-shrink: 0; padding: 0 1rem 0 0; text-align: right;
   }
   .tl-date {
     font-family: 'Barlow Condensed', sans-serif;
-    font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em;
-    text-transform: uppercase; color: #C8102E; padding-top: 2px;
+    font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; color: #C8102E; padding-top: 2px; line-height: 1.3;
   }
   .tl-center {
     display: flex; flex-direction: column; align-items: center;
@@ -136,6 +128,10 @@ const STYLES = `
     width: 10px; height: 10px; border-radius: 50%;
     background: #0a1628; border: 2px solid #C5A028;
     flex-shrink: 0; margin-top: 4px;
+  }
+  .tl-dot.deadline {
+    background: #C8102E; border-color: #C8102E;
+    width: 12px; height: 12px;
   }
   .tl-line {
     width: 2px; background: rgba(0,0,0,0.07);
@@ -148,12 +144,22 @@ const STYLES = `
     font-size: 0.95rem; font-weight: 700; letter-spacing: 0.04em;
     text-transform: uppercase; color: #0a1628; margin-bottom: 2px;
   }
+  .tl-event-title.deadline { color: #C8102E; }
   .tl-event-desc {
     font-family: 'Barlow', sans-serif;
     font-size: 0.83rem; color: #777; line-height: 1.5;
   }
+  .tl-deadline-badge {
+    display: inline-block;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em;
+    text-transform: uppercase;
+    background: rgba(200,16,46,0.08); color: #C8102E;
+    border: 1px solid rgba(200,16,46,0.2);
+    border-radius: 100px; padding: 1px 8px;
+    margin-bottom: 3px;
+  }
 
-  /* VM facts */
   .facts-grid {
     display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
     gap: 0.75rem;
@@ -173,7 +179,6 @@ const STYLES = `
     font-size: 0.72rem; color: #999; letter-spacing: 0.05em;
   }
 
-  /* FAQ */
   .faq-list { display: flex; flex-direction: column; gap: 0.75rem; }
   .faq-item {
     background: #fff; border: 1px solid rgba(0,0,0,0.07);
@@ -198,7 +203,6 @@ const STYLES = `
     padding: 0 1rem 0.875rem;
   }
 
-  /* CTA */
   .info-cta {
     background: rgba(200,16,46,0.06); border: 1px solid rgba(200,16,46,0.15);
     border-radius: 12px; padding: 1.5rem; text-align: center; margin-top: 2.5rem;
@@ -217,12 +221,11 @@ const STYLES = `
   }
   .info-cta-btn:hover { opacity: 0.88; }
 
-  /* Divider */
   .info-divider { height: 1px; background: rgba(0,0,0,0.07); margin: 2.5rem 0; }
 
   @media (max-width: 520px) {
     .points-row { grid-template-columns: 1fr; }
-    .tl-left { width: 72px; }
+    .tl-left { width: 80px; }
     .facts-grid { grid-template-columns: repeat(2, 1fr); }
   }
 `
@@ -240,15 +243,12 @@ function FaqItem({ q, a }) {
   )
 }
 
-import React from 'react'
-
 export default function Info() {
   return (
     <>
       <style>{STYLES}</style>
       <div className="info-wrap">
 
-        {/* Header */}
         <p className="info-eyebrow">VM-tipsen 2026</p>
         <h1 className="info-title">Regler & Information</h1>
         <p className="info-lead">
@@ -295,7 +295,7 @@ export default function Info() {
               { plats:'3:e plats', emoji:'🥉', pct:10 },
               { plats:'4:e plats', emoji:'4️⃣',   pct:5  },
               { plats:'5:e plats', emoji:'5️⃣',   pct:3  },
-              { plats:'Specialpriser', emoji:'⚽⚽⚽',   pct:10  }
+              { plats:'Specialpriser', emoji:'⚽⚽⚽', pct:7 }
             ].map((p) => (
               <div key={p.plats} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', background:'#fff', border:'1px solid rgba(0,0,0,0.07)', borderRadius:10, padding:'0.875rem 1rem', boxShadow:'0 1px 3px rgba(0,0,0,0.03)' }}>
                 <span style={{ fontFamily:"'Barlow',sans-serif", fontSize:'0.9rem', fontWeight:500, color:'#0a1628' }}>
@@ -324,25 +324,25 @@ export default function Info() {
             <div className="rule-item">
               <span className="rule-icon">⏰</span>
               <p className="rule-text">
-                <strong>Deadline för tips:</strong> Alla matchningstips och tilläggsfrågor måste lämnas <strong>innan tävlingen låses</strong>. När admin låser tävlingen kan inga fler ändringar göras.
+                <strong>Deadline för tips:</strong> Gruppspelet och tilläggsfrågor låses <strong>11 juni</strong>. Slutspelsomgångar låses <strong>4 timmar</strong> innan första matchen i respektive omgång.
               </p>
             </div>
             <div className="rule-item">
               <span className="rule-icon">⚽</span>
               <p className="rule-text">
-                <strong>Matchresultat:</strong> Poäng räknas på resultatet efter ordinarie tid (90 minuter). Förlängning och straffar påverkar inte ditt tips — det räcker att ha gissat rätt utgång.
+                <strong>Matchresultat:</strong> Poäng räknas på resultatet efter ordinarie tid (90 minuter). Förlängning och straffar påverkar inte ditt tips.
               </p>
             </div>
             <div className="rule-item">
               <span className="rule-icon">✏️</span>
               <p className="rule-text">
-                <strong>Ändringar tillåtna:</strong> Du kan uppdatera dina tips och svar på tilläggsfrågor hur många gånger du vill fram tills tävlingen låses.
+                <strong>Ändringar tillåtna:</strong> Du kan uppdatera dina tips hur många gånger du vill fram tills respektive deadline.
               </p>
             </div>
             <div className="rule-item">
               <span className="rule-icon">🎯</span>
               <p className="rule-text">
-                <strong>Tilläggsfrågor:</strong> Frågorna har olika poängvärden och kan gälla allt från vem som vinner VM till antal mål i turneringen. Svaret måste stämma exakt (inte skiftlägeskänsligt).
+                <strong>Tilläggsfrågor:</strong> Frågorna har olika poängvärden och låses permanent den <strong>11 juni</strong> tillsammans med gruppspelet.
               </p>
             </div>
             <div className="rule-item">
@@ -354,13 +354,13 @@ export default function Info() {
             <div className="rule-item">
               <span className="rule-icon">⚽</span>
               <p className="rule-text">
-                <strong>Extrapris — totala VM-mål:</strong> Den deltagare som är närmast rätt antal totalt antal mål i VM vinner ett separat extrapris. Vid lika (samma differens) vinner den med flest poäng i övrigt.
+                <strong>Extrapris — totala VM-mål:</strong> Den deltagare som är närmast rätt antal totala mål i VM vinner ett separat extrapris.
               </p>
             </div>
             <div className="rule-item">
               <span className="rule-icon">👁️</span>
               <p className="rule-text">
-                <strong>Transparens:</strong> Tipsfördelningen för varje match och tilläggsfråga visas för alla deltagare <strong>efter att tävlingen låsts</strong>. Klicka på en match eller fråga för att se hur alla tippade.
+                <strong>Transparens:</strong> Tipsfördelningen för varje match visas för alla <strong>efter att respektive omgång låsts</strong>.
               </p>
             </div>
           </div>
@@ -379,8 +379,8 @@ export default function Info() {
             <div className="wine-body">
               <p className="wine-card-title">En flaska per deltagare</p>
               <p className="wine-card-text">
-                Varje deltagare satsar <strong>en vinflaska</strong> som insats i potten. Du väljer själv vilken flaska och anger en länk när du registrerar dig — det kan vara vad som helst från ett prisvärt vardagsvin till en fin flaska bubbel.<br /><br />
-                Alla deltagarnas flaskor samlas i vinpotten och visas öppet för alla att se. <strong>Den som toppar topplistan</strong> när VM-finalen är avgjord den <strong>19 juli 2026</strong> vinner hela samlingen.
+                Varje deltagare satsar <strong>en vinflaska</strong> som insats i potten. Du väljer själv vilken flaska och anger en länk när du registrerar dig.<br /><br />
+                Alla deltagarnas flaskor samlas i vinpotten och visas öppet för alla att se. <strong>Den som toppar topplistan</strong> när VM-finalen är avgjord den <strong>19 juli 2026</strong> vinner 50% av samlingen.
               </p>
             </div>
           </div>
@@ -388,53 +388,102 @@ export default function Info() {
 
         <div className="info-divider" />
 
-        {/* Tidslinje */}
+        {/* Viktiga datum & deadlines */}
         <div className="info-section">
           <div className="info-section-header">
             <div className="info-section-icon">📅</div>
-            <h2 className="info-section-title">Viktiga datum</h2>
+            <h2 className="info-section-title">Viktiga datum & deadlines</h2>
           </div>
           <div className="timeline">
+
             <div className="tl-item">
               <div className="tl-left"><span className="tl-date">Nu</span></div>
               <div className="tl-center"><div className="tl-dot" /><div className="tl-line" /></div>
               <div className="tl-right">
-                <div className="tl-event-title">Registrering & tippar öppet</div>
-                <p className="tl-event-desc">Skapa konto, välj din vinflaska och börja lämna tips på matcherna.</p>
+                <div className="tl-event-title">Registrering & tips öppet</div>
+                <p className="tl-event-desc">Skapa konto, välj din vinflaska och börja lämna tips på matcherna och tilläggsfrågor.</p>
               </div>
             </div>
+
             <div className="tl-item">
               <div className="tl-left"><span className="tl-date">11 jun</span></div>
-              <div className="tl-center"><div className="tl-dot" /><div className="tl-line" /></div>
+              <div className="tl-center"><div className="tl-dot deadline" /><div className="tl-line" /></div>
               <div className="tl-right">
-                <div className="tl-event-title">VM-premiär & tips låses</div>
-                <p className="tl-event-desc">Avspark för VM i Mexiko City. Admin låser tävlingen inför första matchen — inga fler ändringar möjliga.</p>
+                <div className="tl-deadline-badge">Deadline 1</div>
+                <div className="tl-event-title deadline">Gruppspel & tilläggsfrågor låses</div>
+                <p className="tl-event-desc">Alla gruppspelets 72 matcher samt samtliga tilläggsfrågor stängs för inmatning inför VM-premiären. Inga ändringar möjliga efter detta.</p>
               </div>
             </div>
+
             <div className="tl-item">
-              <div className="tl-left"><span className="tl-date">11 jun–<br/>19 jul</span></div>
-              <div className="tl-center"><div className="tl-dot" /><div className="tl-line" /></div>
+              <div className="tl-left"><span className="tl-date">28 jun</span></div>
+              <div className="tl-center"><div className="tl-dot deadline" /><div className="tl-line" /></div>
               <div className="tl-right">
-                <div className="tl-event-title">Turneringen pågår</div>
-                <p className="tl-event-desc">Poäng räknas löpande när matcher spelas. Topplistan uppdateras kontinuerligt.</p>
+                <div className="tl-deadline-badge">Deadline 2</div>
+                <div className="tl-event-title deadline">Sextondelsfinaler låses</div>
+                <p className="tl-event-desc">4 timmar innan första sextondelsfinalen (28 jun, 21:00 svensk tid) stängs tips för alla 16 sextondelsfinalsmatcher.</p>
               </div>
             </div>
+
+            <div className="tl-item">
+              <div className="tl-left"><span className="tl-date">4 jul</span></div>
+              <div className="tl-center"><div className="tl-dot deadline" /><div className="tl-line" /></div>
+              <div className="tl-right">
+                <div className="tl-deadline-badge">Deadline 3</div>
+                <div className="tl-event-title deadline">Åttondelsfinaler låses</div>
+                <p className="tl-event-desc">4 timmar innan första åttondelsfinalen (4 jul, 19:00 svensk tid) stängs tips för åttondelsfinalerna.</p>
+              </div>
+            </div>
+
+            <div className="tl-item">
+              <div className="tl-left"><span className="tl-date">9 jul</span></div>
+              <div className="tl-center"><div className="tl-dot deadline" /><div className="tl-line" /></div>
+              <div className="tl-right">
+                <div className="tl-deadline-badge">Deadline 4</div>
+                <div className="tl-event-title deadline">Kvartsfinaler låses</div>
+                <p className="tl-event-desc">4 timmar innan första kvartsfinalen (9 jul, 22:00 svensk tid) stängs tips för kvartsfinalmatcherna.</p>
+              </div>
+            </div>
+
+            <div className="tl-item">
+              <div className="tl-left"><span className="tl-date">14 jul</span></div>
+              <div className="tl-center"><div className="tl-dot deadline" /><div className="tl-line" /></div>
+              <div className="tl-right">
+                <div className="tl-deadline-badge">Deadline 5</div>
+                <div className="tl-event-title deadline">Semifinaler låses</div>
+                <p className="tl-event-desc">4 timmar innan första semifinalen (14 jul, 21:00 svensk tid) stängs tips för semifinalerna.</p>
+              </div>
+            </div>
+
+            <div className="tl-item">
+              <div className="tl-left"><span className="tl-date">18 jul</span></div>
+              <div className="tl-center"><div className="tl-dot deadline" /><div className="tl-line" /></div>
+              <div className="tl-right">
+                <div className="tl-deadline-badge">Deadline 6</div>
+                <div className="tl-event-title deadline">Match om 3:e plats låses</div>
+                <p className="tl-event-desc">4 timmar innan bronsmatch (18 jul, 23:00 svensk tid) stängs tips för matchen om tredje plats.</p>
+              </div>
+            </div>
+
             <div className="tl-item">
               <div className="tl-left"><span className="tl-date">19 jul</span></div>
-              <div className="tl-center"><div className="tl-dot" /><div className="tl-line" /></div>
+              <div className="tl-center"><div className="tl-dot deadline" /><div className="tl-line" /></div>
               <div className="tl-right">
-                <div className="tl-event-title">VM-final</div>
-                <p className="tl-event-desc">Finalen spelas på MetLife Stadium i New York/New Jersey.</p>
+                <div className="tl-deadline-badge">Deadline 7</div>
+                <div className="tl-event-title deadline">Finalen låses</div>
+                <p className="tl-event-desc">4 timmar innan VM-finalen (19 jul, 21:00 svensk tid) stängs det sista tipset. Finalen spelas på MetLife Stadium i New York/New Jersey.</p>
               </div>
             </div>
+
             <div className="tl-item">
               <div className="tl-left"><span className="tl-date">Efter finalen</span></div>
               <div className="tl-center"><div className="tl-dot" /></div>
               <div className="tl-right">
                 <div className="tl-event-title">Vinnaren korad & vinpotten delas ut</div>
-                <p className="tl-event-desc">Den med flest poäng vinner hela vinpotten. Grattis på förhand!</p>
+                <p className="tl-event-desc">Den med flest poäng vinner 50% av vinpotten. Grattis på förhand!</p>
               </div>
             </div>
+
           </div>
         </div>
 
@@ -471,7 +520,7 @@ export default function Info() {
             />
             <FaqItem
               q="Vad händer om jag glömmer tippa en match?"
-              a="Du får inga poäng för den matchen — men det påverkar inte dina övriga tips. Du kan tippa fler matcher ända fram tills admin låser tävlingen."
+              a="Du får inga poäng för den matchen — men det påverkar inte dina övriga tips. Du kan tippa fler matcher ända fram tills respektive deadline."
             />
             <FaqItem
               q="Hur fungerar förlängning och straffar?"
@@ -479,20 +528,23 @@ export default function Info() {
             />
             <FaqItem
               q="Kan jag ändra mitt tips efter att jag sparat det?"
-              a="Ja, du kan uppdatera dina tips hur många gånger du vill — ända fram tills admin låser tävlingen. Senast sparade tips är det som gäller."
+              a="Ja, du kan uppdatera dina tips hur många gånger du vill — ända fram tills respektive deadline. Senast sparade tips är det som gäller."
             />
             <FaqItem
               q="När visas tipsfördelningen för matcherna?"
-              a="Fördelningen (hur alla tippade) visas först när tävlingen är låst. Fram till dess ser du bara ditt eget tips."
+              a="Fördelningen (hur alla tippade) visas först när respektive omgång är låst. Fram till dess ser du bara ditt eget tips."
             />
             <FaqItem
               q="Hur vet jag vilken vinflaska jag ska välja?"
-              a="Det är helt fritt! Välj en flaska du tycker om eller som du tror passar övriga deltagare. Du anger ett namn och en länk (t.ex. till Systembolaget) när du registrerar dig. Flaskan kan bytas fram tills tävlingen låses."
+              a="Det är helt fritt! Välj en flaska du tycker om eller som du tror passar övriga deltagare. Du anger ett namn och en länk (t.ex. till Systembolaget) när du registrerar dig. Flaskan kan bytas fram tills tävlingen låses den 11 juni."
+            />
+            <FaqItem
+              q="Kan jag tippa slutspelsmatcher innan jag vet vilka lag som spelar?"
+              a="Ja! Du kan lämna tips på slutspelsmatcher redan nu — lagen visas som platshållare (t.ex. 'Vinnare Grupp A') tills gruppspelet är klart. Du kan uppdatera dina slutspelstips fram tills respektive deadline."
             />
           </div>
         </div>
 
-        {/* CTA */}
         <div className="info-cta">
           <p className="info-cta-text">Redo att börja tippa? Registrera dig och välj din vinflaska!</p>
           <Link to="/register" className="info-cta-btn">Anmäl dig nu</Link>
