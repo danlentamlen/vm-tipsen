@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { useSettings } from '../hooks/useSettings'
+import { useLås } from '../hooks/useLås'
 import DistributionModal from '../components/DistributionModal'
 
 // Flaggor
@@ -164,6 +164,67 @@ const STYLES = `
     .mc-score-box { width:30px; font-size:1rem; }
     .mc-body { padding:.75rem .875rem; }
   }
+
+  /* Gruppmeny */
+  .m-nav {
+    position: sticky;
+    top: 60px;
+    z-index: 30;
+    background: #f8f7f4;
+    padding: .5rem 0 .625rem;
+    margin-bottom: 1.25rem;
+    border-bottom: 1px solid rgba(0,0,0,.06);
+  }
+  .m-nav-scroll {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    padding-bottom: 2px;
+  }
+  .m-nav-scroll::-webkit-scrollbar { display: none; }
+  .m-nav-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 100px;
+    border: 1.5px solid rgba(0,0,0,.1);
+    background: #fff;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: .75rem;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: #555;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all .15s;
+    flex-shrink: 0;
+  }
+  .m-nav-btn:hover { border-color: #0a1628; color: #0a1628; }
+  .m-nav-btn.active { background: #0a1628; color: #F0D060; border-color: #0a1628; }
+  .m-nav-btn.slutspel-btn.active { background: linear-gradient(135deg,#C8102E,#a80d27); border-color: #C8102E; color: #fff; }
+  .m-nav-btn.slutspel-btn { border-color: rgba(200,16,46,.25); color: #C8102E; }
+  .m-nav-btn.klar { background: rgba(34,120,60,.08); border-color: rgba(34,120,60,.35); color: #1a6b35; }
+  .m-nav-btn.klar::after { content: '✓'; margin-left: 4px; font-size: 10px; }
+
+  .m-nav-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 16px;
+    height: 16px;
+    border-radius: 100px;
+    background: #C8102E;
+    color: #fff;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 0 4px;
+    line-height: 1;
+  }
+  .m-nav-btn.active .m-nav-badge { background: rgba(255,255,255,.25); }
 `
 
 export default function Matches() {
@@ -172,8 +233,10 @@ export default function Matches() {
   const [laddar, setLaddar] = useState(true)
   const [sparar, setSparar] = useState(null)
   const [valdMatch, setValdMatch] = useState(null)
+  const [aktivGrupp, setAktivGrupp] = useState(null)
+  const gruppRefs = useRef({})
   const { användare } = useAuth()
-  const { tipsLåst } = useSettings()
+  const { ärLåst, adminOverride } = useLås()
 
   useEffect(() => {
     hämtaMatcher()
@@ -247,6 +310,33 @@ export default function Matches() {
   const besvarade = Object.keys(minaTips).length
   const progress  = totalTips > 0 ? Math.round((besvarade / totalTips) * 100) : 0
 
+  function scrollToGrupp(nyckel) {
+    setAktivGrupp(nyckel)
+    const el = gruppRefs.current[nyckel]
+    if (el) {
+      const offset = 120 // navbar + sticky nav
+      const top = el.getBoundingClientRect().top + window.scrollY - offset
+      window.scrollTo({ top, behavior: 'smooth' })
+    }
+  }
+
+  // Räkna otippade per grupp (bara för inloggade)
+  function otippade(matcherIGrupp) {
+    if (!användare) return 0
+    return matcherIGrupp.filter(m => !minaTips[m.match_id] && !ärLåst(m)).length
+  }
+
+  // En grupp är "klar" om alla öppna (ej låsta) matcher är tippade
+  function ärKlar(matcherIGrupp) {
+    if (!användare) return false
+    const öppna = matcherIGrupp.filter(m => !ärLåst(m))
+    return öppna.length > 0 && öppna.every(m => !!minaTips[m.match_id])
+  }
+
+  // Bygg gruppmeny — alla grupper + slutspelsomgångar
+  const gruppNycklar = Object.keys(gruppspelets)
+  const slutspelNycklar = sorteradSlutspel.map(([omg]) => omg)
+
   if (laddar) return <div style={{ textAlign:'center', padding:'4rem 1rem', color:'#888' }}>Laddar matcher...</div>
 
   return (
@@ -262,18 +352,56 @@ export default function Matches() {
           Gruppspelet tippas fram till den <strong>11 juni</strong>. Varje slutspelsomgång öppnar för tips och stänger <strong>4 timmar</strong> innan första matchen i omgången spelas.
         </div>
 
-        {användare && !tipsLåst && (
+        {användare && !adminOverride && (
           <div className="m-progress-wrap">
             <div className="m-progress-bar"><div className="m-progress-fill" style={{ width:`${progress}%` }} /></div>
             <span className="m-progress-label">{besvarade} / {totalTips} tippade</span>
           </div>
         )}
         {!användare && <div className="m-banner warning"><span>🔑</span><span>Logga in för att lämna dina tips!</span></div>}
-        {användare && tipsLåst && <div className="m-banner locked"><span>🔒</span><span>Tips är låsta — klicka på en match för att se tipsfördelningen.</span></div>}
+        {användare && adminOverride && <div className="m-banner locked"><span>🔒</span><span>Tips är låsta av admin — klicka på en match för att se tipsfördelningen.</span></div>}
+
+        {/* Gruppmeny */}
+        {användare && (
+          <div className="m-nav">
+            <div className="m-nav-scroll">
+              {gruppNycklar.map((grupp) => {
+                const allaMatcher = Object.values(gruppspelets[grupp]).flat()
+                const antal = otippade(allaMatcher)
+                const klar = ärKlar(allaMatcher)
+                return (
+                  <button
+                    key={grupp}
+                    className={`m-nav-btn ${aktivGrupp === grupp ? 'active' : klar ? 'klar' : ''}`}
+                    onClick={() => scrollToGrupp(grupp)}
+                  >
+                    {grupp}
+                    {antal > 0 && <span className="m-nav-badge">{antal}</span>}
+                  </button>
+                )
+              })}
+              {slutspelNycklar.map((omg) => {
+                const allaMatcher = Object.values(slutspelet[omg]).flat()
+                const antal = otippade(allaMatcher)
+                const klar = ärKlar(allaMatcher)
+                return (
+                  <button
+                    key={omg}
+                    className={`m-nav-btn slutspel-btn ${aktivGrupp === omg ? 'active' : klar ? 'klar' : ''}`}
+                    onClick={() => scrollToGrupp(omg)}
+                  >
+                    {slutspelsNamn(omg)}
+                    {antal > 0 && <span className="m-nav-badge">{antal}</span>}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Gruppspel */}
         {Object.entries(gruppspelets).map(([grupp, datumGrupper]) => (
-          <div key={grupp} className="m-group">
+          <div key={grupp} className="m-group" ref={el => gruppRefs.current[grupp] = el}>
             <div className="m-group-header">
               <span className="m-group-pill">{grupp}</span>
               <div className="m-group-line" />
@@ -287,10 +415,10 @@ export default function Matches() {
                     match={match}
                     tip={minaTips[match.match_id]}
                     inloggad={!!användare}
-                    tipsLåst={tipsLåst}
+                    tipsLåst={ärLåst(match)}
                     sparar={sparar === match.match_id}
                     onSpara={sparaTips}
-                    onKlick={tipsLåst ? () => setValdMatch(match) : null}
+                    onKlick={ärLåst(match) ? () => setValdMatch(match) : null}
                   />
                 ))}
               </div>
@@ -300,7 +428,7 @@ export default function Matches() {
 
         {/* Slutspel grupperat efter omgång */}
         {sorteradSlutspel.map(([omgång, datumGrupper]) => (
-          <div key={omgång} className="m-group">
+          <div key={omgång} className="m-group" ref={el => gruppRefs.current[omgång] = el}>
             <div className="m-group-header">
               <span className="m-group-pill slutspel">🏆 {slutspelsNamn(omgång)}</span>
               <div className="m-group-line" />
@@ -314,10 +442,10 @@ export default function Matches() {
                     match={match}
                     tip={minaTips[match.match_id]}
                     inloggad={!!användare}
-                    tipsLåst={tipsLåst}
+                    tipsLåst={ärLåst(match)}
                     sparar={sparar === match.match_id}
                     onSpara={sparaTips}
-                    onKlick={tipsLåst ? () => setValdMatch(match) : null}
+                    onKlick={ärLåst(match) ? () => setValdMatch(match) : null}
                   />
                 ))}
               </div>
