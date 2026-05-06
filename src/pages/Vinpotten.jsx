@@ -296,11 +296,12 @@ export default function Vinpotten() {
         {/* Prize breakdown */}
         {totalFlaskor > 0 && (() => {
           const priser = [
-            { plats: '1:a', emoji: '🥇', pct: 60 },
-            { plats: '2:a', emoji: '🥈', pct: 20 },
-            { plats: '3:e', emoji: '🥉', pct: 10 },
-            { plats: '4:e', emoji: '',   pct: 7  },
-            { plats: '5:e', emoji: '',   pct: 3  },
+            { plats:'1:a plats', emoji:'🥇', pct:50 },
+            { plats:'2:a plats', emoji:'🥈', pct:25 },
+            { plats:'3:e plats', emoji:'🥉', pct:10 },
+            { plats:'4:e plats', emoji:'4️⃣', pct:5  },
+            { plats:'5:e plats', emoji:'5️⃣', pct:3  },
+            { plats:'Extrapris', emoji:'⚽', pct:7 }
           ]
           return (
             <div className="vp-prizes">
