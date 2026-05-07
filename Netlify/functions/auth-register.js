@@ -9,7 +9,7 @@ export default async (req) => {
   }
 
   try {
-    const { namn, email, lösenord } = await req.json()
+    const { namn, email, lösenord, rekryterad_av } = await req.json()
 
     if (!namn || !email || !lösenord) {
       return new Response(
@@ -19,7 +19,7 @@ export default async (req) => {
     }
 
     const sheets = await getSheets()
-    const befintliga = await getRows(sheets, 'Användare!A:E')
+    const befintliga = await getRows(sheets, 'Användare!A2:E1000')
     const emailFinns = befintliga.some((rad) => rad[2] === email)
 
     if (emailFinns) {
@@ -33,15 +33,16 @@ export default async (req) => {
     const user_id = uuidv4()
     const skapad = new Date().toISOString()
 
-    await appendRow(sheets, 'Användare!A:E', [
+    // Kolumn F = rekryterad_av (user_id för rekryteraren, eller tomt)
+    await appendRow(sheets, 'Användare!A:F', [
       user_id,
       namn,
       email,
       lösenord_hash,
       skapad,
+      rekryterad_av || '',
     ])
 
-    // Skicka välkomstmail (fire-and-forget — blockerar inte svaret)
     const { subject, html } = välkomstMail(namn)
     skickaMail(email, subject, html).catch((err) =>
       console.error('[auth-register] Kunde inte skicka välkomstmail:', err.message)

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import RekryteringSektion from '../components/RekryteringSektion'
 
 const MIN_PRIS = 180
 const MAX_PRIS = 220
@@ -295,7 +296,7 @@ export default function MinVin() {
             </form>
           </div>
         )}
-
+        <RekryteringSektion />
         {/* Nästa steg */}
         {harVin && (
           <Link to="/matches" className="mv-next">→ Börja tippa matcher</Link>

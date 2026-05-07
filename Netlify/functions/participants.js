@@ -18,15 +18,28 @@ export default async (req) => {
     const url = new URL(req.url)
     const user_id = url.searchParams.get('user_id')
 
-    // Hämta alla deltagare
+    // ── Hämta alla deltagare ────────────────────────────────
     if (!user_id) {
-     // const användare = await getRows(sheets, 'Användare!A:C')
-      const användare = await getRows(sheets, 'Användare!A2:C1000')
-      const deltagare = användare.map((rad) => ({
-        user_id: rad[0],
-        namn: rad[1],
-        email: rad[2],
-      }))
+      const användare = await getRows(sheets, 'Användare!A2:F1000')
+
+      // Bygg rekryteringsräknare: user_id -> antal rekryterade
+      const rekMap = {}
+      användare.forEach((rad) => {
+        const rekryteradAv = rad[5]?.trim()
+        if (rekryteradAv) {
+          rekMap[rekryteradAv] = (rekMap[rekryteradAv] || 0) + 1
+        }
+      })
+
+      const deltagare = användare
+        .filter(rad => rad[0]) // filtrera tomma rader
+        .map((rad) => ({
+          user_id:            rad[0],
+          namn:               rad[1],
+          email:              rad[2],
+          rekryterade_antal:  rekMap[rad[0]] || 0,
+          rekryterad_av:      rad[5]?.trim() || null,
+        }))
 
       return new Response(JSON.stringify(deltagare), {
         status: 200,
@@ -34,8 +47,8 @@ export default async (req) => {
       })
     }
 
-    // Hämta en deltagares profil
-    const användare = await getRows(sheets, 'Användare!A:B')
+    // ── Hämta en deltagares profil ──────────────────────────
+    const användare = await getRows(sheets, 'Användare!A2:B1000')
     const användareRad = användare.find((r) => r[0] === user_id)
 
     if (!användareRad) {
@@ -45,28 +58,21 @@ export default async (req) => {
       )
     }
 
-    // Hämta matcher
     const matcherRader = await getRows(sheets, 'Matcher!A2:H1000')
     const matcherMap = {}
     matcherRader.forEach((rad) => {
       matcherMap[rad[0]] = {
-        match_id: rad[0],
-        datum: rad[1],
-        tid: rad[2],
-        hemmalag: rad[3],
-        bortalag: rad[4],
-        grupp: rad[5],
+        match_id: rad[0], datum: rad[1], tid: rad[2],
+        hemmalag: rad[3], bortalag: rad[4], grupp: rad[5],
       }
     })
 
-    // Hämta resultat
     const resultatRader = await getRows(sheets, 'Resultat!A2:D1000')
     const resultatMap = {}
     resultatRader.forEach((rad) => {
       if (rad[0]) resultatMap[rad[0]] = { hemma: rad[1], borta: rad[2] }
     })
 
-    // Hämta tips för denna användare
     const tipsRader = await getRows(sheets, 'Tips!A2:E1000')
     const minaTips = tipsRader
       .filter((rad) => rad[1] === user_id)
@@ -91,36 +97,19 @@ export default async (req) => {
 
         return {
           match_id: rad[2],
-          hemmalag: match.hemmalag || rad[2],
-          bortalag: match.bortalag || '',
-          datum: match.datum || '',
-          grupp: match.grupp || '',
-          tip_hemma: rad[3],
-          tip_borta: rad[4],
-          resultat_hemma: resultat?.hemma || null,
-          resultat_borta: resultat?.borta || null,
+          hemma_mål: rad[3],
+          borta_mål: rad[4],
           poäng,
+          ...match,
         }
       })
 
-    // Hämta frågor
-    const frågorRader = await getRows(sheets, 'Frågor!A2:D1000')
-    const frågorMap = {}
-    frågorRader.forEach((rad) => {
-      frågorMap[rad[0]] = {
-        fråga: rad[1],
-        poäng: parseInt(rad[2]),
-      }
-    })
-
-    // Hämta frågesvar för denna användare
-    const svarRader = await getRows(sheets, 'FrågorSvar!A2:D1000')
-    const minaSvar = svarRader
+    const frågorSvarRader = await getRows(sheets, 'FrågorSvar!A2:D1000')
+    const minaSvar = frågorSvarRader
       .filter((rad) => rad[1] === user_id)
       .map((rad) => ({
+        svar_id: rad[0],
         fråga_id: rad[2],
-        fråga: frågorMap[rad[2]]?.fråga || rad[2],
-        poäng: frågorMap[rad[2]]?.poäng || 0,
         svar: rad[3],
       }))
 
@@ -134,7 +123,7 @@ export default async (req) => {
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     )
   } catch (err) {
-    console.error(err)
+    console.error('[participants]', err)
     return new Response(
       JSON.stringify({ error: 'Något gick fel' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }

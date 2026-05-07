@@ -12,9 +12,7 @@ export default function Home() {
       fetch('/.netlify/functions/participants').then((r) => r.json()).catch(() => []),
       fetch('/.netlify/functions/viner-hamta').then((r) => r.json()).catch(() => []),
       fetch('/.netlify/functions/total-mal').then((r) => r.json()).catch(() => null),
-      fetch('/.netlify/functions/questions').then((r) => r.json()).catch(() => []),
-      fetch('/.netlify/functions/FrågorSvar' ).then(() => null).catch(() => null), // ignoreras
-    ]).then(([deltagare, viner, malData, frågor]) => {
+    ]).then(([deltagare, viner, malData]) => {
       const antalDeltagare = Array.isArray(deltagare) ? deltagare.length : 0
       const betalda = Array.isArray(viner) ? viner.filter((v) => v.betalt === 'betalt') : []
       const pottVärde = betalda.reduce((s, v) => s + (Number(v.vin_pris) || 0), 0)
@@ -171,6 +169,27 @@ export default function Home() {
           display: block;
         }
 
+        .rek-info {
+          font-family: 'Barlow', sans-serif;
+          font-size: 0.82rem;
+          color: rgba(255,255,255,0.6);
+          margin-top: 1.25rem;
+          line-height: 1.65;
+          text-align: center;
+          max-width: 440px;
+          margin-left: auto;
+          margin-right: auto;
+          background: rgba(197,160,40,0.08);
+          border: 1px solid rgba(197,160,40,0.2);
+          border-radius: 9px;
+          padding: 0.75rem 1rem;
+        }
+        .rek-info a {
+          color: #F0D060;
+          text-decoration: underline;
+        }
+        .rek-info a:hover { color: #fff; }
+
         /* How it works */
         .how-section {
           background: #f8f7f4;
@@ -234,65 +253,19 @@ export default function Home() {
           line-height: 1.6;
         }
 
-        /* Points */
-        .points-section {
-          background: #fff;
-          padding: 4rem 1.5rem;
-          border-top: 1px solid rgba(0,0,0,0.06);
-        }
-        .points-inner { max-width: 760px; margin: 0 auto; }
-        .points-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-          gap: 1rem;
-        }
-        .points-card {
-          border-radius: 10px;
-          padding: 1.25rem;
-          display: flex;
-          flex-direction: column;
-          gap: 0.35rem;
-        }
-        .points-card.exact  { background: rgba(200,16,46,0.06);  border: 1px solid rgba(200,16,46,0.15); }
-        .points-card.right  { background: rgba(10,22,40,0.05);   border: 1px solid rgba(10,22,40,0.1); }
-        .points-card.bonus  { background: rgba(197,160,40,0.08); border: 1px solid rgba(197,160,40,0.25); }
-        .points-value {
-          font-family: 'Barlow Condensed', sans-serif;
-          font-size: 2rem;
-          font-weight: 700;
-          line-height: 1;
-        }
-        .points-card.exact .points-value  { color: #C8102E; }
-        .points-card.right .points-value  { color: #0a1628; }
-        .points-card.bonus .points-value  { color: #8a6e1a; }
-        .points-label {
-          font-family: 'Barlow Condensed', sans-serif;
-          font-size: 0.8rem;
-          font-weight: 700;
-          letter-spacing: 0.1em;
-          text-transform: uppercase;
-          color: #555;
-        }
-        .points-desc {
-          font-family: 'Barlow', sans-serif;
-          font-size: 0.8rem;
-          color: #888;
-          line-height: 1.5;
-        }
-
-        /* Wine */
+        /* Wine pot section */
         .wine-section {
           background: linear-gradient(135deg, #0a1628 0%, #1a2e4a 100%);
           padding: 4rem 1.5rem;
+          text-align: center;
         }
-        .wine-inner { max-width: 680px; margin: 0 auto; text-align: center; }
-        .wine-icon { font-size: 3.5rem; display: block; margin-bottom: 1rem; }
+        .wine-inner { max-width: 520px; margin: 0 auto; }
         .wine-title {
           font-family: 'Barlow Condensed', sans-serif;
-          font-size: clamp(1.6rem, 5vw, 2.5rem);
+          font-size: clamp(1.8rem, 5vw, 2.8rem);
           font-weight: 700;
-          color: #F0D060;
-          letter-spacing: 0.03em;
+          color: #fff;
+          letter-spacing: 0.02em;
           margin-bottom: 1rem;
           line-height: 1;
         }
@@ -301,7 +274,7 @@ export default function Home() {
           font-size: 0.98rem;
           color: rgba(255,255,255,0.65);
           line-height: 1.75;
-          max-width: 520px;
+          max-width: 420px;
           margin: 0 auto 2rem;
         }
         .wine-highlight { color: #F0D060; font-weight: 500; }
@@ -385,12 +358,6 @@ export default function Home() {
           color: rgba(255,255,255,0.7);
         }
 
-        @media (max-width: 480px) {
-          .stat-item { padding: 0 0.6rem; }
-          .stat-num { font-size: 1.6rem; }
-          .steps-grid, .points-grid { grid-template-columns: 1fr; }
-        }
-
         /* Goal tracker */
         .goal-tracker {
           background: rgba(255,255,255,0.05);
@@ -417,9 +384,16 @@ export default function Home() {
           font-size: 0.78rem; color: rgba(255,255,255,0.35);
         }
         .goal-tracker-sub strong { color: rgba(255,255,255,0.6); }
+
+        @media (max-width: 480px) {
+          .stat-item { padding: 0 0.6rem; }
+          .stat-num { font-size: 1.6rem; }
+          .steps-grid { grid-template-columns: 1fr; }
+          .quick-links { grid-template-columns: repeat(2, 1fr); }
+        }
       `}</style>
 
-      {/* Hero */}
+      {/* ── Hero ── */}
       <div className="home-hero">
         <div className="hero-inner">
           <div className="hero-eyebrow"><span>⚽</span>FIFA World Cup 2026</div>
@@ -430,8 +404,9 @@ export default function Home() {
           <p className="hero-subtitle">Tippa · Tävla · Vinn</p>
           <p className="hero-desc">
             Tippa matchresultaten, svara på tilläggsfrågor och klättra på topplistan.
-            Varje deltagare satsar en vinflaska — den med flest poäng tar hem 50% av potten!
+            Varje deltagare satsar en vinflaska — den med flest poäng tar hem hela potten!
           </p>
+
           {/* Goal tracker — visas när VM pågår */}
           {målData && målData.totalMål > 0 && (
             <div className="goal-tracker">
@@ -459,6 +434,8 @@ export default function Home() {
               </>
             )}
           </div>
+
+          {/* Statistik */}
           <div className="stats-row">
             <div className="stat-item">
               <span className="stat-num">{ticker ? ticker.antalDeltagare : '—'}</span>
@@ -473,10 +450,19 @@ export default function Home() {
               <span className="stat-lbl">Vinvärde</span>
             </div>
           </div>
+
+          {/* Rekryteringstips */}
+          <p className="rek-info">
+            🍷 <strong style={{ color: '#F0D060' }}>Värva en vän — vinn ett pris!</strong>{' '}
+            Den som rekryterar flest deltagare till tävlingen belönas med ett extra pris.
+            Nya deltagare anger sin rekryterare vid registrering.
+            Redan med? Gör det under{' '}
+            <Link to="/mitt-vin">Min vinflaska</Link>.
+          </p>
         </div>
       </div>
 
-      {/* Inloggad */}
+      {/* ── Inloggad ── */}
       {användare && (
         <div className="welcome-section">
           <div className="welcome-inner">
@@ -504,7 +490,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* Ej inloggad — fullständig förklaring */}
+      {/* ── Ej inloggad — förklaring ── */}
       {!användare && (
         <>
           <div className="how-section">
@@ -516,43 +502,19 @@ export default function Home() {
                   <span className="step-num">1</span>
                   <span className="step-icon">📝</span>
                   <div className="step-title">Registrera dig</div>
-                  <p className="step-desc">Skapa ett konto och välj din vinflaska som insats i potten.</p>
+                  <p className="step-desc">Skapa ett konto, välj din vinflaska och swisha insatsen till admin.</p>
                 </div>
                 <div className="step-card">
                   <span className="step-num">2</span>
                   <span className="step-icon">⚽</span>
-                  <div className="step-title">Tippa & svara</div>
-                  <p className="step-desc">Lämna tips på samtliga 104 VM-matcher och svara på tilläggsfrågor innan turneringen börjar.</p>
+                  <div className="step-title">Tippa matcherna</div>
+                  <p className="step-desc">Fyll i dina gissningar på alla 104 VM-matcher och svara på tilläggsfrågor för bonuspoäng.</p>
                 </div>
                 <div className="step-card">
                   <span className="step-num">3</span>
-                  <span className="step-icon">🍷</span>
+                  <span className="step-icon">🏆</span>
                   <div className="step-title">Vinn vinpotten</div>
-                  <p className="step-desc">Den som toppar listan efter VM-finalen den 19 juli tar hem alla 50% av vinpotten.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="points-section">
-            <div className="points-inner">
-              <p className="section-eyebrow">Poängsystem</p>
-              <h2 className="section-title">Hur poäng räknas</h2>
-              <div className="points-grid">
-                <div className="points-card exact">
-                  <span className="points-value">5p</span>
-                  <span className="points-label">Exakt rätt resultat</span>
-                  <p className="points-desc">Du gissade exakt rätt antal mål för båda lagen.</p>
-                </div>
-                <div className="points-card right">
-                  <span className="points-value">2p</span>
-                  <span className="points-label">Rätt utgång</span>
-                  <p className="points-desc">Rätt vinnare eller oavgjort, men inte exakt resultat.</p>
-                </div>
-                <div className="points-card bonus">
-                  <span className="points-value">+p</span>
-                  <span className="points-label">Tilläggsfrågor</span>
-                  <p className="points-desc">Rätt svar på tilläggsfrågor ger bonuspoäng — varje fråga har sitt eget värde.</p>
+                  <p className="step-desc">Samla poäng när VM spelas. Den som leder efter finalen den 19 juli tar hem hela samlingen!</p>
                 </div>
               </div>
             </div>
@@ -560,24 +522,23 @@ export default function Home() {
 
           <div className="wine-section">
             <div className="wine-inner">
-              <span className="wine-icon">🍷</span>
-              <h2 className="wine-title">Vinpotten</h2>
+              <h2 className="wine-title">🍷 Vinpotten</h2>
               <p className="wine-desc">
-                Varje deltagare satsar <span className="wine-highlight">en vinflaska</span> som läggs i potten.
-                Vinnaren tar hem <span className="wine-highlight">hela samlingen</span> när VM är slut.
+                Varje deltagare bidrar med <span className="wine-highlight">en vinflaska</span> som insats.
+                Vinnaren tar hem hela samlingen — ju fler som är med, desto bättre pott!
               </p>
               <div className="wine-steps">
                 <div className="wine-step">
                   <span className="wine-step-num">1</span>
-                  <p className="wine-step-text">Välj din vinflaska och lägg in en länk när du registrerar dig.</p>
+                  <span className="wine-step-text">Välj en vinflaska mellan 180–220 kr och lägg in länken från Systembolaget.</span>
                 </div>
                 <div className="wine-step">
                   <span className="wine-step-num">2</span>
-                  <p className="wine-step-text">Alla deltagarnas flaskor visas öppet i vinpotten — se vad du konkurrerar om.</p>
+                  <span className="wine-step-text">Swisha vinpriset + 10 kr adminavgift. Admin bekräftar när betalningen är mottagen.</span>
                 </div>
                 <div className="wine-step">
                   <span className="wine-step-num">3</span>
-                  <p className="wine-step-text">Den som toppar topplistan efter finalen den 19 juli vinner 50% av vinpotten.</p>
+                  <span className="wine-step-text">Den med flest poäng efter VM-finalen den 19 juli vinner alla flaskorna!</span>
                 </div>
               </div>
             </div>
