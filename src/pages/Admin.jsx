@@ -240,13 +240,6 @@ export default function Admin() {
     if (!status) return
     setSparar(user_id)
     try {
-      if (status === 'återbetald') {
-        await fetch('/.netlify/functions/admin-kvitto', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminSecret}` },
-          body: JSON.stringify({ user_id, status }),
-        }).catch(() => {})
-      }
       const res = await fetch('/.netlify/functions/admin-betalning', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminSecret}` },
@@ -255,12 +248,30 @@ export default function Admin() {
       if (res.ok) {
         if (status === 'återbetald') {
           setViner((prev) => prev.filter((v) => v.user_id !== user_id))
-          visaToast('↩️ Vin raderat och mail skickat')
         } else {
           setViner((prev) => prev.map((v) => v.user_id === user_id ? { ...v, betalt: status } : v))
-          visaToast('✅ Status uppdaterad')
         }
         setPendingStatus((prev) => { const n = { ...prev }; delete n[user_id]; return n })
+
+        // Skicka mail automatiskt för betalt och återbetald (fire-and-forget)
+        if (status === 'betalt' || status === 'återbetald') {
+          fetch('/.netlify/functions/admin-kvitto', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminSecret}` },
+            body: JSON.stringify({ user_id, status }),
+          })
+          .then(r => r.json())
+          .then(d => {
+            if (status === 'återbetald') visaToast('↩️ Vin raderat och mail skickat')
+            else visaToast('✅ Betalt sparat — mail skickat 📧')
+          })
+          .catch(() => {
+            if (status === 'återbetald') visaToast('↩️ Vin raderat (mail misslyckades)')
+            else visaToast('✅ Betalt sparat (mail misslyckades)')
+          })
+        } else {
+          visaToast('✅ Status uppdaterad')
+        }
       } else {
         visaToast('❌ Något gick fel')
       }
