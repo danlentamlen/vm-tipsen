@@ -514,7 +514,7 @@ export default function Home() {
                   <span className="step-num">3</span>
                   <span className="step-icon">🏆</span>
                   <div className="step-title">Vinn vinpotten</div>
-                  <p className="step-desc">Samla poäng när VM spelas. Den som leder efter finalen den 19 juli tar hem hela samlingen!</p>
+                  <p className="step-desc">Samla poäng när VM spelas. Den som leder efter finalen den 19 juli tar hem halva samlingen!</p>
                 </div>
               </div>
             </div>
@@ -525,7 +525,7 @@ export default function Home() {
               <h2 className="wine-title">🍷 Vinpotten</h2>
               <p className="wine-desc">
                 Varje deltagare bidrar med <span className="wine-highlight">en vinflaska</span> som insats.
-                Vinnaren tar hem hela samlingen — ju fler som är med, desto bättre pott!
+                Vinnaren tar hem halva samlingen — ju fler som är med, desto bättre pott!
               </p>
               <div className="wine-steps">
                 <div className="wine-step">
@@ -538,7 +538,7 @@ export default function Home() {
                 </div>
                 <div className="wine-step">
                   <span className="wine-step-num">3</span>
-                  <span className="wine-step-text">Den med flest poäng efter VM-finalen den 19 juli vinner alla flaskorna!</span>
+                  <span className="wine-step-text">Den med flest poäng efter VM-finalen den 19 juli hälften av flaskorna!</span>
                 </div>
               </div>
             </div>
