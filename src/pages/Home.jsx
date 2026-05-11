@@ -404,7 +404,7 @@ export default function Home() {
           <p className="hero-subtitle">Tippa · Tävla · Vinn</p>
           <p className="hero-desc">
             Tippa matchresultaten, svara på tilläggsfrågor och klättra på topplistan.
-            Varje deltagare satsar en vinflaska — den med flest poäng tar hem hela potten!
+            Varje deltagare satsar en vinflaska — den med flest poäng tar hem halva potten!
           </p>
 
           {/* Goal tracker — visas när VM pågår */}
