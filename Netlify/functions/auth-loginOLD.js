@@ -1,28 +1,10 @@
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import { getSheets, getRows } from './_sheets.js'
-import { checkRateLimit, recordFailedAttempt, resetAttempts, getClientIP } from './_rateLimiter.js'
 
 export default async (req) => {
   if (req.method !== 'POST') {
     return new Response('Method Not Allowed', { status: 405 })
-  }
-
-  // ── Rate limiting ────────────────────────────────────────────
-  const ip = getClientIP(req)
-  const limitResult = checkRateLimit(ip)
-
-  if (limitResult.blocked) {
-    return new Response(
-      JSON.stringify({ error: limitResult.message }),
-      {
-        status: 429,
-        headers: {
-          'Content-Type': 'application/json',
-          'Retry-After': String(limitResult.retryAfter),
-        },
-      }
-    )
   }
 
   try {
@@ -36,13 +18,11 @@ export default async (req) => {
     }
 
     const sheets = await getSheets()
-    const rader  = await getRows(sheets, 'Användare!A:E')
-    const rad    = rader.find((r) => r[2] === email)
+    const rader = await getRows(sheets, 'Användare!A:E')
 
-    // Samma generiska felmeddelande oavsett om email eller lösenord är fel
-    // (förhindrar user enumeration)
+    const rad = rader.find((r) => r[2] === email)
+
     if (!rad) {
-      recordFailedAttempt(ip)
       return new Response(
         JSON.stringify({ error: 'Fel email eller lösenord' }),
         { status: 401, headers: { 'Content-Type': 'application/json' } }
@@ -50,18 +30,15 @@ export default async (req) => {
     }
 
     const [user_id, namn, , lösenord_hash] = rad
+
     const stämmer = await bcrypt.compare(lösenord, lösenord_hash)
 
     if (!stämmer) {
-      recordFailedAttempt(ip)
       return new Response(
         JSON.stringify({ error: 'Fel email eller lösenord' }),
         { status: 401, headers: { 'Content-Type': 'application/json' } }
       )
     }
-
-    // Lyckad inloggning — nollställ rate-limit-räknaren
-    resetAttempts(ip)
 
     const token = jwt.sign(
       { user_id, namn, email },
@@ -74,7 +51,7 @@ export default async (req) => {
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     )
   } catch (err) {
-    console.error('[auth-login] FEL:', err)
+    console.error(err)
     return new Response(
       JSON.stringify({ error: 'Något gick fel' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }

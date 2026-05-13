@@ -1,1 +1,12 @@
-@import "tailwindcss";
+/* index.css
+ *
+ * ÄNDRAT: Importerar designtokens härifrån istället för att varje komponent
+ * har sin egen @import url('https://fonts.googleapis.com/...') i en <style>-tagg.
+ * Det eliminerar ~15 duplicerade fonthämtningar per sidladdning.
+ */
+
+/* Google Fonts — laddas EN gång globalt */
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap');
+
+/* Designsystem — tokens + Tailwind */
+@import "./styles/tokens.css";

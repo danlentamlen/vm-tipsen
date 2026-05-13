@@ -1,0 +1,255 @@
+/**
+ * tokens.css — VM-tipsen designsystem
+ *
+ * Centralt ställe för alla designbeslut i projektet.
+ * Importeras i index.css och används i hela appen.
+ *
+ * SYFTE: Eliminera de ~200 upprepade inline-stilarna (style={{ color: '#C8102E' }}
+ * osv.) och de duplicerade <style>-blocken i varje komponent.
+ *
+ * ANVÄNDNING:
+ *   CSS-variabler:  color: var(--c-röd)
+ *   Tailwind:       className="text-röd font-condensed"
+ */
+
+@import "tailwindcss";
+
+/* ── Palettkonstanter ─────────────────────────────────────── */
+:root {
+  /* Varumärkesfärger */
+  --c-röd:      #C8102E;
+  --c-guld:     #C5A028;
+  --c-guld-ljus:#F0D060;
+  --c-mörk:     #0a1628;
+  --c-mörk-2:   #1a2e4a;
+
+  /* Bakgrunder */
+  --c-bg:       #f8f7f4;
+  --c-yta:      #ffffff;
+  --c-yta-2:    #faf8f4;
+
+  /* Text */
+  --c-text:     #0a1628;
+  --c-text-2:   #555555;
+  --c-text-3:   #888888;
+  --c-text-4:   #aaaaaa;
+
+  /* Kanter */
+  --c-kant:     rgba(0, 0, 0, 0.07);
+  --c-kant-2:   rgba(0, 0, 0, 0.12);
+
+  /* Typsnitt */
+  --font-bred:  'Barlow Condensed', sans-serif;
+  --font-text:  'Barlow', sans-serif;
+
+  /* Radier */
+  --r-sm:       6px;
+  --r-md:       8px;
+  --r-lg:       12px;
+  --r-xl:       16px;
+  --r-pill:     100px;
+
+  /* Skuggor */
+  --shadow-sm:  0 1px 3px rgba(0,0,0,0.04);
+  --shadow-md:  0 2px 8px rgba(0,0,0,0.08);
+  --shadow-lg:  0 8px 32px rgba(0,0,0,0.12);
+
+  /* Övergångar */
+  --t-snabb:    0.15s ease;
+  --t-normal:   0.25s ease;
+}
+
+/* ── Tailwind v4 theme-extension ──────────────────────────── */
+/*
+ * Dessa utility-klasser kan användas direkt i className:
+ *   text-röd        → color: #C8102E
+ *   bg-mörk         → background: #0a1628
+ *   font-condensed  → font-family: 'Barlow Condensed'
+ *   font-bred       → font-family: 'Barlow'  (löptext)
+ */
+@theme {
+  --color-röd:        #C8102E;
+  --color-guld:       #C5A028;
+  --color-guld-ljus:  #F0D060;
+  --color-mörk:       #0a1628;
+  --color-mörk-2:     #1a2e4a;
+  --color-bg:         #f8f7f4;
+
+  --font-condensed:   'Barlow Condensed', sans-serif;
+  --font-bred:        'Barlow', sans-serif;
+}
+
+/* ── Globala basstilar ────────────────────────────────────── */
+body {
+  background: var(--c-bg);
+  color: var(--c-text);
+  font-family: var(--font-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Återanvändbara komponentstilar ───────────────────────── */
+
+/* Kort */
+.card {
+  background: var(--c-yta);
+  border: 1px solid var(--c-kant);
+  border-radius: var(--r-lg);
+  padding: 1.25rem 1.5rem;
+  box-shadow: var(--shadow-sm);
+}
+
+/* Sido-rubrik (eyebrow) — "VM-TIPSEN 2026" */
+.eyebrow {
+  font-family: var(--font-bred);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--c-röd);
+  margin-bottom: 0.3rem;
+}
+
+/* Sidtitel */
+.page-title {
+  font-family: var(--font-bred);
+  font-size: clamp(1.8rem, 6vw, 2.8rem);
+  font-weight: 700;
+  color: var(--c-mörk);
+  letter-spacing: 0.02em;
+  line-height: 1;
+  margin-bottom: 1.5rem;
+}
+
+/* Sidinnehåll — centrerad wrapper */
+.page-wrap {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 2rem 1rem 5rem;
+}
+.page-wrap-wide {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem 1rem 5rem;
+}
+
+/* Knappar */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-bred);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 9px 20px;
+  border: none;
+  border-radius: var(--r-md);
+  cursor: pointer;
+  transition: opacity var(--t-snabb);
+  text-decoration: none;
+}
+.btn:hover   { opacity: 0.85; }
+.btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.btn-primär  { background: linear-gradient(135deg, var(--c-mörk), var(--c-mörk-2)); color: var(--c-guld-ljus); }
+.btn-fara    { background: linear-gradient(135deg, var(--c-röd), #e01535); color: #fff; }
+.btn-success { background: linear-gradient(135deg, #1a6b35, #2a9a50); color: #fff; }
+.btn-sekundär { background: #f5f3ef; color: var(--c-mörk); border: 1px solid var(--c-kant-2); }
+
+/* Status-badge (betalning) */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-bred);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  border-radius: var(--r-pill);
+}
+.badge-betalt     { background: rgba(10,22,40,.08);   color: var(--c-mörk);  border: 1px solid rgba(10,22,40,.15); }
+.badge-ej-betalt  { background: rgba(197,160,40,.1);  color: #7a5c10;        border: 1px solid rgba(197,160,40,.25); }
+.badge-återbetald { background: rgba(200,16,46,.07);  color: #8a1020;        border: 1px solid rgba(200,16,46,.2); }
+
+/* Felbanner */
+.fel-banner {
+  background: rgba(200,16,46,.05);
+  border: 1px solid rgba(200,16,46,.15);
+  border-radius: var(--r-lg);
+  padding: 1.5rem;
+  text-align: center;
+  color: #8a1020;
+  font-family: var(--font-text);
+  font-size: 0.9rem;
+}
+
+/* Toast-notis */
+.toast {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--c-mörk);
+  color: var(--c-guld-ljus);
+  font-family: var(--font-bred);
+  font-size: 0.88rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--r-pill);
+  box-shadow: var(--shadow-lg);
+  z-index: 999;
+  white-space: nowrap;
+}
+
+/* Info-ruta med vänsterkant */
+.info-ruta {
+  background: linear-gradient(135deg, rgba(10,22,40,0.04), rgba(10,22,40,0.02));
+  border: 1px solid rgba(10,22,40,0.1);
+  border-left: 3px solid var(--c-mörk);
+  border-radius: var(--r-lg);
+  padding: 0.875rem 1.1rem;
+  font-family: var(--font-text);
+  font-size: 0.85rem;
+  color: #444;
+  line-height: 1.6;
+}
+.info-ruta strong { color: var(--c-mörk); }
+
+/* Varningsbanners */
+.banner { display: flex; align-items: flex-start; gap: 10px; padding: 0.875rem 1.1rem; border-radius: var(--r-lg); font-family: var(--font-text); font-size: 0.88rem; line-height: 1.5; }
+.banner-varning { background: rgba(197,160,40,.1); border: 1px solid rgba(197,160,40,.3); color: #7a5e10; }
+.banner-lås     { background: rgba(200,16,46,.07); border: 1px solid rgba(200,16,46,.2); color: #8a1020; }
+
+/* Formulär */
+.input-fält {
+  width: 100%;
+  padding: 11px 14px;
+  font-family: var(--font-text);
+  font-size: 0.95rem;
+  border: 1.5px solid var(--c-kant-2);
+  border-radius: var(--r-md);
+  outline: none;
+  box-sizing: border-box;
+  background: var(--c-yta-2);
+  color: var(--c-mörk);
+  transition: border-color var(--t-snabb);
+}
+.input-fält:focus { border-color: var(--c-guld); }
+
+/* Statistiksummering (admin / startsida) */
+.summering { display: flex; gap: 1rem; flex-wrap: wrap; }
+.summering-post {
+  background: var(--c-yta);
+  border: 1px solid var(--c-kant);
+  border-radius: var(--r-lg);
+  padding: 0.875rem 1rem;
+  flex: 1;
+  min-width: 90px;
+  box-shadow: var(--shadow-sm);
+}
+.summering-värde { font-family: var(--font-bred); font-size: 1.5rem; font-weight: 700; color: var(--c-mörk); line-height: 1; }
+.summering-etikett { font-size: 0.63rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--c-text-4); margin-top: 3px; display: block; }
