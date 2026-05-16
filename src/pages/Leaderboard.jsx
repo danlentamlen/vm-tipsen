@@ -1,19 +1,12 @@
 /**
- * Leaderboard.jsx — Refaktorerad styling
+ * Leaderboard.jsx — Exempel på i18n-migrering
  *
- * ÄNDRAT (styling):
- *   - Tar bort <style>{`...`}</style>-blocket (130 rader CSS inline)
- *   - Använder .page-wrap, .eyebrow, .page-title, .fel-banner, .btn
- *     från tokens.css istället
- *   - Komponentspecifika stilar ligger kvar — men nu ~30 rader, inte 130
- *
- * ÄNDRAT (kvalitet):
- *   - Felhantering med retry-knapp
- *   - Markering av inloggad användares rad "(du)"
- *   - Defensiv dataparsning
+ * Alla synliga strängar är utbytta mot t()-anrop.
+ * Samma mönster används för alla andra sidor.
  */
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../context/LanguageContext'
 
 const STYLES = `
   .lb-rad { display:flex; align-items:center; gap:12px; background:#fff; border:1px solid rgba(0,0,0,.06); border-radius:10px; padding:.75rem 1rem; margin-bottom:.5rem; transition:box-shadow .15s; }
@@ -25,6 +18,9 @@ const STYLES = `
   .lb-namn.mig { color:var(--c-röd); }
   .lb-poäng  { font-family:var(--font-bred); font-size:1.1rem; font-weight:700; color:var(--c-text); }
   .lb-poäng-lbl { font-size:.72rem; color:var(--c-text-4); margin-left:3px; }
+  .lb-legend { display:flex; gap:1rem; flex-wrap:wrap; margin-top:1.25rem; padding-top:1rem; border-top:1px solid rgba(0,0,0,.06); }
+  .lb-legend-post { display:flex; align-items:center; gap:6px; font-size:.78rem; color:#666; }
+  .lb-legend-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
 `
 const MEDALJER = ['🥇', '🥈', '🥉']
 
@@ -33,6 +29,7 @@ export default function Leaderboard() {
   const [laddar, setLaddar]       = useState(true)
   const [fel, setFel]             = useState(null)
   const { användare }             = useAuth()
+  const { t }                     = useLanguage()   // ← NY
 
   const hämtaTopplista = useCallback(async () => {
     setLaddar(true); setFel(null)
@@ -43,20 +40,26 @@ export default function Leaderboard() {
       setTopplista(Array.isArray(data) ? data.filter((r) => r?.namn) : [])
     } catch (err) {
       console.error('[Leaderboard]', err)
-      setFel('Kunde inte hämta topplistan. Kontrollera din anslutning och försök igen.')
+      setFel(t('leaderboard.fel'))
     } finally { setLaddar(false) }
-  }, [])
+  }, [t])
 
   useEffect(() => { hämtaTopplista() }, [hämtaTopplista])
 
-  if (laddar) return <div style={{ textAlign:'center', padding:'4rem 1rem', color:'var(--c-text-3)' }}>Laddar topplista...</div>
+  if (laddar) return (
+    <div style={{ textAlign:'center', padding:'4rem 1rem', color:'var(--c-text-3)' }}>
+      {t('leaderboard.laddar')}
+    </div>
+  )
 
   if (fel) return (
     <><style>{STYLES}</style>
     <div className="page-wrap">
       <div className="fel-banner">
         <p style={{ margin:0 }}>{fel}</p>
-        <button className="btn btn-primär" style={{ marginTop:'.75rem' }} onClick={hämtaTopplista}>Försök igen</button>
+        <button className="btn btn-primär" style={{ marginTop:'.75rem' }} onClick={hämtaTopplista}>
+          {t('leaderboard.försökIgen')}
+        </button>
       </div>
     </div></>
   )
@@ -64,26 +67,37 @@ export default function Leaderboard() {
   if (topplista.length === 0) return (
     <div style={{ textAlign:'center', padding:'4rem 1rem' }}>
       <p style={{ fontSize:'3rem', marginBottom:'1rem' }}>⏳</p>
-      <h2 style={{ fontSize:'1.5rem', fontWeight:700, color:'var(--c-mörk)', marginBottom:'.5rem' }}>Inga resultat än</h2>
-      <p style={{ color:'var(--c-text-3)' }}>Topplistan uppdateras när matchresultat matas in.</p>
+      <h2 style={{ fontSize:'1.5rem', fontWeight:700, color:'var(--c-mörk)', marginBottom:'.5rem' }}>
+        {t('leaderboard.ingenData.titel')}
+      </h2>
+      <p style={{ color:'var(--c-text-3)' }}>{t('leaderboard.ingenData.beskrivning')}</p>
     </div>
   )
 
   return (
     <><style>{STYLES}</style>
     <div className="page-wrap">
-      <p className="eyebrow">VM-tipsen 2026</p>
-      <h2 className="page-title">Topplista</h2>
+      <p className="eyebrow">{t('leaderboard.eyebrow')}</p>
+      <h2 className="page-title">{t('leaderboard.titel')}</h2>
+
       {topplista.map((rad, i) => {
         const ärJag = användare?.user_id === rad.user_id
         return (
           <div key={rad.user_id ?? i} className={`lb-rad${ärJag ? ' mig' : ''}`}>
             {i < 3 ? <span className="lb-medalj">{MEDALJER[i]}</span> : <span className="lb-plats">{i + 1}</span>}
-            <span className={`lb-namn${ärJag ? ' mig' : ''}`}>{rad.namn}{ärJag && ' (du)'}</span>
+            <span className={`lb-namn${ärJag ? ' mig' : ''}`}>
+              {rad.namn}{ärJag && ` ${t('leaderboard.du')}`}
+            </span>
             <span className="lb-poäng">{rad.poäng ?? 0}<span className="lb-poäng-lbl">p</span></span>
           </div>
         )
       })}
+
+      <div className="lb-legend">
+        <div className="lb-legend-post"><div className="lb-legend-dot" style={{ background:'#C8102E' }} />{t('leaderboard.legend.exakt')}</div>
+        <div className="lb-legend-post"><div className="lb-legend-dot" style={{ background:'#1a2e4a' }} />{t('leaderboard.legend.rätt')}</div>
+        <div className="lb-legend-post"><div className="lb-legend-dot" style={{ background:'#C5A028' }} />{t('leaderboard.legend.bonus')}</div>
+      </div>
     </div></>
   )
 }
