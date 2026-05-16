@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useLås } from '../hooks/useLås'
+import { useLanguage } from '../context/LanguageContext'
 import DistributionModal from '../components/DistributionModal'
 
 // Flaggor
@@ -40,11 +41,13 @@ function getFlag(lagnamn) {
   return hit ? FLAGS[hit] : '🏳'
 }
 
-function formatDatum(datum) {
+// locale-aware datumformatering
+function formatDatum(datum, språk) {
   if (!datum) return ''
   try {
     const d = new Date(datum)
-    return d.toLocaleDateString('sv-SE', { weekday: 'long', day: 'numeric', month: 'long' })
+    const locale = språk === 'en' ? 'en-GB' : 'sv-SE'
+    return d.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' })
   } catch { return datum }
 }
 
@@ -53,7 +56,7 @@ function formatTid(tid) {
   return tid.replace(/\s*UTC[+-]?\d*/i, '').trim()
 }
 
-// Sorteringsordning och svenska namn — exakta värden från Google Sheet
+// Sorteringsordning — exakta värden från Google Sheet (oförändrade)
 const SLUTSPELS_ORDNING = [
   'Round of 32',
   'Round of 16',
@@ -63,20 +66,6 @@ const SLUTSPELS_ORDNING = [
   'Final',
 ]
 
-const SLUTSPELS_NAMN = {
-  'Round of 32':           'Sextondelsfinal',
-  'Round of 16':           'Åttondelsfinal',
-  'Quarter-final':         'Kvartsfinal',
-  'Semi-final':            'Semifinal',
-  'Match for third place': 'Match om 3:e plats',
-  'Final':                 'Final',
-}
-
-function slutspelsNamn(omgång) {
-  return SLUTSPELS_NAMN[omgång] || omgång
-}
-
-// Är detta en slutspelsmatch?
 function ärSlutspel(m) {
   return m.grupp === 'Slutspel'
 }
@@ -114,67 +103,41 @@ const STYLES = `
 
   .m-group { margin-bottom:2.5rem; }
   .m-group-header { display:flex; align-items:center; gap:12px; margin-bottom:1rem; }
-  .m-group-pill { font-family:'Barlow Condensed',sans-serif; font-size:.72rem; font-weight:700; letter-spacing:.18em; text-transform:uppercase; background:linear-gradient(135deg,#0a1628,#1a2e4a); color:#F0D060; padding:3px 12px; border-radius:100px; }
-  .m-group-pill.slutspel { background:linear-gradient(135deg,#C8102E,#a80d27); }
+  .m-group-pill { font-family:'Barlow Condensed',sans-serif; font-size:.8rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; background:#0a1628; color:#F0D060; padding:4px 12px; border-radius:100px; white-space:nowrap; }
+  .m-group-pill.slutspel { background:linear-gradient(135deg,#C8102E,#a80d27); color:#fff; }
   .m-group-line { flex:1; height:1px; background:rgba(0,0,0,.08); }
 
-  .m-date-header { font-family:'Barlow Condensed',sans-serif; font-size:.75rem; font-weight:600; letter-spacing:.14em; color:#aaa; padding:.5rem 0 .4rem; text-transform:capitalize; }
+  .m-date-header { font-family:'Barlow Condensed',sans-serif; font-size:.72rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:#999; margin:1rem 0 .5rem; }
 
-  .mc { background:#fff; border:1px solid rgba(0,0,0,.07); border-radius:12px; margin-bottom:.5rem; box-shadow:0 1px 4px rgba(0,0,0,.04); overflow:hidden; transition:box-shadow .15s, border-color .15s; }
+  /* MatchKort */
+  .mc { background:#fff; border:1px solid rgba(0,0,0,.07); border-radius:12px; margin-bottom:.5rem; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,.04); transition:box-shadow .15s; }
   .mc.clickable { cursor:pointer; }
-  .mc.clickable:hover { box-shadow:0 6px 20px rgba(0,0,0,.09); border-color:rgba(197,160,40,.4); }
+  .mc.clickable:hover { box-shadow:0 4px 16px rgba(0,0,0,.1); }
   .mc.has-tip { border-left:3px solid #C5A028; }
-
   .mc-body { padding:.875rem 1rem; }
-  .mc-teams { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:8px; }
-
-  .mc-team-home { display:flex; align-items:center; justify-content:flex-end; gap:10px; min-width:0; }
-  .mc-team-away { display:flex; align-items:center; justify-content:flex-start; gap:10px; min-width:0; }
-
-  .mc-flag-wrap { width:36px; height:26px; border-radius:4px; overflow:hidden; flex-shrink:0; display:flex; align-items:center; justify-content:center; background:#f4f2ee; font-size:1.3rem; line-height:1; border:1px solid rgba(0,0,0,.06); }
-
-  .mc-team-name { font-family:'Barlow',sans-serif; font-size:.92rem; font-weight:600; color:#0a1628; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .mc-team-home .mc-team-name { text-align:right; }
-  .mc-team-away .mc-team-name { text-align:left; }
-
-  .mc-centre { display:flex; flex-direction:column; align-items:center; gap:3px; flex-shrink:0; }
-  .mc-inputs { display:flex; align-items:center; gap:4px; }
-  .mc-input { width:38px; height:34px; border:1.5px solid #e5e0d8; border-radius:7px; text-align:center; font-family:'Barlow Condensed',sans-serif; font-size:1.1rem; font-weight:700; color:#0a1628; background:#faf8f4; outline:none; -moz-appearance:textfield; }
+  .mc-teams { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:.75rem; }
+  .mc-team-home { display:flex; align-items:center; justify-content:flex-end; gap:.5rem; text-align:right; }
+  .mc-team-away { display:flex; align-items:center; gap:.5rem; }
+  .mc-team-name { font-family:'Barlow Condensed',sans-serif; font-size:.95rem; font-weight:700; color:#0a1628; letter-spacing:.02em; line-height:1.2; }
+  .mc-flag-wrap { font-size:1.5rem; line-height:1; flex-shrink:0; }
+  .mc-centre { display:flex; flex-direction:column; align-items:center; gap:.35rem; min-width:100px; }
+  .mc-inputs { display:flex; align-items:center; gap:.35rem; }
+  .mc-input { width:40px; height:36px; text-align:center; border:1.5px solid rgba(0,0,0,.15); border-radius:8px; font-family:'Barlow Condensed',sans-serif; font-size:1.1rem; font-weight:700; color:#0a1628; background:#f8f7f4; appearance:textfield; -moz-appearance:textfield; }
   .mc-input::-webkit-outer-spin-button,.mc-input::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
-  .mc-input:focus { border-color:#C5A028; }
-  .mc-sep { font-family:'Barlow Condensed',sans-serif; font-size:1.1rem; font-weight:700; color:#bbb; }
-  .mc-vs { font-family:'Barlow Condensed',sans-serif; font-size:.8rem; font-weight:700; letter-spacing:.1em; color:#bbb; }
-
-  .mc-save { font-family:'Barlow Condensed',sans-serif; font-size:.68rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; border:none; border-radius:100px; padding:3px 10px; cursor:pointer; transition:all .15s; }
-  .mc-save.new    { background:rgba(10,22,40,.08); color:#0a1628; }
-  .mc-save.update { background:rgba(197,160,40,.15); color:#7a5c10; }
-  .mc-save:hover:not(:disabled) { opacity:.8; }
-  .mc-save:disabled { opacity:.4; cursor:not-allowed; }
-
-  .mc-score-locked { display:flex; align-items:center; gap:4px; }
-  .mc-score-box { width:30px; height:28px; display:flex; align-items:center; justify-content:center; background:#f4f2ee; border:1px solid rgba(0,0,0,.08); border-radius:6px; font-family:'Barlow Condensed',sans-serif; font-size:1rem; font-weight:700; color:#0a1628; }
-
-  .mc-footer { display:flex; align-items:center; gap:6px; padding:.4rem 1rem; border-top:1px solid rgba(0,0,0,.05); font-family:'Barlow',sans-serif; font-size:.75rem; color:#aaa; }
+  .mc-input:focus { outline:none; border-color:#C5A028; background:#fff; }
+  .mc-sep { font-family:'Barlow Condensed',sans-serif; font-size:1rem; font-weight:700; color:#bbb; }
+  .mc-vs { font-family:'Barlow Condensed',sans-serif; font-size:.8rem; font-weight:700; letter-spacing:.12em; color:#bbb; }
+  .mc-save { font-family:'Barlow Condensed',sans-serif; font-size:.65rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; padding:4px 10px; border-radius:100px; border:none; cursor:pointer; transition:opacity .15s; white-space:nowrap; }
+  .mc-save.new    { background:#0a1628; color:#F0D060; }
+  .mc-save.update { background:rgba(197,160,40,.15); color:#7a5e10; border:1px solid rgba(197,160,40,.3); }
+  .mc-save:disabled { opacity:.35; cursor:not-allowed; }
+  .mc-score-locked { display:flex; align-items:center; gap:.35rem; }
+  .mc-score-box { width:36px; height:32px; display:flex; align-items:center; justify-content:center; background:#f0ece4; border-radius:6px; font-family:'Barlow Condensed',sans-serif; font-size:1.1rem; font-weight:700; color:#0a1628; }
+  .mc-footer { display:flex; align-items:center; gap:.5rem; padding:.4rem 1rem .6rem; font-family:'Barlow',sans-serif; font-size:.75rem; color:#bbb; border-top:1px solid rgba(0,0,0,.05); }
   .mc-footer-dot { width:3px; height:3px; border-radius:50%; background:#ddd; }
 
-  @media (max-width:520px) {
-    .mc-team-name { font-size:.78rem; }
-    .mc-flag-wrap { width:28px; height:20px; font-size:1rem; }
-    .mc-input { width:34px; font-size:1rem; }
-    .mc-score-box { width:30px; font-size:1rem; }
-    .mc-body { padding:.75rem .875rem; }
-  }
-
   /* Gruppmeny */
-  .m-nav {
-    position: sticky;
-    top: 60px;
-    z-index: 30;
-    background: #f8f7f4;
-    padding: .5rem 0 .625rem;
-    margin-bottom: 1.25rem;
-    border-bottom: 1px solid rgba(0,0,0,.06);
-  }
+  .m-nav { margin-bottom:1.75rem; }
   .m-nav-scroll {
     display: flex;
     gap: 6px;
@@ -237,6 +200,7 @@ export default function Matches() {
   const gruppRefs = useRef({})
   const { användare } = useAuth()
   const { ärLåst, adminOverride } = useLås()
+  const { t, språk } = useLanguage()
 
   useEffect(() => {
     hämtaMatcher()
@@ -270,6 +234,13 @@ export default function Matches() {
     })
     setSparar(null)
     hämtaMinaTips()
+  }
+
+  // Översätt slutspelsrundans namn via locale
+  function slutspelsNamn(omgång) {
+    return t(`matches.slutspelsNamn.${omgång}`) !== `matches.slutspelsNamn.${omgång}`
+      ? t(`matches.slutspelsNamn.${omgång}`)
+      : omgång
   }
 
   // Dela upp i gruppspel och slutspel
@@ -314,7 +285,7 @@ export default function Matches() {
     setAktivGrupp(nyckel)
     const el = gruppRefs.current[nyckel]
     if (el) {
-      const offset = 120 // navbar + sticky nav
+      const offset = 120
       const top = el.getBoundingClientRect().top + window.scrollY - offset
       window.scrollTo({ top, behavior: 'smooth' })
     }
@@ -330,36 +301,56 @@ export default function Matches() {
   function ärKlar(matcherIGrupp) {
     if (!användare) return false
     const öppna = matcherIGrupp.filter(m => !ärLåst(m))
-    return öppna.length > 0 && öppna.every(m => !!minaTips[m.match_id])
+    return öppna.length > 0 && öppna.every(m => !minaTips[m.match_id])
+      ? false
+      : öppna.length > 0 && öppna.every(m => !!minaTips[m.match_id])
   }
 
   // Bygg gruppmeny — alla grupper + slutspelsomgångar
   const gruppNycklar = Object.keys(gruppspelets)
   const slutspelNycklar = sorteradSlutspel.map(([omg]) => omg)
 
-  if (laddar) return <div style={{ textAlign:'center', padding:'4rem 1rem', color:'#888' }}>Laddar matcher...</div>
+  if (laddar) return (
+    <div style={{ textAlign: 'center', padding: '4rem 1rem', color: '#888' }}>
+      {t('matches.laddar')}
+    </div>
+  )
 
   return (
     <>
       <style>{STYLES}</style>
       <div className="m-wrap">
-        <p className="m-eyebrow">VM-tipsen 2026</p>
-        <h2 className="m-title">Matchschema</h2>
+        <p className="m-eyebrow">{t('matches.eyebrow')}</p>
+        <h2 className="m-title">{t('matches.titel')}</h2>
 
         {/* Informationsruta om tippningsregler */}
         <div className="m-info-box">
-          <strong>ℹ️ Tippningsregler</strong><br />
-          Gruppspelet tippas fram till den <strong>11 juni</strong>. Varje slutspelsomgång öppnar för tips och stänger <strong>4 timmar</strong> innan första matchen i omgången spelas.
+          <strong>ℹ️ {språk === 'en' ? 'Prediction rules' : 'Tippningsregler'}</strong><br />
+          {t('matches.infoBox')}
         </div>
 
         {användare && !adminOverride && (
           <div className="m-progress-wrap">
-            <div className="m-progress-bar"><div className="m-progress-fill" style={{ width:`${progress}%` }} /></div>
-            <span className="m-progress-label">{besvarade} / {totalTips} tippade</span>
+            <div className="m-progress-bar">
+              <div className="m-progress-fill" style={{ width: `${progress}%` }} />
+            </div>
+            <span className="m-progress-label">
+              {t('matches.progress', { besvarade, total: totalTips })}
+            </span>
           </div>
         )}
-        {!användare && <div className="m-banner warning"><span>🔑</span><span>Logga in för att lämna dina tips!</span></div>}
-        {användare && adminOverride && <div className="m-banner locked"><span>🔒</span><span>Tips är låsta av admin — klicka på en match för att se tipsfördelningen.</span></div>}
+        {!användare && (
+          <div className="m-banner warning">
+            <span>🔑</span>
+            <span>{t('matches.loggaInBanner')}</span>
+          </div>
+        )}
+        {användare && adminOverride && (
+          <div className="m-banner locked">
+            <span>🔒</span>
+            <span>{t('matches.låstBanner')}</span>
+          </div>
+        )}
 
         {/* Gruppmeny */}
         {användare && (
@@ -408,7 +399,7 @@ export default function Matches() {
             </div>
             {Object.entries(datumGrupper).map(([datum, dagensMatcherna]) => (
               <div key={datum}>
-                <div className="m-date-header">{formatDatum(datum)}</div>
+                <div className="m-date-header">{formatDatum(datum, språk)}</div>
                 {dagensMatcherna.map((match) => (
                   <MatchKort
                     key={match.match_id}
@@ -419,6 +410,7 @@ export default function Matches() {
                     sparar={sparar === match.match_id}
                     onSpara={sparaTips}
                     onKlick={ärLåst(match) ? () => setValdMatch(match) : null}
+                    t={t}
                   />
                 ))}
               </div>
@@ -435,7 +427,7 @@ export default function Matches() {
             </div>
             {Object.entries(datumGrupper).map(([datum, dagensMatcherna]) => (
               <div key={datum}>
-                <div className="m-date-header">{formatDatum(datum)}</div>
+                <div className="m-date-header">{formatDatum(datum, språk)}</div>
                 {dagensMatcherna.map((match) => (
                   <MatchKort
                     key={match.match_id}
@@ -446,6 +438,7 @@ export default function Matches() {
                     sparar={sparar === match.match_id}
                     onSpara={sparaTips}
                     onKlick={ärLåst(match) ? () => setValdMatch(match) : null}
+                    t={t}
                   />
                 ))}
               </div>
@@ -465,7 +458,7 @@ export default function Matches() {
   )
 }
 
-function MatchKort({ match, tip, inloggad, tipsLåst, sparar, onSpara, onKlick }) {
+function MatchKort({ match, tip, inloggad, tipsLåst, sparar, onSpara, onKlick, t }) {
   const [hemma, setHemma] = useState(tip?.hemma_mål ?? '')
   const [borta, setBorta] = useState(tip?.borta_mål ?? '')
 
@@ -493,16 +486,28 @@ function MatchKort({ match, tip, inloggad, tipsLåst, sparar, onSpara, onKlick }
             {inloggad && !tipsLåst ? (
               <>
                 <div className="mc-inputs" onClick={(e) => e.stopPropagation()}>
-                  <input type="number" min="0" max="99" value={hemma} onChange={(e) => setHemma(e.target.value)} className="mc-input" placeholder="–" />
+                  <input
+                    type="number" min="0" max="99"
+                    value={hemma}
+                    onChange={(e) => setHemma(e.target.value)}
+                    className="mc-input"
+                    placeholder="–"
+                  />
                   <span className="mc-sep">–</span>
-                  <input type="number" min="0" max="99" value={borta} onChange={(e) => setBorta(e.target.value)} className="mc-input" placeholder="–" />
+                  <input
+                    type="number" min="0" max="99"
+                    value={borta}
+                    onChange={(e) => setBorta(e.target.value)}
+                    className="mc-input"
+                    placeholder="–"
+                  />
                 </div>
                 <button
                   onClick={(e) => { e.stopPropagation(); onSpara(match.match_id, hemma, borta) }}
                   disabled={sparar || hemma === '' || borta === ''}
                   className={`mc-save ${harTips ? 'update' : 'new'}`}
                 >
-                  {sparar ? '...' : harTips ? 'Uppdatera' : 'Spara tips'}
+                  {sparar ? t('matches.sparar') : harTips ? t('matches.uppdatera') : t('matches.spara')}
                 </button>
               </>
             ) : inloggad && tipsLåst && harTips ? (
@@ -512,7 +517,7 @@ function MatchKort({ match, tip, inloggad, tipsLåst, sparar, onSpara, onKlick }
                 <span className="mc-score-box">{borta}</span>
               </div>
             ) : (
-              <span className="mc-vs">VS</span>
+              <span className="mc-vs">{t('matches.vs')}</span>
             )}
           </div>
 

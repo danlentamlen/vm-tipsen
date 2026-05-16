@@ -151,6 +151,14 @@ const sv = {
     uppdatera:     'Uppdatera',
     sparar:        '...',
     vs:            'VS',
+    slutspelsNamn: {
+     'Round of 32':           'Sextondelsfinal',
+     'Round of 16':           'Åttondelsfinal',
+     'Quarter-final':         'Kvartsfinal',
+     'Semi-final':            'Semifinal',
+     'Match for third place': 'Match om 3:e plats',
+     'Final':                 'Final',
+    },
   },
 
   leaderboard: {
@@ -194,6 +202,20 @@ const sv = {
     välj:          'Välj...',
     väljaLag:      'Välj lag...',
     loggaInFörSvar: 'Logga in för att svara',
+    subtitle:           'Svara på frågorna innan VM startar — rätt svar ger bonuspoäng!',
+    låstBanner:         'Frågorna är låsta — du kan inte längre ändra dina svar. Klicka på en fråga för att se svarsfördelningen.',
+    dittSvar:           'Ditt svar',
+    dittSvarPlaceholder:'Ditt svar...',
+    angeEttTal:         'Ange ett tal...',
+    sökLag:             'Sök lag...',
+    ingaLag:            'Inga lag hittades',
+    subtitle:            'Svara på frågorna innan VM startar — rätt svar ger bonuspoäng!',
+   låstBanner:          'Frågorna är låsta — du kan inte längre ändra dina svar. Klicka på en fråga för att se svarsfördelningen.',
+   dittSvar:            'Ditt svar',
+   dittSvarPlaceholder: 'Ditt svar...',
+   angeEttTal:          'Ange ett tal...',
+   sökLag:              'Sök lag...',
+   ingaLag:             'Inga lag hittades',
   },
 
   participants: {
@@ -252,6 +274,15 @@ const sv = {
     },
     andraVäljer:  'och {{antal}} andra väljer detta vin',
     ägare:        'Vald av: {{namn}}',
+    extrapris: {
+     titel:  'Extrapris',
+     rubrik: 'Närmast totalt antal mål i VM',
+     beskr:  'Den deltagare som är närmast rätt antal totalt antal mål i turneringen vinner ett separat extrapris. Vid lika differens avgörs det av flest poäng i övrigt.',
+   },
+   tom: {
+     titel: 'Potten är tom ännu',
+     beskr: 'Inga viner har lagts till — registrera dig och välj din flaska!',
+   },
   },
 
   minVin: {
@@ -289,35 +320,113 @@ const sv = {
     },
     nästaSteg:     '→ Börja tippa matcher',
     systembolaget: '→ Systembolaget',
+    status: {
+    betalt: {
+      titel: 'Betalning bekräftad',
+      text:  'Admin har bekräftat din betalning. Din flaska är med i potten och kan inte längre ändras.',
+     },
+    ejBetalt: {
+      titel: 'Väntar på betalning',
+      text:  'Vinet är sparat. Swisha insatsen till admin för att bekräfta din plats i potten.',
+    },
+    saknas: {
+       titel: 'Ingen vinflaska vald',
+       text:  'Välj din flaska nedan. Den måste kosta mellan {{min}}–{{max}} kr.',
+    },
+   },
   },
 
   info: {
-    eyebrow: 'VM-tipsen 2026',
-    titel:   'Regler & Info',
-    poäng: {
-      titel:   'Poängsystem',
-      exakt:   'Exakt rätt resultat',
-      exaktPts:'5 poäng',
-      rätt:    'Rätt utgång (vinst/förlust/oavgjort)',
-      rättPts: '2 poäng',
-      fel:     'Fel tips',
-      felPts:  '0 poäng',
-    },
-    vinpott: {
-      titel:      'Vinpotten',
-      flaska:     'En flaska per deltagare',
-      beskr:      'Varje deltagare satsar en vinflaska som insats i potten. Du väljer själv vilken flaska och anger en länk när du registrerar dig. Den som toppar topplistan när VM-finalen är avgjord den 19 juli 2026 vinner 50% av samlingen.',
-    },
-    datum: {
-      titel: 'Viktiga datum & deadlines',
-    },
-    fakta: {
-      titel: 'VM 2026 — snabbfakta',
-    },
-    faq: {
-      titel: 'Vanliga frågor',
-    },
+  eyebrow: 'VM-tipsen 2026',
+  titel:   'Regler & Information',
+  lead:    'Allt du behöver veta om hur tävlingen fungerar — poängsystem, vinpott, tilläggsfrågor och viktiga datum.',
+ 
+  poäng: {
+    titel:     'Poängsystem',
+    exakt:     'Exakt resultat',
+    exaktDesc: 'Du gissade exakt rätt antal mål för båda lagen.',
+    rätt:      'Rätt utgång',
+    rättDesc:  'Rätt vinnare eller oavgjort, men inte exakt resultat.',
+    bonus:     'Tilläggsfrågor',
+    bonusDesc: 'Rätt svar ger bonuspoäng — varje fråga har sitt eget värde.',
   },
+ 
+  prisfördelning: {
+    titel: 'Prisfördelning',
+    not:   'Procentandelarna beräknas på det totala värdet av alla betalda vinflaskor i potten.',
+    rader: [
+      { plats: '1:a plats',    emoji: '🥇',     pct: 50 },
+      { plats: '2:a plats',    emoji: '🥈',     pct: 25 },
+      { plats: '3:e plats',    emoji: '🥉',     pct: 10 },
+      { plats: '4:e plats',    emoji: '4️⃣',    pct: 5  },
+      { plats: '5:e plats',    emoji: '5️⃣',    pct: 3  },
+      { plats: 'Specialpriser',emoji: '⚽⚽⚽', pct: 7  },
+    ],
+  },
+ 
+  regler: {
+    titel: 'Regler',
+    items: [
+      { ikon: '⏰', text: '<strong>Deadline för tips:</strong> Gruppspelet och tilläggsfrågor låses <strong>11 juni</strong>. Slutspelsomgångar låses <strong>4 timmar</strong> innan första matchen i respektive omgång.' },
+      { ikon: '⚽', text: '<strong>Matchresultat:</strong> Poäng räknas på resultatet efter ordinarie tid (90 minuter). Förlängning och straffar påverkar inte ditt tips.' },
+      { ikon: '✏️', text: '<strong>Ändringar tillåtna:</strong> Du kan uppdatera dina tips hur många gånger du vill fram tills respektive deadline.' },
+      { ikon: '🎯', text: '<strong>Tilläggsfrågor:</strong> Frågorna har olika poängvärden och låses permanent den <strong>11 juni</strong> tillsammans med gruppspelet.' },
+      { ikon: '🏅', text: '<strong>Vid lika poäng:</strong> Delad placering avgörs i denna ordning — (1) den som tippat rätt lag som vinnare av VM, (2) flest exakta 5-poängare, (3) dyraste vinflaska.' },
+      { ikon: '⚽', text: '<strong>Extrapris — totala VM-mål:</strong> Den deltagare som är närmast rätt antal totala mål i VM vinner ett separat extrapris.' },
+      { ikon: '👁️', text: '<strong>Transparens:</strong> Tipsfördelningen för varje match visas för alla <strong>efter att respektive omgång låsts</strong>.' },
+    ],
+  },
+ 
+  vinpott: {
+    titel:     'Vinpotten',
+    flaska:    'En flaska per deltagare',
+    beskr:     'Varje deltagare satsar en vinflaska som insats i potten. Du väljer själv vilken flaska och anger en länk när du registrerar dig. Den som toppar topplistan när VM-finalen är avgjord den 19 juli 2026 vinner 50% av samlingen.',
+    beskrHtml: 'Varje deltagare satsar <strong>en vinflaska</strong> som insats i potten. Du väljer själv vilken flaska och anger en länk när du registrerar dig.<br /><br />Alla deltagarnas flaskor samlas i vinpotten och visas öppet för alla att se. <strong>Den som toppar topplistan</strong> när VM-finalen är avgjord den <strong>19 juli 2026</strong> vinner 50% av samlingen.',
+  },
+ 
+  tidslinje: {
+    titel: 'Viktiga datum & deadlines',
+    items: [
+      { datum: 'Nu',            deadline: null,         titel: 'Registrering & tips öppet',               beskr: 'Skapa konto, välj din vinflaska och börja lämna tips på matcherna och tilläggsfrågor.' },
+      { datum: '11 jun',        deadline: 'Deadline 1', titel: 'Gruppspel & tilläggsfrågor låses',         beskr: 'Alla gruppspelets 72 matcher samt samtliga tilläggsfrågor stängs för inmatning inför VM-premiären.' },
+      { datum: 'Under VM',      deadline: 'Deadline 2–5', titel: 'Slutspelsomgångarna låses löpande',     beskr: 'Sextondelsfinal, kvartsfinal, semifinal — varje omgång låses 4 timmar innan den startar.' },
+      { datum: '18 jul',        deadline: 'Deadline 6', titel: 'Match om 3:e plats låses',                beskr: '4 timmar innan bronsmatch (18 jul, 23:00 svensk tid) stängs tips för matchen om tredje plats.' },
+      { datum: '19 jul',        deadline: 'Deadline 7', titel: 'Finalen låses',                           beskr: '4 timmar innan VM-finalen (19 jul, 21:00 svensk tid) stängs det sista tipset. Finalen spelas på MetLife Stadium i New York/New Jersey.' },
+      { datum: 'Efter finalen', deadline: null,         titel: 'Vinnaren korad & vinpotten delas ut',     beskr: 'Den med flest poäng vinner 50% av vinpotten. Grattis på förhand!' },
+    ],
+  },
+ 
+  fakta: {
+    titel: 'VM 2026 — snabbfakta',
+    items: [
+      { värde: '48',   etikett: 'Deltagande lag' },
+      { värde: '104',  etikett: 'Totala matcher' },
+      { värde: '16',   etikett: 'Värdstäder' },
+      { värde: '3',    etikett: 'Värdnationer' },
+      { värde: '11/6', etikett: 'Premiär' },
+      { värde: '19/7', etikett: 'Final' },
+    ],
+  },
+ 
+  faq: {
+    titel: 'Vanliga frågor',
+    items: [
+      { q: 'Måste jag tippa alla 104 matcher?',                         a: 'Nej, du kan lämna tips på så många eller få matcher du vill. Du får bara poäng för de matcher du faktiskt tippat. Det lönar sig dock att tippa så många som möjligt för att maximera poängen.' },
+      { q: 'Vad händer om jag glömmer tippa en match?',                 a: 'Du får inga poäng för den matchen — men det påverkar inte dina övriga tips. Du kan tippa fler matcher ända fram tills respektive deadline.' },
+      { q: 'Hur fungerar förlängning och straffar?',                    a: 'Poäng räknas alltid på resultatet efter ordinarie tid (90 minuter). Om en match slutar 1–1 efter 90 minuter men avgörs på straffar räknas det som oavgjort för tippingens skull.' },
+      { q: 'Kan jag ändra mitt tips efter att jag sparat det?',         a: 'Ja, du kan uppdatera dina tips hur många gånger du vill — ända fram tills respektive deadline. Senast sparade tips är det som gäller.' },
+      { q: 'När visas tipsfördelningen för matcherna?',                  a: 'Fördelningen (hur alla tippade) visas först när respektive omgång är låst. Fram till dess ser du bara ditt eget tips.' },
+      { q: 'Hur vet jag vilken vinflaska jag ska välja?',               a: 'Det är helt fritt! Välj en flaska du tycker om eller som du tror passar övriga deltagare. Du anger ett namn och en länk (t.ex. till Systembolaget) när du registrerar dig. Flaskan kan bytas fram tills tävlingen låses den 11 juni.' },
+      { q: 'Kan jag tippa slutspelsmatcher innan jag vet vilka lag som spelar?', a: 'Ja! Du kan lämna tips på slutspelsmatcher redan nu — lagen visas som platshållare (t.ex. "Vinnare Grupp A") tills gruppspelet är klart. Du kan uppdatera dina slutspelstips fram tills respektive deadline.' },
+    ],
+  },
+ 
+  cta: {
+    text:  'Redo att börja tippa? Registrera dig och välj din vinflaska!',
+    knapp: 'Anmäl dig nu',
+  },
+ },
+
 
   scorers: {
     eyebrow:    'VM-tipsen 2026',
@@ -344,6 +453,7 @@ const sv = {
     stäng:      'Stäng',
     avbryt:     'Avbryt',
     kr:         'kr',
+    betalt:     'Betalt',
   },
 }
 

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useLanguage } from '../context/LanguageContext'
 
 const STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500&display=swap');
@@ -211,6 +212,7 @@ const STYLES = `
 export default function Vinpotten() {
   const [viner, setViner] = useState([])
   const [laddar, setLaddar] = useState(true)
+  const { t } = useLanguage()
 
   useEffect(() => {
     fetch('/.netlify/functions/viner-hamta')
@@ -222,10 +224,9 @@ export default function Vinpotten() {
       .finally(() => setLaddar(false))
   }, [])
 
-  // Group by wine name, keeping first entry's data
+  // Gruppera på URL — unik identifierare, inte på namn
   const grupperade = Object.values(
     viner.reduce((acc, v) => {
-      // Gruppera på URL — unik identifierare, inte på namn
       const nyckel = v.vin_url?.trim().toLowerCase() || v.vin_namn
       if (!acc[nyckel]) {
         acc[nyckel] = { ...v, antal: 1, ägare: [v.namn].filter(Boolean) }
@@ -246,98 +247,99 @@ export default function Vinpotten() {
   if (laddar) {
     return (
       <div style={{ textAlign: 'center', padding: '4rem 1rem', color: '#888' }}>
-        Laddar vinpotten...
+        {t('vinpotten.laddar')}
       </div>
     )
   }
+
+  // Prisfördelning — platsnamn hämtas från locale
+  const platser = t('vinpotten.prisfördelning.platser')
+  const priser = [
+    { plats: platser[0], emoji: '🥇', pct: 50 },
+    { plats: platser[1], emoji: '🥈', pct: 25 },
+    { plats: platser[2], emoji: '🥉', pct: 10 },
+    { plats: platser[3], emoji: '4️⃣', pct: 5  },
+    { plats: platser[4], emoji: '5️⃣', pct: 3  },
+    { plats: platser[5], emoji: '⚽', pct: 7  },
+  ]
 
   return (
     <>
       <style>{STYLES}</style>
       <div className="vp-wrap">
 
-        <p className="vp-eyebrow">VM-tipsen 2026</p>
-        <h2 className="vp-title">Vinpotten</h2>
+        <p className="vp-eyebrow">{t('vinpotten.eyebrow')}</p>
+        <h2 className="vp-title">{t('vinpotten.titel')}</h2>
         <p className="vp-subtitle">
           {totalFlaskor > 0
-            ? 'Den med flest poäng efter VM-finalen tar hem allt.'
-            : 'Här samlas alla deltagarnas vinflaskor.'}
+            ? t('vinpotten.undertitel.medViner')
+            : t('vinpotten.undertitel.ingenVin')}
         </p>
 
         {/* Hero totals */}
         {totalFlaskor > 0 && (
           <div className="vp-hero">
             <div className="vp-hero-left">
-              <div className="vp-hero-label">Pottens värde</div>
+              <div className="vp-hero-label">{t('vinpotten.pottensVärde')}</div>
               {totalPris > 0 ? (
                 <div className="vp-hero-value">
                   {totalPris.toLocaleString('sv-SE')}
-                  <span className="vp-hero-unit">kr</span>
+                  <span className="vp-hero-unit">{t('gemensamt.kr')}</span>
                 </div>
               ) : (
                 <div className="vp-hero-value" style={{ fontSize: '1.6rem', color: 'rgba(255,255,255,0.4)' }}>
-                  Ej angivet
+                  {t('vinpotten.ejAngivet')}
                 </div>
               )}
             </div>
             <div className="vp-hero-stats">
               <div className="vp-stat">
                 <span className="vp-stat-val">{totalFlaskor}</span>
-                <span className="vp-stat-lbl">Flaskor</span>
+                <span className="vp-stat-lbl">{t('vinpotten.flaskor')}</span>
               </div>
               <div className="vp-stat">
                 <span className="vp-stat-val">{grupperade.length}</span>
-                <span className="vp-stat-lbl">Unika viner</span>
+                <span className="vp-stat-lbl">{t('vinpotten.unikaViner')}</span>
               </div>
             </div>
           </div>
         )}
 
         {/* Prize breakdown */}
-        {totalFlaskor > 0 && (() => {
-          const priser = [
-            { plats:'1:a plats', emoji:'🥇', pct:50 },
-            { plats:'2:a plats', emoji:'🥈', pct:25 },
-            { plats:'3:e plats', emoji:'🥉', pct:10 },
-            { plats:'4:e plats', emoji:'4️⃣', pct:5  },
-            { plats:'5:e plats', emoji:'5️⃣', pct:3  },
-            { plats:'Extrapris', emoji:'⚽', pct:7 }
-          ]
-          return (
-            <div className="vp-prizes">
-              <p className="vp-prizes-title">Prisfördelning av vinpotten</p>
-              <div className="vp-prizes-grid">
-                {priser.map((p) => (
-                  <div key={p.plats} className={`vp-prize-item ${p.plats === '1:a' ? 'first' : ''}`}>
-                    <span className="vp-prize-place">{p.emoji} {p.plats}</span>
-                    <span className="vp-prize-pct">{p.pct}%</span>
-                    {totalPris > 0 && (
-                      <span className="vp-prize-kr">{Math.round(totalPris * p.pct / 100)} kr</span>
-                    )}
-                  </div>
-                ))}
-              </div>
+        {totalFlaskor > 0 && (
+          <div className="vp-prizes">
+            <p className="vp-prizes-title">{t('vinpotten.prisfördelning.titel')}</p>
+            <div className="vp-prizes-grid">
+              {priser.map((p, i) => (
+                <div key={p.plats} className={`vp-prize-item ${i === 0 ? 'first' : ''}`}>
+                  <span className="vp-prize-place">{p.emoji} {p.plats}</span>
+                  <span className="vp-prize-pct">{p.pct}%</span>
+                  {totalPris > 0 && (
+                    <span className="vp-prize-kr">{Math.round(totalPris * p.pct / 100)} {t('gemensamt.kr')}</span>
+                  )}
+                </div>
+              ))}
             </div>
-          )
-        })()}
+          </div>
+        )}
 
         {/* Extra prize */}
         <div style={{
-          background:'#fff', border:'1px solid rgba(0,0,0,0.07)', borderRadius:12,
-          padding:'1.1rem 1.5rem', marginBottom:'2rem',
-          boxShadow:'0 1px 4px rgba(0,0,0,0.04)',
-          display:'flex', alignItems:'flex-start', gap:12
+          background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: 12,
+          padding: '1.1rem 1.5rem', marginBottom: '2rem',
+          boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+          display: 'flex', alignItems: 'flex-start', gap: 12,
         }}>
-          <span style={{ fontSize:'1.5rem', flexShrink:0 }}>⚽</span>
+          <span style={{ fontSize: '1.5rem', flexShrink: 0 }}>⚽</span>
           <div>
-            <p style={{ fontFamily:"'Barlow Condensed',sans-serif", fontSize:'0.8rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'#C8102E', marginBottom:4 }}>
-              Extrapris
+            <p style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: '0.8rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#C8102E', marginBottom: 4 }}>
+              {t('vinpotten.extrapris.titel')}
             </p>
-            <p style={{ fontFamily:"'Barlow',sans-serif", fontSize:'0.88rem', color:'#0a1628', fontWeight:500, marginBottom:3 }}>
-              Närmast totalt antal mål i VM
+            <p style={{ fontFamily: "'Barlow',sans-serif", fontSize: '0.88rem', color: '#0a1628', fontWeight: 500, marginBottom: 3 }}>
+              {t('vinpotten.extrapris.rubrik')}
             </p>
-            <p style={{ fontFamily:"'Barlow',sans-serif", fontSize:'0.8rem', color:'#888', lineHeight:1.5 }}>
-              Den deltagare som är närmast rätt antal totalt antal mål i turneringen vinner ett separat extrapris. Vid lika differens avgörs det av flest poäng i övrigt.
+            <p style={{ fontFamily: "'Barlow',sans-serif", fontSize: '0.8rem', color: '#888', lineHeight: 1.5 }}>
+              {t('vinpotten.extrapris.beskr')}
             </p>
           </div>
         </div>
@@ -346,8 +348,8 @@ export default function Vinpotten() {
         {grupperade.length === 0 ? (
           <div className="vp-empty">
             <div className="vp-empty-icon">🍾</div>
-            <p className="vp-empty-title">Potten är tom ännu</p>
-            <p className="vp-empty-text">Inga viner har lagts till — registrera dig och välj din flaska!</p>
+            <p className="vp-empty-title">{t('vinpotten.tom.titel')}</p>
+            <p className="vp-empty-text">{t('vinpotten.tom.beskr')}</p>
           </div>
         ) : (
           <div className="vp-list">
@@ -378,15 +380,15 @@ export default function Vinpotten() {
                         <span className="vp-badge multi">×{v.antal}</span>
                       )}
                       {v.betalt === 'betalt' && (
-                        <span className="vp-badge paid">✓ Betalt</span>
+                        <span className="vp-badge paid">✓ {t('gemensamt.betalt') || 'Betalt'}</span>
                       )}
                     </div>
                     <div className="vp-wine-meta">
                       {v.vin_pris && (
                         <span className="vp-wine-price">
                           {v.antal > 1
-                            ? `${v.vin_pris} kr × ${v.antal} = ${(v.antal * Number(v.vin_pris)).toLocaleString('sv-SE')} kr`
-                            : `${Number(v.vin_pris).toLocaleString('sv-SE')} kr`}
+                            ? `${v.vin_pris} ${t('gemensamt.kr')} × ${v.antal} = ${(v.antal * Number(v.vin_pris)).toLocaleString('sv-SE')} ${t('gemensamt.kr')}`
+                            : `${Number(v.vin_pris).toLocaleString('sv-SE')} ${t('gemensamt.kr')}`}
                         </span>
                       )}
                       {v.ägare?.length > 0 && (

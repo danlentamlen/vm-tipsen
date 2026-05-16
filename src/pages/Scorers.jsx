@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useLanguage } from '../context/LanguageContext'
 
 // Flagglookup — samma som i Matches.jsx
 const FLAGS = {
@@ -120,11 +121,12 @@ const STYLES = `
   }
 `
 
-const medaljer = { 1:'🥇', 2:'🥈', 3:'🥉' }
+const medaljer = { 1: '🥇', 2: '🥈', 3: '🥉' }
 
 export default function Scorers() {
-  const [data, setData] = useState(null)
+  const [data, setData]     = useState(null)
   const [laddar, setLaddar] = useState(true)
+  const { t, språk }        = useLanguage()
 
   useEffect(() => {
     fetch('/.netlify/functions/scorers')
@@ -134,35 +136,40 @@ export default function Scorers() {
   }, [])
 
   if (laddar) {
-    return <div style={{ textAlign:'center', padding:'4rem 1rem', color:'#888' }}>Laddar skytteliga...</div>
+    return (
+      <div style={{ textAlign: 'center', padding: '4rem 1rem', color: '#888' }}>
+        {t('scorers.laddar')}
+      </div>
+    )
   }
 
-  const scorers = data?.scorers || []
+  const scorers    = data?.scorers || []
   const uppdaterad = data?.uppdaterad
+  const locale     = språk === 'en' ? 'en-GB' : 'sv-SE'
 
   return (
     <>
       <style>{STYLES}</style>
       <div className="sc-wrap">
-        <p className="sc-eyebrow">VM 2026</p>
-        <h2 className="sc-title">Skytteliga</h2>
+        <p className="sc-eyebrow">{t('scorers.eyebrow')}</p>
+        <h2 className="sc-title">{t('scorers.titel')}</h2>
 
         {scorers.length === 0 ? (
           <div className="sc-banner">
             <span>⏳</span>
-            <span>Skytteligan visas när VM har startat och matcher spelats. Kom tillbaka den 11 juni!</span>
+            <span>{t('scorers.ingenData')}</span>
           </div>
         ) : (
           <>
             <div className="sc-table-wrap">
               {/* Header */}
               <div className="sc-thead">
-                <div className="sc-th">#</div>
-                <div className="sc-th">Spelare</div>
-                <div className="sc-th">Lag</div>
-                <div className="sc-th">Mål</div>
-                <div className="sc-th">Ass.</div>
-                <div className="sc-th">Mat.</div>
+                <div className="sc-th">{t('scorers.kolumner.plats')}</div>
+                <div className="sc-th">{t('scorers.kolumner.spelare')}</div>
+                <div className="sc-th">{t('scorers.kolumner.lag')}</div>
+                <div className="sc-th">{t('scorers.kolumner.mål')}</div>
+                <div className="sc-th">{t('scorers.kolumner.assists')}</div>
+                <div className="sc-th">{t('scorers.kolumner.matcher')}</div>
               </div>
 
               {/* Rows */}
@@ -188,8 +195,8 @@ export default function Scorers() {
                         {getFlag(s.lag) && <span>{getFlag(s.lag)}</span>}
                       </div>
                     </div>
-                    <div className="sc-cell" style={{ textAlign:'left', paddingLeft:4 }}>
-                      <span style={{ fontSize:'.82rem', color:'#555', display:'flex', alignItems:'center', gap:4 }}>
+                    <div className="sc-cell" style={{ textAlign: 'left', paddingLeft: 4 }}>
+                      <span style={{ fontSize: '.82rem', color: '#555', display: 'flex', alignItems: 'center', gap: 4 }}>
                         {getFlag(s.lag)} {s.lag}
                       </span>
                     </div>
@@ -203,7 +210,10 @@ export default function Scorers() {
 
             {uppdaterad && (
               <p className="sc-updated">
-                Uppdaterad: {new Date(uppdaterad).toLocaleString('sv-SE', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}
+                {t('scorers.uppdaterad')}{' '}
+                {new Date(uppdaterad).toLocaleString(locale, {
+                  day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+                })}
               </p>
             )}
           </>

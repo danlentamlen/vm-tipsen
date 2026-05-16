@@ -149,6 +149,14 @@ const en = {
     uppdatera:     'Update',
     sparar:        '...',
     vs:            'VS',
+    slutspelsNamn: {
+     'Round of 32':           'Round of 32',
+     'Round of 16':           'Round of 16',
+     'Quarter-final':         'Quarter-final',
+     'Semi-final':            'Semi-final',
+     'Match for third place': 'Third place play-off',
+     'Final':                 'Final',
+   },
   },
 
   leaderboard: {
@@ -192,6 +200,20 @@ const en = {
     välj:            'Choose...',
     väljaLag:        'Choose team...',
     loggaInFörSvar:  'Log in to answer',
+    subtitle:           'Answer the questions before the World Cup starts — correct answers earn bonus points!',
+    låstBanner:         'Questions are locked — you can no longer change your answers. Click a question to see the answer breakdown.',
+    dittSvar:           'Your answer',
+    dittSvarPlaceholder:'Your answer...',
+    angeEttTal:         'Enter a number...',
+    sökLag:             'Search team...',
+    ingaLag:            'No teams found',
+    subtitle:            'Answer the questions before the World Cup starts — correct answers earn bonus points!',
+    låstBanner:          'Questions are locked — you can no longer change your answers. Click a question to see the answer breakdown.',
+    dittSvar:            'Your answer',
+    dittSvarPlaceholder: 'Your answer...',
+    angeEttTal:          'Enter a number...',
+    sökLag:              'Search team...',
+    ingaLag:             'No teams found',
   },
 
   participants: {
@@ -250,6 +272,15 @@ const en = {
     },
     andraVäljer: 'and {{antal}} others choose this wine',
     ägare:       'Chosen by: {{namn}}',
+    extrapris: {
+     titel:  'Extra prize',
+     rubrik: 'Closest to total goals in the World Cup',
+     beskr:  'The participant who is closest to the correct total number of goals in the tournament wins a separate extra prize. In case of equal difference, most points overall decides.',
+   },
+   tom: {
+     titel: 'The pot is empty for now',
+     beskr: 'No wines have been added yet — sign up and choose your bottle!',
+   },
   },
 
   minVin: {
@@ -287,35 +318,112 @@ const en = {
     },
     nästaSteg:     '→ Start predicting matches',
     systembolaget: '→ Systembolaget',
+    status: {
+     betalt: {
+       titel: 'Payment confirmed',
+       text:  'Admin has confirmed your payment. Your bottle is in the pot and can no longer be changed.',
+     },
+     ejBetalt: {
+       titel: 'Awaiting payment',
+       text:  'Your wine is saved. Pay by Swish to the admin to confirm your spot in the pot.',
+     },
+     saknas: {
+       titel: 'No wine bottle selected',
+       text:  'Choose your bottle below. It must cost between {{min}}–{{max}} SEK.',
+     },
+   },
   },
 
   info: {
     eyebrow: 'WC Predictions 2026',
-    titel:   'Rules & Info',
-    poäng: {
-      titel:    'Scoring system',
-      exakt:    'Exact correct score',
-      exaktPts: '5 points',
-      rätt:     'Correct outcome (win/loss/draw)',
-      rättPts:  '2 points',
-      fel:      'Wrong prediction',
-      felPts:   '0 points',
-    },
-    vinpott: {
-      titel:  'Wine pot',
-      flaska: 'One bottle per participant',
-      beskr:  'Every participant stakes a wine bottle as their entry. You choose the bottle yourself and add a link when you sign up. The person at the top of the leaderboard when the World Cup final is decided on 19 July 2026 wins 50% of the collection.',
-    },
-    datum: {
-      titel: 'Key dates & deadlines',
-    },
-    fakta: {
-      titel: 'World Cup 2026 — quick facts',
-    },
-    faq: {
-      titel: 'Frequently asked questions',
-    },
+  titel:   'Rules & Information',
+  lead:    'Everything you need to know about how the competition works — scoring, wine pot, bonus questions and key dates.',
+ 
+  poäng: {
+    titel:     'Scoring system',
+    exakt:     'Exact score',
+    exaktDesc: 'You guessed the exact number of goals for both teams.',
+    rätt:      'Correct outcome',
+    rättDesc:  'Correct winner or draw, but not the exact score.',
+    bonus:     'Bonus questions',
+    bonusDesc: 'Correct answers earn bonus points — each question has its own value.',
   },
+ 
+  prisfördelning: {
+    titel: 'Prize breakdown',
+    not:   'Percentages are calculated on the total value of all paid wine bottles in the pot.',
+    rader: [
+      { plats: '1st place',     emoji: '🥇',     pct: 50 },
+      { plats: '2nd place',     emoji: '🥈',     pct: 25 },
+      { plats: '3rd place',     emoji: '🥉',     pct: 10 },
+      { plats: '4th place',     emoji: '4️⃣',    pct: 5  },
+      { plats: '5th place',     emoji: '5️⃣',    pct: 3  },
+      { plats: 'Special prizes',emoji: '⚽⚽⚽', pct: 7  },
+    ],
+  },
+ 
+  regler: {
+    titel: 'Rules',
+    items: [
+      { ikon: '⏰', text: '<strong>Prediction deadline:</strong> Group stage and bonus questions lock on <strong>11 June</strong>. Knockout rounds lock <strong>4 hours</strong> before the first match of each round.' },
+      { ikon: '⚽', text: '<strong>Match results:</strong> Points are based on the result after regular time (90 minutes). Extra time and penalties do not affect your prediction.' },
+      { ikon: '✏️', text: '<strong>Changes allowed:</strong> You can update your predictions as many times as you like until the respective deadline.' },
+      { ikon: '🎯', text: '<strong>Bonus questions:</strong> Questions have different point values and lock permanently on <strong>11 June</strong> along with the group stage.' },
+      { ikon: '🏅', text: '<strong>Tiebreaker:</strong> Equal points are decided in this order — (1) who predicted the correct World Cup winner, (2) most exact 5-point predictions, (3) most expensive wine bottle.' },
+      { ikon: '⚽', text: '<strong>Extra prize — total WC goals:</strong> The participant closest to the correct total number of goals in the World Cup wins a separate extra prize.' },
+      { ikon: '👁️', text: '<strong>Transparency:</strong> The prediction breakdown for each match is shown to everyone <strong>after the respective round has locked</strong>.' },
+    ],
+  },
+ 
+  vinpott: {
+    titel:     'Wine pot',
+    flaska:    'One bottle per participant',
+    beskr:     'Every participant stakes a wine bottle as their entry. You choose the bottle yourself and add a link when you sign up. The person at the top of the leaderboard when the World Cup final is decided on 19 July 2026 wins 50% of the collection.',
+    beskrHtml: 'Every participant stakes <strong>one wine bottle</strong> as their entry. You choose the bottle yourself and add a link when you sign up.<br /><br />All participants\' bottles are collected in the wine pot and displayed openly for everyone to see. <strong>The person at the top of the leaderboard</strong> when the World Cup final is decided on <strong>19 July 2026</strong> wins 50% of the collection.',
+  },
+ 
+  tidslinje: {
+    titel: 'Key dates & deadlines',
+    items: [
+      { datum: 'Now',           deadline: null,           titel: 'Registration & predictions open',         beskr: 'Create an account, choose your wine bottle and start submitting predictions for matches and bonus questions.' },
+      { datum: '11 Jun',        deadline: 'Deadline 1',   titel: 'Group stage & bonus questions lock',      beskr: 'All 72 group stage matches and all bonus questions close before the World Cup kicks off.' },
+      { datum: 'During WC',     deadline: 'Deadlines 2–5',titel: 'Knockout rounds lock progressively',      beskr: 'Round of 32, quarter-finals, semi-finals — each round locks 4 hours before it starts.' },
+      { datum: '18 Jul',        deadline: 'Deadline 6',   titel: 'Third place play-off locks',              beskr: '4 hours before the third place match (18 Jul, 23:00 CET) predictions for that match close.' },
+      { datum: '19 Jul',        deadline: 'Deadline 7',   titel: 'Final locks',                             beskr: '4 hours before the World Cup final (19 Jul, 21:00 CET) the last prediction closes. The final is played at MetLife Stadium in New York/New Jersey.' },
+      { datum: 'After the final',deadline: null,          titel: 'Winner crowned & wine pot awarded',       beskr: 'The participant with the most points wins 50% of the wine pot. Congratulations in advance!' },
+    ],
+  },
+ 
+  fakta: {
+    titel: 'World Cup 2026 — quick facts',
+    items: [
+      { värde: '48',   etikett: 'Teams' },
+      { värde: '104',  etikett: 'Total matches' },
+      { värde: '16',   etikett: 'Host cities' },
+      { värde: '3',    etikett: 'Host nations' },
+      { värde: '11/6', etikett: 'Kick-off' },
+      { värde: '19/7', etikett: 'Final' },
+    ],
+  },
+ 
+  faq: {
+    titel: 'Frequently asked questions',
+    items: [
+      { q: 'Do I have to predict all 104 matches?',                        a: 'No, you can submit predictions for as many or as few matches as you like. You only earn points for matches you have actually predicted. It is however worth predicting as many as possible to maximise your score.' },
+      { q: 'What happens if I forget to predict a match?',                 a: 'You earn no points for that match — but it does not affect your other predictions. You can add more predictions right up until the respective deadline.' },
+      { q: 'How do extra time and penalties work?',                        a: 'Points are always based on the result after regular time (90 minutes). If a match ends 1–1 after 90 minutes but is decided on penalties, it counts as a draw for prediction purposes.' },
+      { q: 'Can I change my prediction after saving it?',                  a: 'Yes, you can update your predictions as many times as you like — right up until the respective deadline. The last saved prediction is the one that counts.' },
+      { q: 'When is the prediction breakdown shown?',                      a: 'The breakdown (how everyone predicted) is only revealed once the respective round has locked. Until then you can only see your own prediction.' },
+      { q: 'How do I choose my wine bottle?',                              a: 'Completely up to you! Pick a bottle you enjoy or one you think will impress the other participants. You enter a name and a link (e.g. from Systembolaget) when you sign up. The bottle can be changed until the competition locks on 11 June.' },
+      { q: 'Can I predict knockout matches before I know which teams are playing?', a: 'Yes! You can submit predictions for knockout matches right away — teams are shown as placeholders (e.g. "Winner Group A") until the group stage is complete. You can update your knockout predictions until each round\'s deadline.' },
+    ],
+  },
+ 
+  cta: {
+    text:  'Ready to start predicting? Sign up and choose your wine bottle!',
+    knapp: 'Sign up now',
+  },
+},
 
   scorers: {
     eyebrow:   'WC Predictions 2026',
@@ -342,6 +450,7 @@ const en = {
     stäng:      'Close',
     avbryt:     'Cancel',
     kr:         'SEK',
+    betalt:     'Paid',
   },
 }
 

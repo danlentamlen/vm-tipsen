@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../context/LanguageContext'
 import RekryteringSektion from '../components/RekryteringSektion'
 
 const MIN_PRIS = 180
@@ -85,14 +86,15 @@ const STYLES = `
 export default function MinVin() {
   const { användare } = useAuth()
   const navigate = useNavigate()
+  const { t } = useLanguage()
 
-  const [mittVin, setMittVin]         = useState(null)   // data från sheets
-  const [form, setForm]               = useState({ vin_namn: '', vin_url: '', vin_pris: '' })
-  const [swishNummer, setSwishNummer] = useState(null)
-  const [laddar, setLaddar]           = useState(true)
-  const [sparar, setSparar]           = useState(false)
+  const [mittVin, setMittVin]               = useState(null)
+  const [form, setForm]                     = useState({ vin_namn: '', vin_url: '', vin_pris: '' })
+  const [swishNummer, setSwishNummer]       = useState(null)
+  const [laddar, setLaddar]                 = useState(true)
+  const [sparar, setSparar]                 = useState(false)
   const [visBekräftelse, setVisBekräftelse] = useState(false)
-  const [fel, setFel]                 = useState(null)
+  const [fel, setFel]                       = useState(null)
 
   useEffect(() => {
     if (!användare) { navigate('/login'); return }
@@ -106,12 +108,11 @@ export default function MinVin() {
         fetch('/.netlify/functions/settings').catch(() => ({ json: () => ({}) })),
       ])
 
-      const vinerData = await vinerRes.json()
+      const vinerData   = await vinerRes.json()
       const inställData = await inställRes.json?.() ?? {}
 
       setSwishNummer(inställData.swish_nummer || null)
 
-      // Hitta användarens vin — matcha på user_id
       if (Array.isArray(vinerData)) {
         const mitt = vinerData.find((v) => v.user_id === användare.user_id)
         if (mitt) {
@@ -140,9 +141,9 @@ export default function MinVin() {
   const prisUtanför = form.vin_pris && !prisOk
   const totalPris   = prisOk && form.vin_pris ? pris + 10 : null
 
-  const betalt       = mittVin?.betalt === 'betalt'
-  const harVin       = !!mittVin?.vin_namn
-  const kanRedigera  = !betalt
+  const betalt      = mittVin?.betalt === 'betalt'
+  const harVin      = !!mittVin?.vin_namn
+  const kanRedigera = !betalt
 
   const swishMeddelande = användare?.namn
     ? 'VM-Tips-' + användare.namn.replace(/\s+/g, '-')
@@ -151,69 +152,71 @@ export default function MinVin() {
   async function handleSubmit(e) {
     e.preventDefault()
     setFel(null)
-    if (prisUtanför) { setFel(`Priset måste vara mellan ${MIN_PRIS} och ${MAX_PRIS} kr.`); return }
+    if (prisUtanför) {
+      setFel(t('minVin.prisUtanförIntervall', { min: MIN_PRIS, max: MAX_PRIS }))
+      return
+    }
     setSparar(true)
     try {
-      const res = await fetch('/.netlify/functions/viner-spara', {
+      const res  = await fetch('/.netlify/functions/viner-spara', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${användare.token}` },
         body: JSON.stringify(form),
       })
       const data = await res.json()
       if (!res.ok) {
-        setFel(data.error || 'Något gick fel')
+        setFel(data.error || t('gemensamt.fel'))
       } else {
-        // Uppdatera lokalt state direkt utan ny nätverksanrop
         setMittVin((prev) => ({ ...(prev || {}), ...form, user_id: användare.user_id, betalt: 'ej_betalt' }))
         setVisBekräftelse(true)
         window.scrollTo({ top: 0, behavior: 'smooth' })
       }
     } catch {
-      setFel('Något gick fel, försök igen')
+      setFel(t('gemensamt.fel'))
     } finally {
       setSparar(false)
     }
   }
 
   if (laddar) {
-    return <div style={{ textAlign:'center', padding:'4rem 1rem', color:'#888' }}>Laddar...</div>
+    return <div style={{ textAlign: 'center', padding: '4rem 1rem', color: '#888' }}>{t('minVin.laddar')}</div>
   }
 
   return (
     <>
       <style>{STYLES}</style>
       <div className="mv-wrap">
-        <p className="mv-eyebrow">VM-tipsen 2026</p>
-        <h1 className="mv-title">Min vinflaska</h1>
+        <p className="mv-eyebrow">{t('minVin.eyebrow')}</p>
+        <h1 className="mv-title">{t('minVin.titel')}</h1>
 
         {/* ── Statusbanner ── */}
         {betalt ? (
           <div className="mv-status paid">
             <span className="mv-status-icon">✅</span>
             <div>
-              <p className="mv-status-title">Betalning bekräftad</p>
-              <p className="mv-status-text">Admin har bekräftat din betalning. Din flaska är med i potten och kan inte längre ändras.</p>
+              <p className="mv-status-title">{t('minVin.status.betalt.titel')}</p>
+              <p className="mv-status-text">{t('minVin.status.betalt.text')}</p>
             </div>
           </div>
         ) : harVin ? (
           <div className="mv-status unpaid">
             <span className="mv-status-icon">⏳</span>
             <div>
-              <p className="mv-status-title">Väntar på betalning</p>
-              <p className="mv-status-text">Vinet är sparat. Swisha insatsen till admin för att bekräfta din plats i potten.</p>
+              <p className="mv-status-title">{t('minVin.status.ejBetalt.titel')}</p>
+              <p className="mv-status-text">{t('minVin.status.ejBetalt.text')}</p>
             </div>
           </div>
         ) : (
           <div className="mv-status missing">
             <span className="mv-status-icon">🍷</span>
             <div>
-              <p className="mv-status-title">Ingen vinflaska vald</p>
-              <p className="mv-status-text">Välj din flaska nedan. Den måste kosta mellan 180–220 kr.</p>
+              <p className="mv-status-title">{t('minVin.status.saknas.titel')}</p>
+              <p className="mv-status-text">{t('minVin.status.saknas.text', { min: MIN_PRIS, max: MAX_PRIS })}</p>
             </div>
           </div>
         )}
 
-        {/* ── Visat sparad flaska ── alltid synlig när vin är registrerat ── */}
+        {/* ── Visat sparad flaska ── */}
         {harVin && (
           <div className="mv-wine-display">
             {mittVin.bild_url ? (
@@ -224,10 +227,12 @@ export default function MinVin() {
             <div className="mv-wine-display-body">
               <p className="mv-wine-name">{mittVin.vin_namn}</p>
               <div className="mv-wine-meta">
-                {mittVin.vin_pris && <span className="mv-wine-price">{mittVin.vin_pris} kr</span>}
+                {mittVin.vin_pris && (
+                  <span className="mv-wine-price">{mittVin.vin_pris} {t('gemensamt.kr')}</span>
+                )}
                 {mittVin.vin_url && (
                   <a href={mittVin.vin_url} target="_blank" rel="noopener noreferrer" className="mv-wine-link">
-                    → Systembolaget
+                    {t('minVin.systembolaget')}
                   </a>
                 )}
               </div>
@@ -235,71 +240,101 @@ export default function MinVin() {
           </div>
         )}
 
-        {/* ── Swish-instruktion — visas alltid när vin är sparat men ej betalt ── */}
+        {/* ── Swish-instruktion ── */}
         {harVin && !betalt && (
           <div className="mv-confirm">
-            <p className="mv-confirm-title">💸 Swisha din insats</p>
+            <p className="mv-confirm-title">{t('minVin.swish.titel')}</p>
             <div className="mv-confirm-row">
-              <span className="mv-confirm-label">Vinflaska</span>
+              <span className="mv-confirm-label">{t('minVin.swish.vinflaska')}</span>
               <span className="mv-confirm-value">{mittVin?.vin_namn || form.vin_namn}</span>
             </div>
             <div className="mv-confirm-row">
-              <span className="mv-confirm-label">Vinpris</span>
-              <span className="mv-confirm-value gold">{mittVin?.vin_pris || form.vin_pris} kr</span>
+              <span className="mv-confirm-label">{t('minVin.swish.vinpris')}</span>
+              <span className="mv-confirm-value gold">
+                {mittVin?.vin_pris || form.vin_pris} {t('gemensamt.kr')}
+              </span>
             </div>
             <div className="mv-confirm-row">
-              <span className="mv-confirm-label">Adminavgift</span>
-              <span className="mv-confirm-value">10 kr</span>
+              <span className="mv-confirm-label">{t('minVin.swish.adminavgift')}</span>
+              <span className="mv-confirm-value">{t('minVin.swish.adminkr')}</span>
             </div>
             <div className="mv-confirm-total">
-              <span className="mv-confirm-total-label">Swisha totalt</span>
+              <span className="mv-confirm-total-label">{t('minVin.swish.total')}</span>
               <span className="mv-confirm-total-value">
-                {mittVin?.vin_pris ? Number(mittVin.vin_pris) + 10 : totalPris ?? '—'} kr
+                {mittVin?.vin_pris ? Number(mittVin.vin_pris) + 10 : totalPris ?? '—'} {t('gemensamt.kr')}
               </span>
             </div>
             {swishNummer && (
               <div className="mv-swish-box">
-                <p className="mv-swish-lbl">Swish-nummer</p>
+                <p className="mv-swish-lbl">{t('minVin.swish.nummer')}</p>
                 <p className="mv-swish-num">{swishNummer}</p>
-                <p className="mv-swish-hint">Märk betalningen: <strong>{swishMeddelande}</strong></p>
+                <p className="mv-swish-hint">
+                  {t('minVin.swish.märk')} <strong>{swishMeddelande}</strong>
+                </p>
               </div>
             )}
           </div>
         )}
 
-        {/* ── Formulär (visas om man kan redigera) ── */}
+        {/* ── Formulär ── */}
         {kanRedigera && (
           <div className="mv-form-card">
-            <p className="mv-form-title">{harVin ? 'Uppdatera din vinflaska' : 'Välj din vinflaska'}</p>
-            {fel && <div className="mv-alert error"><span>⚠️</span><span>{fel}</span></div>}
+            <p className="mv-form-title">
+              {harVin ? t('minVin.uppdateraForm') : t('minVin.väljaForm')}
+            </p>
+            {fel && (
+              <div className="mv-alert error"><span>⚠️</span><span>{fel}</span></div>
+            )}
             <form onSubmit={handleSubmit}>
               <div className="mv-field">
-                <label className="mv-label">Vinets namn *</label>
-                <input type="text" name="vin_namn" value={form.vin_namn} onChange={handleChange} required placeholder="t.ex. Château Margaux 2019" className="mv-input" />
+                <label className="mv-label">{t('minVin.vinNamn')}</label>
+                <input
+                  type="text" name="vin_namn" value={form.vin_namn}
+                  onChange={handleChange} required
+                  placeholder={t('minVin.vinNamnPlaceholder')}
+                  className="mv-input"
+                />
               </div>
               <div className="mv-field">
-                <label className="mv-label">Länk hos Systembolaget *</label>
-                <input type="url" name="vin_url" value={form.vin_url} onChange={handleChange} required placeholder="https://www.systembolaget.se/produkt/..." className="mv-input" />
-                <p className="mv-hint">Kopiera länken direkt från systembolaget.se</p>
+                <label className="mv-label">{t('minVin.länk')}</label>
+                <input
+                  type="url" name="vin_url" value={form.vin_url}
+                  onChange={handleChange} required
+                  placeholder={t('minVin.länkPlaceholder')}
+                  className="mv-input"
+                />
+                <p className="mv-hint">{t('minVin.länkHint')}</p>
               </div>
               <div className="mv-field">
-                <label className="mv-label">Pris (kr) *</label>
-                <input type="number" name="vin_pris" value={form.vin_pris} onChange={handleChange} required placeholder="t.ex. 199" min={MIN_PRIS} max={MAX_PRIS} className={`mv-input ${prisUtanför ? 'error' : ''}`} />
+                <label className="mv-label">{t('minVin.pris')}</label>
+                <input
+                  type="number" name="vin_pris" value={form.vin_pris}
+                  onChange={handleChange} required
+                  placeholder={t('minVin.prisPlaceholder')}
+                  min={MIN_PRIS} max={MAX_PRIS}
+                  className={`mv-input ${prisUtanför ? 'error' : ''}`}
+                />
                 {prisUtanför
-                  ? <p className="mv-hint warn">Priset måste vara mellan {MIN_PRIS} och {MAX_PRIS} kr.</p>
-                  : <p className="mv-hint">Välj en flaska mellan {MIN_PRIS}–{MAX_PRIS} kr.</p>
+                  ? <p className="mv-hint warn">{t('minVin.prisUtanförIntervall', { min: MIN_PRIS, max: MAX_PRIS })}</p>
+                  : <p className="mv-hint">{t('minVin.prisHint', { min: MIN_PRIS, max: MAX_PRIS })}</p>
                 }
               </div>
               <button type="submit" disabled={sparar || prisUtanför} className="mv-submit">
-                {sparar ? 'Sparar...' : harVin ? 'Uppdatera vinflaska' : 'Spara vinflaska 🍷'}
+                {sparar
+                  ? t('minVin.sparar')
+                  : harVin
+                    ? t('minVin.uppdatera')
+                    : t('minVin.spara')}
               </button>
             </form>
           </div>
         )}
+
         <RekryteringSektion />
+
         {/* Nästa steg */}
         {harVin && (
-          <Link to="/matches" className="mv-next">→ Börja tippa matcher</Link>
+          <Link to="/matches" className="mv-next">{t('minVin.nästaSteg')}</Link>
         )}
       </div>
     </>
