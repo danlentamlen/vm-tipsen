@@ -73,7 +73,7 @@ export default async (req) => {
       if (rad[0]) resultatMap[rad[0]] = { hemma: rad[1], borta: rad[2] }
     })
 
-    const tipsRader = await getRows(sheets, 'Tips!A2:E1000')
+    const tipsRader = await getRows(sheets, 'Tips!A2:E100000')
     const minaTips = tipsRader
       .filter((rad) => rad[1] === user_id)
       .map((rad) => {

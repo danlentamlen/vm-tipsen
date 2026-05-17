@@ -32,7 +32,6 @@ export default async (req) => {
         headers: { 'Content-Type': 'application/json' },
       })
     }
-
     // Hitta första team-svaret per användare
     const svarRader = await getRows(sheets, 'FrågorSvar!A2:D1000')
     const vinnareMap = {}

@@ -27,7 +27,7 @@ export default async (req) => {
       })
     }
 
-    const rader = await getRows(sheets, 'Tips!A2:E1000')
+    const rader = await getRows(sheets, 'Tips!A2:E100000')
     const minaTips = rader
       .filter((rad) => rad[1] === användare.user_id)
       .map((rad) => ({
@@ -40,7 +40,11 @@ export default async (req) => {
 
     return new Response(JSON.stringify(minaTips), {
       status: 200,
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store',
+        'Netlify-Vary': 'authorization',
+      },
     })
   }
 
@@ -66,7 +70,7 @@ export default async (req) => {
     // ── Låskontroll per match ──────────────────────────────
     const [settings, matcherRader] = await Promise.all([
       getSettings(),
-      getRows(sheets, 'Matcher!A2:H1000'),
+      getRows(sheets, 'Matcher!A2:H100000'),
     ])
 
     const allaMatcher = matcherRader.map((rad) => ({
@@ -97,7 +101,7 @@ export default async (req) => {
     }
 
     // Kolla om tips redan finns
-    const befintliga = await getRows(sheets, 'Tips!A2:E1000')
+    const befintliga = await getRows(sheets, 'Tips!A2:E100000')
     const befintligtIndex = befintliga.findIndex(
       (rad) => rad[1] === användare.user_id && rad[2] === match_id
     )

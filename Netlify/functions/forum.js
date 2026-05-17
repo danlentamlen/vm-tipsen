@@ -38,7 +38,7 @@ export default async (req) => {
 
       let inläggRader = []
       try {
-        inläggRader = await getRows(sheets, 'ForumInlagg!A2:E1000')
+        inläggRader = await getRows(sheets, 'ForumInlagg!A2:E10000')
         console.log(`[forum] ForumInlagg: ${inläggRader.length} rader`)
       } catch (e) {
         console.error('[forum] FEL vid läsning av ForumInlagg:', e.message)
@@ -61,7 +61,7 @@ export default async (req) => {
 
       let svarRader = []
       try {
-        svarRader = await getRows(sheets, 'ForumSvar!A2:F1000')
+        svarRader = await getRows(sheets, 'ForumSvar!A2:F10000')
         console.log(`[forum] ForumSvar: ${svarRader.length} rader`)
       } catch (e) {
         console.error('[forum] FEL vid läsning av ForumSvar:', e.message)
@@ -88,7 +88,7 @@ export default async (req) => {
 
       let gillRader = []
       try {
-        gillRader = await getRows(sheets, 'ForumGillningar!A2:C1000')
+        gillRader = await getRows(sheets, 'ForumGillningar!A2:C100000')
         console.log(`[forum] ForumGillningar: ${gillRader.length} rader`)
       } catch (e) {
         console.error('[forum] FEL vid läsning av ForumGillningar:', e.message)
@@ -144,7 +144,7 @@ export default async (req) => {
             status: 400, headers: { 'Content-Type': 'application/json' },
           })
         }
-        const gillRader = await getRows(sheets, 'ForumGillningar!A2:C1000')
+        const gillRader = await getRows(sheets, 'ForumGillningar!A2:C100000')
         const redanGillat = gillRader.find((r) => r[1] === inlägg_id && r[2] === användare.user_id)
         if (!redanGillat) {
           await appendRow(sheets, 'ForumGillningar!A:C', [uuidv4(), inlägg_id, användare.user_id])
@@ -213,7 +213,7 @@ export default async (req) => {
 
       const sheets = await getSheets()
       const sheetName  = typ === 'svar' ? 'ForumSvar'   : 'ForumInlagg'
-      const sheetRange = typ === 'svar' ? 'ForumSvar!A2:F1000' : 'ForumInlagg!A2:E1000'
+      const sheetRange = typ === 'svar' ? 'ForumSvar!A2:F1000' : 'ForumInlagg!A2:E10000'
       const sista      = typ === 'svar' ? 'F' : 'E'
 
       const rader = await getRows(sheets, sheetRange)

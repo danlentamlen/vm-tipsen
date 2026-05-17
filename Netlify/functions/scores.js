@@ -39,7 +39,7 @@ export default async (req) => {
     })
 
     // Hämta alla tips
-    const tipsRader = await getRows(sheets, 'Tips!A2:E1000')
+    const tipsRader = await getRows(sheets, 'Tips!A2:E100000')
 
     // Hämta frågor — rätt_svar finns nu i kolumn E (index 4)
     const frågor = await getRows(sheets, 'Frågor!A2:E1000')
@@ -56,7 +56,7 @@ export default async (req) => {
     })
 
     // Hämta frågesvar
-    const frågorSvarRader = await getRows(sheets, 'FrågorSvar!A2:D1000')
+    const frågorSvarRader = await getRows(sheets, 'FrågorSvar!A2:D100000')
 
     // Hämta användare
     const användareRader = await getRows(sheets, 'Användare!A2:B1000')

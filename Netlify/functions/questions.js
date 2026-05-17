@@ -28,7 +28,7 @@ export default async (req) => {
   // ── GET: Hämta alla frågor + mina svar ───────────────────────────
   if (req.method === 'GET') {
     const frågor = await getRows(sheets, 'Frågor!A2:G1000')
-    const svar   = await getRows(sheets, 'FrågorSvar!A2:D1000')
+    const svar   = await getRows(sheets, 'FrågorSvar!A2:D100000')
 
     const användare = verifyToken(req)
     const minaSvar  = {}
@@ -88,7 +88,7 @@ export default async (req) => {
     }
 
     // Kolla om svar redan finns — uppdatera i så fall
-    const befintliga      = await getRows(sheets, 'FrågorSvar!A2:D1000')
+    const befintliga      = await getRows(sheets, 'FrågorSvar!A2:D100000')
     const befintligtIndex = befintliga.findIndex(
       (rad) => rad[1] === användare.user_id && rad[2] === fråga_id
     )
