@@ -8,10 +8,29 @@
   port = 8888
   targetPort = 5173
 
-# SPA fallback — alla routes pekar på index.html så React Router kan hantera dem
+# Vite dev-proxy — endast aktiv lokalt, ignoreras i produktion
+[[redirects]]
+  from = "/@*"
+  to   = "http://localhost:5173/@:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/node_modules/*"
+  to   = "http://localhost:5173/node_modules/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/src/*"
+  to   = "http://localhost:5173/src/:splat"
+  status = 200
+  force = true
+
+# SPA fallback — måste vara sist
 [[redirects]]
   from = "/*"
-  to = "/index.html"
+  to   = "/index.html"
   status = 200
 
 # Kör var 15:e minut under VM (11 jun – 19 jul 2026)

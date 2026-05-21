@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import AdminVinReminder from '../components/AdminVinReminder'
 
 const STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500&display=swap');
@@ -328,6 +329,10 @@ export default function Admin() {
         </div>
 
         {/* Betalningar */}
+        <AdminVinReminder
+          adminSecret={adminSecret}
+          visaToast={visaToast}
+        />
         <div className="adm-card">
           <p className="adm-card-title">🍷 Betalningar</p>
           {viner.length === 0 ? (
