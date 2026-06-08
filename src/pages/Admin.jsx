@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import AdminVinReminder from '../components/AdminVinReminder'
+import AdminBetStatus from './AdminBetStatus'
 
 const STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500&display=swap');
@@ -10,7 +11,7 @@ const STYLES = `
 
   .adm-card { background:#fff; border:1px solid rgba(0,0,0,.07); border-radius:12px; padding:1.25rem 1.5rem; margin-bottom:1.25rem; box-shadow:0 1px 4px rgba(0,0,0,.04); }
   .adm-card-title { font-family:'Barlow Condensed',sans-serif; font-size:.82rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:#0a1628; margin-bottom:1rem; }
-
+  
   /* Login */
   .adm-login-page { min-height:calc(100vh - 60px); display:flex; align-items:center; justify-content:center; padding:2rem 1rem; }
   .adm-login-card { background:#fff; border-radius:16px; padding:2.5rem 2rem; width:100%; max-width:360px; box-shadow:0 8px 32px rgba(0,0,0,.1); border:1px solid rgba(0,0,0,.07); }
@@ -297,6 +298,20 @@ export default function Admin() {
         <p className="adm-eyebrow">VM-tipsen 2026</p>
         <h1 className="adm-title">Adminpanel</h1>
 
+        <a
+          href="/admin/tipsstatus"
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            fontFamily: "'Barlow Condensed',sans-serif", fontSize: '.78rem',
+            fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase',
+            padding: '8px 16px', borderRadius: 8, marginBottom: '1.5rem',
+            background: 'linear-gradient(135deg,#0a1628,#1a2e4a)', color: '#F0D060',
+            textDecoration: 'none',
+        }}
+      >
+        📊 Tipsstatus &amp; Påminnelser →
+      </a>
+
         <button onClick={logga_ut} style={{ display:'block', marginLeft:'auto', marginBottom:'1rem', background:'none', border:'none', cursor:'pointer', fontFamily:"'Barlow',sans-serif", fontSize:'.8rem', color:'#aaa', textDecoration:'underline' }}>
           Logga ut från admin
         </button>
@@ -359,6 +374,9 @@ export default function Admin() {
           )}
         </div>
       </div>
+
+      {/* Tipsstatus */}
+      <AdminBetStatus adminSecret={adminSecret} visaToast={visaToast} />
 
       {toast && <div className="adm-toast">{toast}</div>}
     </>

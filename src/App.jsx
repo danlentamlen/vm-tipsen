@@ -17,6 +17,7 @@ import Scorers from './pages/Scorers'
 import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
 import Forum from './pages/Forum'
+import AdminBetStatus from './pages/AdminBetStatus'
 
 const INGEN_FOOTER = ['/login', '/register', '/välkommen', '/glomt-losenord', '/nytt-losenord']
 
@@ -79,6 +80,7 @@ export default function App() {
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/questions" element={<Questions />} />
           <Route path="/admin" element={<Admin />} />
+          <Route path="/admin/tipsstatus" element={<AdminBetStatus />} />
           <Route path="/participants" element={<Participants />} />
           <Route path="/participant/:user_id" element={<ParticipantProfile />} />
           <Route path="/mitt-vin" element={<MinVin />} />
