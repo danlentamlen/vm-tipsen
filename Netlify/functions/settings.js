@@ -1,14 +1,11 @@
 import { getSheets, getRows } from './_sheets.js'
-import { getSettings, byggLåsMap } from './_settings.js'
+import { gruppspelLåst, byggLåsMap } from './_settings.js'
 
 export default async (req) => {
   try {
     const sheets = await getSheets()
 
-    const [settings, matcherRader] = await Promise.all([
-      getSettings(),
-      getRows(sheets, 'Matcher!A2:H1000'),
-    ])
+    const matcherRader = await getRows(sheets, 'Matcher!A2:H1000')
 
     const allaMatcher = matcherRader.map((rad) => ({
       match_id: rad[0],
@@ -21,20 +18,16 @@ export default async (req) => {
       arena:    rad[7],
     }))
 
-    // Bygg map: match_id -> låst (true/false)
-    const matchLås = byggLåsMap(allaMatcher, settings)
+    const låst = gruppspelLåst()
 
-    // Tilläggsfrågor låses globalt: tips_låst-flagga ELLER 11 juni
-    const nu = new Date()
-    const frågaDeadline = new Date('2026-06-11T00:00:00+02:00')
-    const frågorLåsta = settings.tips_låst === 'true' || nu >= frågaDeadline
+    // Bygg map: match_id -> låst (true/false)
+    const matchLås = byggLåsMap(allaMatcher)
 
     return new Response(
       JSON.stringify({
-        ...settings,
-        match_lås:    matchLås,    // { match_001: true, match_002: false, ... }
-        frågor_låsta: frågorLåsta, // boolean
-        // tips_låst behålls för bakåtkompatibilitet med Admin.jsx
+        tips_låst:    låst ? 'true' : 'false', // sträng för bakåtkompatibilitet med Admin.jsx
+        frågor_låsta: låst,                    // boolean
+        match_lås:    matchLås,                // { match_001: true, match_002: false, ... }
       }),
       {
         status: 200,

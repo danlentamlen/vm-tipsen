@@ -25,6 +25,16 @@ export async function setSetting(nyckel, värde) {
   }
 }
 
+// Deadline för gruppspelstips: 11 juni 2026 kl 16:00 svensk tid (CEST)
+export const GRUPPSPEL_DEADLINE = new Date('2026-06-11T16:00:00+02:00')
+
+/**
+ * Returnerar true om gruppspelet är låst (klockan har passerat deadline)
+ */
+export function gruppspelLåst() {
+  return new Date() >= GRUPPSPEL_DEADLINE
+}
+
 // Slutspelsomgångar som låses per omgång (inte individuellt)
 const SLUTSPELS_OMGÅNGAR = [
   'Round of 32',
@@ -36,31 +46,29 @@ const SLUTSPELS_OMGÅNGAR = [
 ]
 
 /**
- * Räknar ut om en match är låst baserat på:
- * - Gruppspel: låst om nu >= 2026-06-11 00:00 CEST (tips_låst-flagga som fallback)
+ * Räknar ut om en match är låst baserat på klockan:
+ * - Gruppspel: låst om nu >= GRUPPSPEL_DEADLINE
  * - Slutspel:  låst om nu >= (första matchens starttid i omgången) - 4 timmar
  *
  * @param {object} match - { match_id, datum, tid, omgång, grupp }
  * @param {object[]} allaMatcher - alla matcher (för att hitta första i omgången)
- * @param {object} settings - från getSettings()
  * @returns {boolean}
  */
-export function ärMatchLåst(match, allaMatcher, settings) {
+export function ärMatchLåst(match, allaMatcher) {
   const nu = new Date()
 
-  // Tilläggsfrågor och gruppspel: global tips_låst-flagga ELLER 11 juni
-  const gruppspelDeadline = new Date('2026-06-11T00:00:00+02:00') // CEST
+  // Tilläggsfrågor och gruppspel: enbart tidsbaserat
   if (!match.omgång || !SLUTSPELS_OMGÅNGAR.includes(match.omgång)) {
-    // Gruppspelsmatch
-    if (settings?.tips_låst === 'true') return true
-    return nu >= gruppspelDeadline
+    return nu >= GRUPPSPEL_DEADLINE
   }
 
-  // Slutspelsmatch — hitta första matchen i samma omgång
+  // Slutspelsmatch — låst tills gruppspelet är låst
+  if (!gruppspelLåst()) return true
+
+  // Hitta första matchen i omgången och lås 4h innan
   const omgångsMatcher = allaMatcher.filter((m) => m.omgång === match.omgång)
   if (omgångsMatcher.length === 0) return false
 
-  // Sortera på datum+tid och ta den tidigaste
   const sorterade = omgångsMatcher
     .map((m) => ({ ...m, startTid: parseMatchTid(m.datum, m.tid) }))
     .filter((m) => m.startTid !== null)
@@ -107,10 +115,10 @@ export function parseMatchTid(datum, tid) {
  * Returnerar en map: match_id -> boolean (låst eller ej)
  * Används av settings.js endpoint för att skicka till frontend
  */
-export function byggLåsMap(allaMatcher, settings) {
+export function byggLåsMap(allaMatcher) {
   const map = {}
   allaMatcher.forEach((m) => {
-    map[m.match_id] = ärMatchLåst(m, allaMatcher, settings)
+    map[m.match_id] = ärMatchLåst(m, allaMatcher)
   })
   return map
 }

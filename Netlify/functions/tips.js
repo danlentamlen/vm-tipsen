@@ -1,7 +1,7 @@
 import { getSheets, getRows, appendRow } from './_sheets.js'
 import jwt from 'jsonwebtoken'
 import { v4 as uuidv4 } from 'uuid'
-import { getSettings, ärMatchLåst } from './_settings.js'
+import { ärMatchLåst } from './_settings.js'
 
 function verifyToken(req) {
   const auth = req.headers.get('authorization')
@@ -68,10 +68,7 @@ export default async (req) => {
     }
 
     // ── Låskontroll per match ──────────────────────────────
-    const [settings, matcherRader] = await Promise.all([
-      getSettings(),
-      getRows(sheets, 'Matcher!A2:H100000'),
-    ])
+    const matcherRader = await getRows(sheets, 'Matcher!A2:H100000')
 
     const allaMatcher = matcherRader.map((rad) => ({
       match_id: rad[0],
@@ -93,7 +90,7 @@ export default async (req) => {
       })
     }
 
-    if (ärMatchLåst(dennaMatch, allaMatcher, settings)) {
+    if (ärMatchLåst(dennaMatch, allaMatcher)) {
       return new Response(
         JSON.stringify({ error: 'Tips för denna match är låsta' }),
         { status: 403, headers: { 'Content-Type': 'application/json' } }

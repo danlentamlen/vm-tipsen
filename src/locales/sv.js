@@ -145,6 +145,7 @@ const sv = {
     laddar:        'Laddar matcher...',
     infoBox:       'Gruppspelet tippas fram till den 11 juni. Varje slutspelsomgång öppnar för tips och stänger 4 timmar innan första matchen i omgången spelas.',
     progress:      '{{besvarade}} / {{total}} tippade',
+    kvar:          '{{antal}} kvar',
     loggaInBanner: 'Logga in för att lämna dina tips!',
     låstBanner:    'Tips är låsta av admin — klicka på en match för att se tipsfördelningen.',
     spara:         'Spara tips',

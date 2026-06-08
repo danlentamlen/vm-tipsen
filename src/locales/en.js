@@ -143,6 +143,7 @@ const en = {
     laddar:        'Loading matches...',
     infoBox:       'Group stage predictions close on 11 June. Each knockout round opens for predictions and closes 4 hours before the first match of that round.',
     progress:      '{{besvarade}} / {{total}} predicted',
+    kvar:          '{{antal}} left',
     loggaInBanner: 'Log in to submit your predictions!',
     låstBanner:    'Predictions are locked by admin — click a match to see the prediction breakdown.',
     spara:         'Save prediction',

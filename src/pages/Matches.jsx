@@ -98,17 +98,19 @@ const STYLES = `
   .m-progress-fill { height:100%; background:linear-gradient(90deg,#C8102E,#e63950); border-radius:99px; transition:width .4s ease; }
   .m-progress-label { font-family:'Barlow Condensed',sans-serif; font-size:.75rem; font-weight:600; letter-spacing:.1em; color:#aaa; white-space:nowrap; }
 
-  .m-nav { position:sticky; top:60px; z-index:10; background:rgba(248,246,242,.95); backdrop-filter:blur(8px); margin:0 -1rem 1.5rem; padding:.6rem 1rem; border-bottom:1px solid rgba(0,0,0,.06); }
-  .m-nav-scroll { display:flex; gap:6px; overflow-x:auto; scrollbar-width:none; padding-bottom:2px; }
-  .m-nav-scroll::-webkit-scrollbar { display:none; }
-  .m-nav-btn { font-family:'Barlow Condensed',sans-serif; font-size:.72rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; padding:5px 10px; border-radius:6px; border:1.5px solid rgba(0,0,0,.1); background:#fff; color:#555; cursor:pointer; white-space:nowrap; transition:all .15s; display:flex; align-items:center; gap:5px; }
+  .m-nav { position:sticky; top:60px; z-index:10; background:rgba(248,246,242,.95); backdrop-filter:blur(8px); margin:0 -1rem 1.5rem; padding:.6rem 1rem; border-bottom:1px solid rgba(0,0,0,.06); display:flex; flex-direction:column; gap:6px; }
+  .m-nav-grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:6px; }
+  .m-nav-grid-playoff { display:grid; grid-template-columns:repeat(3, 1fr); gap:6px; }
+  .m-nav-btn { font-family:'Barlow Condensed',sans-serif; font-size:.72rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; padding:6px 8px; border-radius:6px; border:1.5px solid rgba(0,0,0,.1); background:#fff; color:#999; cursor:pointer; transition:all .15s; display:flex; align-items:center; justify-content:center; gap:5px; width:100%; text-align:center; }
   .m-nav-btn:hover  { border-color:#0a1628; color:#0a1628; }
   .m-nav-btn.active { background:#0a1628; color:#F0D060; border-color:#0a1628; }
-  .m-nav-btn.klar   { border-color:rgba(50,160,80,.4); color:rgba(50,160,80,.9); background:rgba(50,160,80,.07); }
+  .m-nav-btn.klar   { border-color:rgba(50,160,80,.35); color:rgba(40,140,70,.85); background:rgba(50,160,80,.06); }
+  .m-nav-btn.pending { border-color:rgba(200,16,46,.35); color:#C8102E; background:rgba(200,16,46,.05); font-weight:800; }
   .m-nav-btn.slutspel-btn { border-color:rgba(197,160,40,.3); color:#7a5e10; background:rgba(197,160,40,.06); }
   .m-nav-btn.slutspel-btn.active { background:linear-gradient(135deg,#C5A028,#a8881f); color:#fff; border-color:transparent; }
-  .m-nav-badge { background:#C8102E; color:#fff; font-size:9px; font-weight:700; padding:0 4px; border-radius:100px; line-height:1; }
+  .m-nav-badge { background:#C8102E; color:#fff; font-size:9px; font-weight:700; padding:1px 5px; border-radius:100px; line-height:1.4; flex-shrink:0; }
   .m-nav-btn.active .m-nav-badge { background:rgba(255,255,255,.25); }
+  .m-nav-check { font-size:.7rem; opacity:.7; flex-shrink:0; }
 
   .m-group { margin-bottom:2.5rem; }
   .m-group-header { display:flex; align-items:center; gap:10px; margin-bottom:1rem; }
@@ -238,8 +240,8 @@ export default function Matches() {
     return ai - bi
   })
 
-  const totalTips = matcher.length
-  const besvarade = Object.keys(minaTips).length
+  const totalTips = gruppspelsMatcher.length
+  const besvarade = gruppspelsMatcher.filter(m => minaTips[m.match_id]).length
   const progress  = totalTips > 0 ? Math.round((besvarade / totalTips) * 100) : 0
 
   function scrollToGrupp(nyckel) {
@@ -311,38 +313,47 @@ export default function Matches() {
 
         {användare && (
           <div className="m-nav">
-            <div className="m-nav-scroll">
+            <div className="m-nav-grid">
               {gruppNycklar.map((grupp) => {
                 const allaMatcher = Object.values(gruppspelets[grupp]).flat()
                 const antal = otippade(allaMatcher)
                 const klar = ärKlar(allaMatcher)
+                const isPending = antal > 0
+                const stateClass = aktivGrupp === grupp ? 'active' : isPending ? 'pending' : klar ? 'klar' : ''
                 return (
                   <button
                     key={grupp}
-                    className={`m-nav-btn ${aktivGrupp === grupp ? 'active' : klar ? 'klar' : ''}`}
+                    className={`m-nav-btn ${stateClass}`}
                     onClick={() => scrollToGrupp(grupp)}
                   >
                     {grupp}
-                    {antal > 0 && <span className="m-nav-badge">{antal}</span>}
-                  </button>
-                )
-              })}
-              {slutspelNycklar.map((omg) => {
-                const allaMatcher = Object.values(slutspelet[omg]).flat()
-                const antal = otippade(allaMatcher)
-                const klar = ärKlar(allaMatcher)
-                return (
-                  <button
-                    key={omg}
-                    className={`m-nav-btn slutspel-btn ${aktivGrupp === omg ? 'active' : klar ? 'klar' : ''}`}
-                    onClick={() => scrollToGrupp(omg)}
-                  >
-                    {slutspelsNamn(omg)}
-                    {antal > 0 && <span className="m-nav-badge">{antal}</span>}
+                    {isPending
+                      ? <span className="m-nav-badge">{t('matches.kvar', { antal })}</span>
+                      : klar && <span className="m-nav-check">✓</span>
+                    }
                   </button>
                 )
               })}
             </div>
+            {slutspelNycklar.length > 0 && (
+              <div className="m-nav-grid-playoff">
+                {slutspelNycklar.map((omg) => {
+                  const allaMatcher = Object.values(slutspelet[omg]).flat()
+                  const antal = otippade(allaMatcher)
+                  const klar = ärKlar(allaMatcher)
+                  return (
+                    <button
+                      key={omg}
+                      className={`m-nav-btn slutspel-btn ${aktivGrupp === omg ? 'active' : klar ? 'klar' : ''}`}
+                      onClick={() => scrollToGrupp(omg)}
+                    >
+                      {slutspelsNamn(omg)}
+                      {antal > 0 && <span className="m-nav-badge">{antal}</span>}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
           </div>
         )}
 
