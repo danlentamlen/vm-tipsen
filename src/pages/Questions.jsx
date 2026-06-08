@@ -21,7 +21,10 @@ const STYLES = `
   .q-card { background: #fff; border: 1px solid rgba(0,0,0,0.07); border-radius: 12px; padding: 1.4rem 1.5rem; margin-bottom: 0.875rem; transition: box-shadow 0.15s, border-color 0.15s; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
   .q-card.clickable { cursor: pointer; }
   .q-card.clickable:hover { border-color: rgba(197,160,40,0.5); box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
-  .q-card.answered { border-left: 3px solid #C5A028; }
+  .q-card.answered { border-left: 3px solid #28a055; background: linear-gradient(to right, rgba(40,160,85,0.03), #fff 60px); }
+
+  .q-answered-badge { display:inline-flex; align-items:center; gap:4px; font-family:'Barlow Condensed',sans-serif; font-size:0.68rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; background:rgba(40,160,85,0.12); color:#1a7a40; border:1px solid rgba(40,160,85,0.25); padding:3px 8px; border-radius:20px; white-space:nowrap; flex-shrink:0; }
+  .q-unanswered-badge { display:inline-flex; align-items:center; gap:4px; font-family:'Barlow Condensed',sans-serif; font-size:0.68rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; background:rgba(200,16,46,0.06); color:#C8102E; border:1px solid rgba(200,16,46,0.15); padding:3px 8px; border-radius:20px; white-space:nowrap; flex-shrink:0; }
 
   .q-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 1rem; }
   .q-question { font-family: 'Barlow', sans-serif; font-size: 0.98rem; font-weight: 500; color: #0a1628; line-height: 1.5; flex: 1; }
@@ -139,7 +142,7 @@ export default function Questions() {
     )
   }
 
-  const besvarade = frågor.filter((f) => !f.mitt_svar).length
+  const besvarade = frågor.filter((f) => !!f.mitt_svar).length
   const progress  = Math.round((besvarade / frågor.length) * 100)
 
   return (
@@ -156,7 +159,7 @@ export default function Questions() {
               <div className="q-progress-fill" style={{ width: `${progress}%` }} />
             </div>
             <span className="q-progress-label">
-              {t('questions.besvarade', { antal: frågor.length - besvarade, total: frågor.length })}
+              {t('questions.besvarade', { antal: besvarade, total: frågor.length })}
             </span>
           </div>
         )}
@@ -360,7 +363,14 @@ function FrågeKort({ fråga, lag, inloggad, tipsLåst, sparar, nySparad, onSpar
     >
       <div className="q-card-top">
         <p className="q-question">{frågetext}</p>
-        <span className="q-points-badge">{fråga.poäng}p</span>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
+          <span className="q-points-badge">{fråga.poäng}p</span>
+          {inloggad && (
+            harSvarat
+              ? <span className="q-answered-badge">✓ {t('questions.sparat') || 'Sparat'}</span>
+              : !tipsLåst && <span className="q-unanswered-badge">! {t('questions.ej_besvarat') || 'Ej besvarat'}</span>
+          )}
+        </div>
       </div>
       {renderInput()}
     </div>

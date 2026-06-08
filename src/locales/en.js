@@ -150,6 +150,14 @@ const en = {
     uppdatera:     'Update',
     sparar:        '...',
     vs:            'VS',
+    resultat:      'Result',
+    dittTips:      'Your prediction',
+    exakt:         'exact',
+    rättVinnare:   'correct winner',
+    fel:           'wrong',
+    tips:          'predictions',
+    odds:          'Bookmaker odds',
+    oavgjort:      'Draw',
     slutspelsNamn: {
      'Round of 32':           'Round of 32',
      'Round of 16':           'Round of 16',
@@ -215,6 +223,7 @@ const en = {
     angeEttTal:          'Enter a number...',
     sökLag:              'Search team...',
     ingaLag:             'No teams found',
+    ej_besvarat:         'Not answered',
   },
 
   participants: {

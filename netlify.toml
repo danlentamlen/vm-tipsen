@@ -37,3 +37,8 @@
 [[scheduled-functions]]
   name = "sync-results"
   schedule = "*/15 * * * *"
+
+# Hämtar odds från The Odds API en gång per dag kl 15:00 CEST (13:00 UTC)
+[[scheduled-functions]]
+  name = "odds-fetch"
+  schedule = "0 13 * * *"

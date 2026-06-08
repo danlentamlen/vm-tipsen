@@ -1,12 +1,10 @@
 import { getSheets, getRows } from './_sheets.js'
-import { getSettings } from './_settings.js'
+import { gruppspelLåst } from './_settings.js'
 
 export default async (req) => {
   try {
-    const settings = await getSettings()
-
     // Tipsfördelning visas bara när tips är låsta
-    if (settings.tips_låst !== 'true') {
+    if (!gruppspelLåst()) {
       return new Response(
         JSON.stringify({ error: 'Tips är inte låsta än' }),
         { status: 403, headers: { 'Content-Type': 'application/json' } }

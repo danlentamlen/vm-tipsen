@@ -152,6 +152,14 @@ const sv = {
     uppdatera:     'Uppdatera',
     sparar:        '...',
     vs:            'VS',
+    resultat:      'Resultat',
+    dittTips:      'Ditt tips',
+    exakt:         'exakt',
+    rättVinnare:   'rätt vinnare',
+    fel:           'fel',
+    tips:          'tips',
+    odds:          'Spelbolagens odds',
+    oavgjort:      'Oavgjort',
     slutspelsNamn: {
      'Round of 32':           'Sextondelsfinal',
      'Round of 16':           'Åttondelsfinal',
@@ -217,6 +225,7 @@ const sv = {
    angeEttTal:          'Ange ett tal...',
    sökLag:              'Sök lag...',
    ingaLag:             'Inga lag hittades',
+   ej_besvarat:         'Ej besvarat',
   },
 
   participants: {
