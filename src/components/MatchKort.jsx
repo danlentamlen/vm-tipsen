@@ -95,28 +95,10 @@ export const MATCH_KORT_STYLES = `
   .mc-vs { font-family:'Barlow Condensed',sans-serif; font-size:.8rem; font-weight:600; letter-spacing:.1em; color:#ccc; }
   .mc-score-locked { display:flex; align-items:center; gap:4px; }
   .mc-score-box { font-family:'Barlow Condensed',sans-serif; font-size:1.1rem; font-weight:700; color:#0a1628; background:rgba(197,160,40,.1); border:1px solid rgba(197,160,40,.25); border-radius:6px; padding:3px 8px; min-width:28px; text-align:center; }
-  .mc-odds-wrap { padding:.45rem 1rem .6rem; border-top:1px solid rgba(0,0,0,.04); }
-  .mc-odds-header { display:flex; align-items:center; gap:5px; margin-bottom:6px; }
-  .mc-odds-eyebrow { font-family:'Barlow Condensed',sans-serif; font-size:.62rem; font-weight:700; letter-spacing:.18em; text-transform:uppercase; color:#bbb; }
-  .mc-odds-bar { display:flex; height:6px; border-radius:4px; overflow:hidden; margin-bottom:5px; gap:2px; }
-  .mc-odds-bar-home { background:#0a1628; border-radius:3px 0 0 3px; transition:width .4s; }
-  .mc-odds-bar-draw { background:#d0ccc4; }
-  .mc-odds-bar-away { background:#C8102E; border-radius:0 3px 3px 0; transition:width .4s; }
-  .mc-odds-labels { display:flex; align-items:center; justify-content:space-between; }
-  .mc-odds-side { display:flex; flex-direction:column; gap:1px; }
-  .mc-odds-side.home { align-items:flex-start; }
-  .mc-odds-side.away { align-items:flex-end; }
-  .mc-odds-team { display:flex; align-items:center; gap:3px; font-family:'Barlow',sans-serif; font-size:.72rem; color:#888; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100px; }
-  .mc-odds-team .flag { font-size:.78rem; flex-shrink:0; }
-  .mc-odds-pct { font-family:'Barlow Condensed',sans-serif; font-size:.82rem; font-weight:800; color:#0a1628; }
-  .mc-odds-draw-col { display:flex; flex-direction:column; align-items:center; gap:1px; }
-  .mc-odds-draw-label { font-family:'Barlow',sans-serif; font-size:.68rem; color:#aaa; }
-  .mc-odds-draw-pct { font-family:'Barlow Condensed',sans-serif; font-size:.82rem; font-weight:700; color:#888; }
-  .mc-result-row { display:flex; align-items:center; justify-content:center; gap:8px; padding:.6rem 1rem .35rem; }
-  .mc-result-box { font-family:'Barlow Condensed',sans-serif; font-size:1.25rem; font-weight:700; color:#fff; background:#0a1628; border-radius:7px; padding:4px 10px; min-width:32px; text-align:center; }
-  .mc-result-sep { font-family:'Barlow Condensed',sans-serif; font-size:1rem; font-weight:700; color:#0a1628; }
-  .mc-result-label { font-family:'Barlow Condensed',sans-serif; font-size:.6rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:#aaa; }
-  .mc-tip-row { display:flex; align-items:center; justify-content:center; gap:8px; padding:.25rem 1rem .5rem; }
+  .mc-result-inline { display:flex; align-items:center; gap:4px; }
+  .mc-rbox { font-family:'Barlow Condensed',sans-serif; font-size:1.15rem; font-weight:800; color:#fff; background:#0a1628; border-radius:7px; padding:4px 10px; min-width:30px; text-align:center; }
+  .mc-rsep { font-family:'Barlow Condensed',sans-serif; font-size:1rem; font-weight:700; color:#ccc; }
+  .mc-tip-strip { display:flex; align-items:center; gap:8px; padding:.45rem 1rem .55rem; border-top:1px solid rgba(0,0,0,.05); flex-wrap:wrap; }
   .mc-tip-score { display:flex; align-items:center; gap:4px; }
   .mc-tip-box { font-family:'Barlow Condensed',sans-serif; font-size:.95rem; font-weight:700; border-radius:5px; padding:2px 7px; min-width:24px; text-align:center; }
   .mc-tip-box.exact  { background:rgba(40,160,85,.15); color:#1a7a40; border:1px solid rgba(40,160,85,.3); }
@@ -132,8 +114,40 @@ export const MATCH_KORT_STYLES = `
   .mc-stat-chip.exact  { background:rgba(40,160,85,.1); color:#1a7a40; }
   .mc-stat-chip.winner { background:rgba(197,160,40,.12); color:#8a6800; }
   .mc-stat-chip.wrong  { background:rgba(200,16,46,.07); color:#b01030; }
-  .mc-stat-chip.dist   { background:rgba(10,22,40,.05); color:#666; }
   .mc-stat-totalt { font-family:'Barlow',sans-serif; font-size:.65rem; color:#bbb; margin-left:auto; white-space:nowrap; }
+  .mc-odds-wrap { padding:.3rem 1rem .4rem; border-top:1px solid rgba(0,0,0,.04); }
+  .mc-odds-header { display:flex; align-items:center; gap:5px; margin-bottom:4px; }
+  .mc-odds-eyebrow { font-family:'Barlow Condensed',sans-serif; font-size:.62rem; font-weight:700; letter-spacing:.18em; text-transform:uppercase; color:#bbb; }
+  .mc-odds-bar { display:flex; height:5px; border-radius:4px; overflow:hidden; margin-bottom:4px; gap:2px; }
+  .mc-odds-bar-home { background:#0a1628; border-radius:3px 0 0 3px; transition:width .4s; }
+  .mc-odds-bar-draw { background:#d0ccc4; }
+  .mc-odds-bar-away { background:#C8102E; border-radius:0 3px 3px 0; transition:width .4s; }
+  .mc-odds-labels { display:flex; align-items:center; justify-content:space-between; }
+  .mc-odds-side { display:flex; flex-direction:column; gap:1px; }
+  .mc-odds-side.home { align-items:flex-start; }
+  .mc-odds-side.away { align-items:flex-end; }
+  .mc-odds-team { display:flex; align-items:center; gap:3px; font-family:'Barlow',sans-serif; font-size:.68rem; color:#888; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100px; }
+  .mc-odds-team .flag { font-size:.75rem; flex-shrink:0; }
+  .mc-odds-pct { font-family:'Barlow Condensed',sans-serif; font-size:.78rem; font-weight:800; color:#0a1628; }
+  .mc-odds-draw-col { display:flex; flex-direction:column; align-items:center; gap:1px; }
+  .mc-odds-draw-label { font-family:'Barlow',sans-serif; font-size:.65rem; color:#aaa; }
+  .mc-odds-draw-pct { font-family:'Barlow Condensed',sans-serif; font-size:.78rem; font-weight:700; color:#888; }
+  .mc-result-label { font-family:'Barlow Condensed',sans-serif; font-size:.6rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:#aaa; }
+  .mc-combo-wrap { display:flex; flex-direction:column; gap:6px; padding:.45rem 1rem .55rem; border-top:1px solid rgba(0,0,0,.04); }
+  .mc-combo-eyebrow { font-family:'Barlow Condensed',sans-serif; font-size:.62rem; font-weight:700; letter-spacing:.18em; text-transform:uppercase; color:#bbb; }
+  .mc-combo-grid { display:grid; grid-template-columns:68px 1fr; gap:12px; align-items:center; }
+  .mc-donut-col { display:flex; flex-direction:column; align-items:center; gap:4px; }
+  .mc-donut-legend { display:flex; gap:4px; flex-wrap:wrap; justify-content:center; }
+  .mc-donut-leg { font-family:'Barlow Condensed',sans-serif; font-size:.6rem; font-weight:700; }
+  .mc-donut-leg.h { color:#0a1628; }
+  .mc-donut-leg.x { color:#9a9690; }
+  .mc-donut-leg.b { color:#C8102E; }
+  .mc-sc-list { display:flex; flex-direction:column; gap:5px; }
+  .mc-sc-row { display:flex; align-items:center; gap:7px; }
+  .mc-sc-score { font-family:'Barlow Condensed',sans-serif; font-size:.88rem; font-weight:800; color:#0a1628; min-width:30px; }
+  .mc-sc-bar-wrap { flex:1; height:4px; background:rgba(0,0,0,.07); border-radius:2px; overflow:hidden; }
+  .mc-sc-bar-fill { height:100%; background:#0a1628; border-radius:2px; opacity:.5; transition:width .3s; }
+  .mc-sc-cnt { font-family:'Barlow',sans-serif; font-size:.62rem; color:#aaa; text-align:right; min-width:38px; white-space:nowrap; }
   .mc-footer { display:flex; align-items:center; gap:6px; padding:.4rem 1rem .5rem; border-top:1px solid rgba(0,0,0,.05); font-family:'Barlow',sans-serif; font-size:.75rem; color:#bbb; }
   .mc-footer-dot { width:3px; height:3px; border-radius:50%; background:#ddd; }
 `
@@ -191,7 +205,11 @@ export default function MatchKort({ match, tip, inloggad, tipsLåst, sparar, onS
                 <span className="mc-score-box">{borta}</span>
               </div>
             ) : tipsLåst && harResultat ? (
-              <span className="mc-vs">{stats.resultat_hemma} – {stats.resultat_borta}</span>
+              <div className="mc-result-inline">
+                <span className="mc-rbox">{stats.resultat_hemma}</span>
+                <span className="mc-rsep">–</span>
+                <span className="mc-rbox">{stats.resultat_borta}</span>
+              </div>
             ) : (
               <span className="mc-vs">{t?.('matches.vs') || 'vs'}</span>
             )}
@@ -204,36 +222,28 @@ export default function MatchKort({ match, tip, inloggad, tipsLåst, sparar, onS
         </div>
       </div>
 
-      {tipsLåst && harResultat && (
-        <div style={{ borderTop: '1px solid rgba(0,0,0,.05)' }}>
-          <div className="mc-result-row">
-            <span className="mc-result-label">{t?.('matches.resultat') || 'Resultat'}</span>
-            <span className="mc-result-box">{stats.resultat_hemma}</span>
-            <span className="mc-result-sep">–</span>
-            <span className="mc-result-box">{stats.resultat_borta}</span>
-          </div>
-          {inloggad && (
-            <div className="mc-tip-row">
-              <span className="mc-result-label">{t?.('matches.dittTips') || 'Ditt tips'}</span>
-              {harTips ? (
-                <>
-                  <div className="mc-tip-score">
-                    <span className={`mc-tip-box ${outcomeClass}`}>{tip.hemma_mål}</span>
-                    <span className="mc-sep" style={{ fontSize: '.75rem', color: '#bbb' }}>–</span>
-                    <span className={`mc-tip-box ${outcomeClass}`}>{tip.borta_mål}</span>
-                  </div>
-                  <span className={`mc-pts-badge ${outcomeClass}`}>
-                    {poäng === 5 ? '+5 p ⭐' : poäng === 2 ? '+2 p' : '0 p'}
-                  </span>
-                </>
-              ) : (
-                <span className="mc-tip-box notip">–</span>
-              )}
-            </div>
+      {/* Played match: compact tip strip */}
+      {tipsLåst && harResultat && inloggad && (
+        <div className="mc-tip-strip">
+          <span className="mc-result-label">{t?.('matches.dittTips') || 'Ditt tips'}</span>
+          {harTips ? (
+            <>
+              <div className="mc-tip-score">
+                <span className={`mc-tip-box ${outcomeClass}`}>{tip.hemma_mål}</span>
+                <span className="mc-sep" style={{ fontSize: '.75rem', color: '#bbb' }}>–</span>
+                <span className={`mc-tip-box ${outcomeClass}`}>{tip.borta_mål}</span>
+              </div>
+              <span className={`mc-pts-badge ${outcomeClass}`}>
+                {poäng === 5 ? '+5 p ⭐' : poäng === 2 ? '+2 p' : '0 p'}
+              </span>
+            </>
+          ) : (
+            <span className="mc-tip-box notip">–</span>
           )}
         </div>
       )}
 
+      {/* Played match: group accuracy stats */}
       {tipsLåst && harResultat && stats.totalt > 0 && (
         <div className="mc-stat-row">
           <span className="mc-stat-chip exact">⚽ {Math.round((stats.exakt / stats.totalt) * 100)}% {t?.('matches.exakt') || 'exakt'}</span>
@@ -243,6 +253,7 @@ export default function MatchKort({ match, tip, inloggad, tipsLåst, sparar, onS
         </div>
       )}
 
+      {/* Odds bar (upcoming matches) */}
       {odds && !harResultat && (
         <div className="mc-odds-wrap">
           <div className="mc-odds-header">
@@ -270,14 +281,66 @@ export default function MatchKort({ match, tip, inloggad, tipsLåst, sparar, onS
         </div>
       )}
 
-      {tipsLåst && !harResultat && stats && stats.totalt > 0 && (
-        <div className="mc-stat-row">
-          <span className="mc-stat-chip dist">H {stats.hemma_pct}%</span>
-          <span className="mc-stat-chip dist">X {stats.draw_pct}%</span>
-          <span className="mc-stat-chip dist">B {stats.borta_pct}%</span>
-          <span className="mc-stat-totalt">{stats.totalt} {t?.('matches.tips') || 'tips'}</span>
-        </div>
-      )}
+      {/* Upcoming: donut + top 3 scores (two-column) */}
+      {tipsLåst && !harResultat && stats && stats.totalt > 0 && (() => {
+        const r = 17
+        const circ = 2 * Math.PI * r
+        const homeLen = (stats.hemma_pct / 100) * circ
+        const drawLen = (stats.draw_pct / 100) * circ
+        const awayLen = (stats.borta_pct / 100) * circ
+        const top3 = stats.populäraste?.slice(0, 3) || []
+        const maxCount = top3[0]?.count || 1
+        return (
+          <div className="mc-combo-wrap">
+            <div className="mc-combo-eyebrow">Gruppens tips</div>
+            <div className="mc-combo-grid">
+            <div className="mc-donut-col">
+              <svg viewBox="0 0 50 50" width="62" height="62">
+                <circle cx="25" cy="25" r={r} fill="none" stroke="#f0ede6" strokeWidth="7" />
+                {stats.hemma_pct > 0 && (
+                  <circle cx="25" cy="25" r={r} fill="none" stroke="#0a1628" strokeWidth="7"
+                    strokeDasharray={`${homeLen} ${circ}`}
+                    strokeDashoffset="0"
+                    transform="rotate(-90 25 25)" />
+                )}
+                {stats.draw_pct > 0 && (
+                  <circle cx="25" cy="25" r={r} fill="none" stroke="#9a9690" strokeWidth="7"
+                    strokeDasharray={`${drawLen} ${circ}`}
+                    strokeDashoffset={`${-homeLen}`}
+                    transform="rotate(-90 25 25)" />
+                )}
+                {stats.borta_pct > 0 && (
+                  <circle cx="25" cy="25" r={r} fill="none" stroke="#C8102E" strokeWidth="7"
+                    strokeDasharray={`${awayLen} ${circ}`}
+                    strokeDashoffset={`${-(homeLen + drawLen)}`}
+                    transform="rotate(-90 25 25)" />
+                )}
+                <text x="25" y="23" textAnchor="middle" fontFamily="Barlow Condensed, sans-serif" fontSize="8.5" fontWeight="700" fill="#0a1628">{stats.totalt}</text>
+                <text x="25" y="31" textAnchor="middle" fontFamily="Barlow, sans-serif" fontSize="5.5" fill="#aaa">tips</text>
+              </svg>
+              <div className="mc-donut-legend">
+                <span className="mc-donut-leg h">H {stats.hemma_pct}%</span>
+                <span className="mc-donut-leg x">X {stats.draw_pct}%</span>
+                <span className="mc-donut-leg b">B {stats.borta_pct}%</span>
+              </div>
+            </div>
+            {top3.length > 0 && (
+              <div className="mc-sc-list">
+                {top3.map((s) => (
+                  <div key={`${s.hemma}-${s.borta}`} className="mc-sc-row">
+                    <span className="mc-sc-score">{s.hemma}–{s.borta}</span>
+                    <div className="mc-sc-bar-wrap">
+                      <div className="mc-sc-bar-fill" style={{ width: `${Math.round((s.count / maxCount) * 100)}%` }} />
+                    </div>
+                    <span className="mc-sc-cnt">{s.count} tips</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            </div>
+          </div>
+        )
+      })()}
 
       {(tid || match.arena) && (
         <div className="mc-footer">

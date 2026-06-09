@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
-import MatchKort, { normName, MATCH_KORT_STYLES } from '../components/MatchKort'
+import MatchKort, { normName, getFlag, MATCH_KORT_STYLES } from '../components/MatchKort'
 
 const GRUPPSPEL_DEADLINE = new Date('2026-06-11T16:00:00+02:00')
 
@@ -63,20 +63,73 @@ const DASHBOARD_STYLES = `
   .dash-eyebrow { font-family:'Barlow Condensed',sans-serif; font-size:.72rem; font-weight:600; letter-spacing:.22em; text-transform:uppercase; color:#C8102E; margin-bottom:.3rem; }
   .dash-title { font-family:'Barlow Condensed',sans-serif; font-size:clamp(1.8rem,6vw,2.8rem); font-weight:700; color:#0a1628; letter-spacing:.02em; line-height:1; margin-bottom:1.5rem; }
 
-  .dash-stats { display:flex; gap:0; border:1px solid rgba(0,0,0,.07); border-radius:12px; overflow:hidden; margin-bottom:1.75rem; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.04); }
-  .dash-stat { flex:1; text-align:center; padding:.875rem .5rem; border-right:1px solid rgba(0,0,0,.07); }
-  .dash-stat:last-child { border-right:none; }
-  .dash-stat-num { font-family:'Barlow Condensed',sans-serif; font-size:1.6rem; font-weight:700; color:#C5A028; line-height:1; display:block; }
-  .dash-stat-lbl { font-size:.6rem; font-weight:600; letter-spacing:.14em; text-transform:uppercase; color:#aaa; margin-top:3px; display:block; }
+  /* ── Post-lock hero (non-logged-in) ── */
+  .pl-hero { background:linear-gradient(135deg,#0a1628 0%,#1a2e4a 100%); padding:2.5rem 1.5rem 2.25rem; text-align:center; }
+  .pl-hero-eyebrow { display:inline-flex; align-items:center; gap:8px; background:rgba(197,160,40,.12); border:1px solid rgba(197,160,40,.3); border-radius:100px; padding:5px 14px; font-family:'Barlow Condensed',sans-serif; font-size:.72rem; font-weight:600; letter-spacing:.18em; text-transform:uppercase; color:#F0D060; margin-bottom:1rem; }
+  .pl-hero-title { font-family:'Barlow Condensed',sans-serif; font-size:clamp(2.2rem,8vw,4rem); font-weight:700; color:#fff; line-height:.95; letter-spacing:.01em; margin-bottom:.5rem; }
+  .pl-hero-title .accent { color:#C8102E; }
+  .pl-hero-sub { font-family:'Barlow',sans-serif; font-size:.9rem; color:rgba(255,255,255,.5); margin-bottom:1.5rem; line-height:1.6; max-width:400px; margin-left:auto; margin-right:auto; }
+  .pl-hero-actions { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+  .pl-btn-primary { display:inline-block; text-decoration:none; padding:10px 24px; border-radius:7px; background:linear-gradient(135deg,#C8102E,#e01535); color:#fff; font-family:'Barlow Condensed',sans-serif; font-size:.88rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; transition:opacity .2s; }
+  .pl-btn-primary:hover { opacity:.85; }
+  .pl-btn-secondary { display:inline-block; text-decoration:none; padding:10px 20px; border-radius:7px; background:transparent; color:rgba(255,255,255,.75); font-family:'Barlow Condensed',sans-serif; font-size:.88rem; font-weight:600; letter-spacing:.1em; text-transform:uppercase; border:1px solid rgba(255,255,255,.2); transition:border-color .2s,color .2s; }
+  .pl-btn-secondary:hover { border-color:#F0D060; color:#F0D060; }
 
+  /* ── Post-lock hero (logged-in) ── */
+  .li-hero { background:linear-gradient(135deg,#0a1628 0%,#1a2e4a 100%); padding:1.75rem 1.5rem; }
+  .li-hero-inner { max-width:760px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; }
+  .li-hero-left { display:flex; flex-direction:column; gap:4px; }
+  .li-hero-eyebrow { font-family:'Barlow Condensed',sans-serif; font-size:.68rem; font-weight:600; letter-spacing:.2em; text-transform:uppercase; color:rgba(255,255,255,.35); }
+  .li-hero-name { font-family:'Barlow Condensed',sans-serif; font-size:clamp(1.8rem,5vw,2.8rem); font-weight:700; color:#fff; line-height:1; letter-spacing:.02em; }
+  .li-hero-right { display:flex; flex-direction:column; align-items:flex-end; gap:10px; }
+  .li-hero-rank { display:flex; align-items:baseline; gap:8px; }
+  .li-hero-rank-pos { font-family:'Barlow Condensed',sans-serif; font-size:2.2rem; font-weight:700; color:#F0D060; line-height:1; }
+  .li-hero-rank-pts { font-family:'Barlow Condensed',sans-serif; font-size:.88rem; font-weight:600; color:rgba(255,255,255,.4); }
+  .li-hero-links { display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; }
+  .li-hero-link { text-decoration:none; font-family:'Barlow Condensed',sans-serif; font-size:.68rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; padding:5px 10px; border-radius:6px; border:1px solid rgba(255,255,255,.15); color:rgba(255,255,255,.6); transition:all .15s; white-space:nowrap; }
+  .li-hero-link:hover { border-color:rgba(197,160,40,.45); color:#F0D060; }
+
+  /* ── Banner C ── */
+  .home-banner { display:flex; border:1px solid rgba(0,0,0,.07); border-radius:12px; overflow:hidden; margin-bottom:1.75rem; box-shadow:0 1px 3px rgba(0,0,0,.04); }
+  .home-banner-main { flex:1; background:#fff; padding:.9rem 1rem; display:flex; align-items:center; }
+  .home-banner-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(72px,1fr)); gap:.6rem; width:100%; }
+  .hb-stat { display:flex; flex-direction:column; align-items:center; gap:3px; padding:.6rem .25rem; border-radius:8px; background:rgba(10,22,40,.03); }
+  .hb-icon { font-size:1.1rem; line-height:1; }
+  .hb-num { font-family:'Barlow Condensed',sans-serif; font-size:1.35rem; font-weight:700; color:#0a1628; line-height:1; }
+  .hb-lbl { font-size:.58rem; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:#bbb; text-align:center; }
+  .home-banner-pot { background:#0a1628; padding:1.1rem 1.25rem; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; min-width:120px; }
+  .hb-pot-icon { font-size:1.75rem; line-height:1; }
+  .hb-pot-num { font-family:'Barlow Condensed',sans-serif; font-size:1.4rem; font-weight:700; color:#F0D060; line-height:1; }
+  .hb-pot-lbl { font-size:.58rem; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:rgba(255,255,255,.4); text-align:center; }
+
+  /* ── Section headers ── */
   .dash-section { margin-bottom:2rem; }
   .dash-section-header { display:flex; align-items:center; gap:10px; margin-bottom:.875rem; }
   .dash-section-pill { font-family:'Barlow Condensed',sans-serif; font-size:.7rem; font-weight:700; letter-spacing:.18em; text-transform:uppercase; background:#0a1628; color:#F0D060; padding:3px 10px; border-radius:20px; white-space:nowrap; }
   .dash-section-pill.gold { background:linear-gradient(135deg,#C5A028,#a8881f); color:#fff; }
+  .dash-section-pill.live { background:#C8102E; color:#fff; }
   .dash-section-line { flex:1; height:1px; background:rgba(0,0,0,.07); }
   .dash-see-all { font-family:'Barlow Condensed',sans-serif; font-size:.72rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:#C5A028; text-decoration:none; padding:4px 0; white-space:nowrap; }
   .dash-see-all:hover { color:#0a1628; }
 
+  /* ── Yesterday's best ── */
+  .igd-card { background:#fff; border:1px solid rgba(197,160,40,.25); border-radius:12px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,.04); }
+  .igd-header { display:flex; align-items:center; gap:10px; padding:.75rem 1rem; background:rgba(197,160,40,.06); border-bottom:1px solid rgba(197,160,40,.12); }
+  .igd-crown { font-size:1.4rem; }
+  .igd-header-text { display:flex; flex-direction:column; gap:1px; }
+  .igd-eyebrow { font-family:'Barlow Condensed',sans-serif; font-size:.8rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:#8a6800; }
+  .igd-sub { font-family:'Barlow',sans-serif; font-size:.7rem; color:#bbb; }
+  .igd-row { display:flex; align-items:center; gap:10px; padding:.65rem 1rem; border-bottom:.5px solid rgba(0,0,0,.04); }
+  .igd-row:last-child { border-bottom:none; }
+  .igd-pos { width:20px; font-family:'Barlow Condensed',sans-serif; font-size:.9rem; font-weight:700; color:#C5A028; text-align:center; flex-shrink:0; }
+  .igd-name { flex:1; font-family:'Barlow',sans-serif; font-size:.88rem; font-weight:500; color:#0a1628; }
+  .igd-badges { display:flex; align-items:center; gap:6px; }
+  .igd-badge { font-family:'Barlow Condensed',sans-serif; font-size:.68rem; font-weight:700; padding:2px 7px; border-radius:20px; }
+  .igd-badge.exact { background:rgba(40,160,85,.12); color:#1a7a40; }
+  .igd-badge.winner { background:rgba(197,160,40,.15); color:#8a6800; }
+  .igd-pts { font-family:'Barlow Condensed',sans-serif; font-size:.9rem; font-weight:700; color:#0a1628; white-space:nowrap; }
+
+  /* ── Leaderboard ── */
   .lb-card { background:#fff; border:1px solid rgba(0,0,0,.07); border-radius:12px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,.04); }
   .lb-row { display:flex; align-items:center; gap:10px; padding:.7rem 1rem; border-bottom:.5px solid rgba(0,0,0,.05); }
   .lb-row:last-child { border-bottom:none; }
@@ -89,24 +142,71 @@ const DASHBOARD_STYLES = `
   .lb-pts { font-family:'Barlow Condensed',sans-serif; font-size:.95rem; font-weight:700; color:#0a1628; }
   .lb-pts-lbl { font-family:'Barlow Condensed',sans-serif; font-size:.62rem; color:#aaa; margin-left:2px; }
 
+  /* ── Skytteligan ── */
+  .sk-podium { display:grid; grid-template-columns:1fr 1fr; gap:.75rem; margin-bottom:.75rem; }
+  .sk-leader { background:linear-gradient(160deg,#0a1628 0%,#1a2e4a 100%); border-radius:12px; padding:1.25rem 1rem; display:flex; flex-direction:column; align-items:center; gap:5px; box-shadow:0 2px 8px rgba(10,22,40,.15); }
+  .sk-leader-medal { font-size:1.2rem; line-height:1; }
+  .sk-leader-flag { font-size:2.2rem; line-height:1; margin:2px 0; }
+  .sk-leader-goals { font-family:'Barlow Condensed',sans-serif; font-size:3rem; font-weight:700; color:#F0D060; line-height:1; }
+  .sk-leader-goals-lbl { font-family:'Barlow Condensed',sans-serif; font-size:.6rem; font-weight:600; letter-spacing:.2em; text-transform:uppercase; color:rgba(255,255,255,.35); }
+  .sk-leader-name { font-family:'Barlow',sans-serif; font-size:.88rem; font-weight:500; color:#fff; text-align:center; margin-top:2px; }
+  .sk-leader-country { font-family:'Barlow',sans-serif; font-size:.72rem; color:rgba(255,255,255,.45); }
+  .sk-sub-col { display:flex; flex-direction:column; gap:.6rem; }
+  .sk-card { background:#fff; border:1px solid rgba(0,0,0,.07); border-radius:12px; padding:.9rem 1rem; display:flex; flex-direction:column; align-items:center; gap:4px; box-shadow:0 1px 3px rgba(0,0,0,.04); flex:1; }
+  .sk-card-medal { font-size:.95rem; line-height:1; }
+  .sk-card-flag { font-size:1.5rem; line-height:1; }
+  .sk-card-goals { font-family:'Barlow Condensed',sans-serif; font-size:1.75rem; font-weight:700; color:#0a1628; line-height:1; }
+  .sk-card-name { font-family:'Barlow',sans-serif; font-size:.78rem; font-weight:500; color:#0a1628; text-align:center; }
+  .sk-card-country { font-family:'Barlow',sans-serif; font-size:.68rem; color:#aaa; }
+  .sk-rest-card { background:#fff; border:1px solid rgba(0,0,0,.07); border-radius:12px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,.04); }
+  .sk-rest-row { display:flex; align-items:center; gap:10px; padding:.6rem 1rem; border-bottom:.5px solid rgba(0,0,0,.05); }
+  .sk-rest-row:last-child { border-bottom:none; }
+  .sk-rest-pos { width:22px; font-family:'Barlow Condensed',sans-serif; font-size:.85rem; font-weight:700; color:#aaa; text-align:center; flex-shrink:0; }
+  .sk-rest-flag { font-size:1.1rem; line-height:1; flex-shrink:0; }
+  .sk-rest-name { flex:1; font-family:'Barlow',sans-serif; font-size:.88rem; font-weight:500; color:#0a1628; }
+  .sk-rest-goals { font-family:'Barlow Condensed',sans-serif; font-size:.9rem; font-weight:700; color:#0a1628; white-space:nowrap; }
+
   .dash-empty { background:#fff; border:1px solid rgba(0,0,0,.07); border-radius:12px; padding:1.5rem 1rem; text-align:center; font-family:'Barlow',sans-serif; font-size:.88rem; color:#aaa; box-shadow:0 1px 3px rgba(0,0,0,.04); }
+
+  @media (max-width:480px) {
+    .sk-podium { grid-template-columns:1fr; }
+    .home-banner-pot { min-width:100px; }
+  }
 
   ${MATCH_KORT_STYLES}
 `
 
+// Parse match start time from tid string like "15:00 UTC-4"
+function parseMatchTidFrontend(datum, tid) {
+  if (!datum || !tid) return null
+  try {
+    const m = tid.match(/(\d{1,2}):(\d{2})(?:\s*UTC([+-]?\d+(?:\.\d+)?))?/i)
+    if (!m) return null
+    const h = parseInt(m[1])
+    const min = parseInt(m[2])
+    const offset = m[3] ? parseFloat(m[3]) : 0
+    // Build UTC time: local match time minus offset = UTC
+    const d = new Date(`${datum}T${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}:00Z`)
+    d.setTime(d.getTime() - offset * 3600000)
+    return d
+  } catch { return null }
+}
+
 export default function Home() {
   const { användare } = useAuth()
   const { t }         = useLanguage()
-  const [ticker, setTicker]       = useState(null)
-  const [målData, setMålData]     = useState(null)
+  const [ticker, setTicker]           = useState(null)
+  const [målData, setMålData]         = useState(null)
   const gruppspelLåst = new Date() >= GRUPPSPEL_DEADLINE
 
   // Dashboard state (post-lock only)
-  const [matcher, setMatcher]       = useState([])
-  const [minaTips, setMinaTips]     = useState({})
-  const [matchStats, setMatchStats] = useState({})
-  const [odds, setOdds]             = useState({})
-  const [topplista, setTopplista]   = useState([])
+  const [matcher, setMatcher]         = useState([])
+  const [minaTips, setMinaTips]       = useState({})
+  const [matchStats, setMatchStats]   = useState({})
+  const [odds, setOdds]               = useState({})
+  const [topplista, setTopplista]     = useState([])
+  const [igårBäst, setIgårBäst]       = useState([])
+  const [topScorers, setTopScorers]   = useState([])
 
   useEffect(() => {
     Promise.all([
@@ -127,11 +227,13 @@ export default function Home() {
   }, [användare])
 
   async function hämtaDashboard() {
-    const [matcherRes, statsRes, oddsRes, scoreRes] = await Promise.allSettled([
+    const [matcherRes, statsRes, oddsRes, scoreRes, igårRes, scorersRes] = await Promise.allSettled([
       fetch('/.netlify/functions/matches').then(r => r.json()),
       fetch('/.netlify/functions/match-stats').then(r => r.json()),
       fetch('/.netlify/functions/odds').then(r => r.json()),
       fetch('/.netlify/functions/scores').then(r => r.json()),
+      fetch('/.netlify/functions/scores-yesterday').then(r => r.json()),
+      fetch('/.netlify/functions/top-scorers').then(r => r.json()),
     ])
 
     if (matcherRes.status === 'fulfilled') setMatcher(Array.isArray(matcherRes.value) ? matcherRes.value : [])
@@ -146,6 +248,12 @@ export default function Home() {
     }
     if (scoreRes.status === 'fulfilled' && Array.isArray(scoreRes.value)) {
       setTopplista(scoreRes.value.slice(0, 7))
+    }
+    if (igårRes.status === 'fulfilled' && Array.isArray(igårRes.value)) {
+      setIgårBäst(igårRes.value)
+    }
+    if (scorersRes.status === 'fulfilled' && Array.isArray(scorersRes.value)) {
+      setTopScorers(scorersRes.value)
     }
 
     if (användare) {
@@ -208,12 +316,8 @@ export default function Home() {
 
             <div className="stats-row">
               <div className="stat-item">
-                <span className="stat-num">{ticker?.antalDeltagare ?? '—'}</span>
-                <span className="stat-lbl">{t('home.stats.deltagare')}</span>
-              </div>
-              <div className="stat-item">
                 <span className="stat-num">{ticker?.antalBetalda ?? '—'}</span>
-                <span className="stat-lbl">{t('home.stats.betalda')}</span>
+                <span className="stat-lbl">{t('home.stats.deltagare')}</span>
               </div>
               <div className="stat-item">
                 <span className="stat-num">{ticker?.pottVärde > 0 ? `${ticker.pottVärde} kr` : '—'}</span>
@@ -279,18 +383,17 @@ export default function Home() {
   }
 
   // ── Post-lock dashboard ─────────────────────────────────────────────────
-  const idag = new Date().toISOString().slice(0, 10)
-  const dagensMatcherRaw = matcher.filter(m => m.datum === idag)
+  const now  = new Date()
+  const idag = now.toISOString().slice(0, 10)
 
-  // Separate into ongoing (no result yet) and finished (has result)
-  const dagensMatcherPågående = dagensMatcherRaw.filter(m => !matchStats[m.match_id]?.resultat_hemma !== undefined
-    ? true
-    : matchStats[m.match_id] === undefined
-  )
-  // Simpler: split by whether result exists
+  const dagensMatcherRaw = matcher.filter(m => m.datum === idag)
   const harResultat = (m) => matchStats[m.match_id] && matchStats[m.match_id].resultat_hemma !== undefined
+  const harStartat  = (m) => { const t = parseMatchTidFrontend(m.datum, m.tid); return t ? t <= now : false }
+
   const speladaIdag = dagensMatcherRaw.filter(m => harResultat(m))
-  const kommande    = dagensMatcherRaw.filter(m => !harResultat(m))
+  const ingaResult  = dagensMatcherRaw.filter(m => !harResultat(m))
+  const pågående    = ingaResult.filter(m => harStartat(m))
+  const kommande    = ingaResult.filter(m => !harStartat(m))
 
   const minRank = användare && topplista.length > 0
     ? topplista.findIndex(r => r.user_id === användare.user_id)
@@ -303,52 +406,147 @@ export default function Home() {
   return (
     <>
       <style>{DASHBOARD_STYLES}</style>
+
+      {/* ── Slim hero for non-logged-in visitors ── */}
+      {!användare && (
+        <div className="pl-hero">
+          <div className="pl-hero-eyebrow">⚽ FIFA World Cup 2026</div>
+          <h1 className="pl-hero-title">VM-tipsen <span className="accent">2026</span></h1>
+          <p className="pl-hero-sub">Turneringen pågår — tipsen är stängda men du kan följa tävlingen och topplistan.</p>
+          <div className="pl-hero-actions">
+            <Link to="/login" className="pl-btn-primary">Logga in</Link>
+          </div>
+        </div>
+      )}
+
+      {/* ── Personalized hero for logged-in users ── */}
+      {användare && (
+        <div className="li-hero">
+          <div className="li-hero-inner">
+            <div className="li-hero-left">
+              <span className="li-hero-eyebrow">⚽ FIFA World Cup 2026 pågår</span>
+              <h1 className="li-hero-name">Hej, {användare.namn.split(' ')[0]}!</h1>
+            </div>
+            <div className="li-hero-right">
+              {minRank >= 0 && (
+                <div className="li-hero-rank">
+                  <span className="li-hero-rank-pos">#{minRank + 1}</span>
+                  <span className="li-hero-rank-pts">{topplista[minRank]?.poäng ?? 0} poäng</span>
+                </div>
+              )}
+              <div className="li-hero-links">
+                <Link to="/matches" className="li-hero-link">📅 Matcher</Link>
+                <Link to="/leaderboard" className="li-hero-link">🏆 Topplistan</Link>
+                <Link to="/questions" className="li-hero-link">🎯 Frågor</Link>
+                <Link to="/mitt-vin" className="li-hero-link">🍷 Mitt vin</Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="dash-wrap">
 
-        <p className="dash-eyebrow">VM-tipsen 2026</p>
-        <h1 className="dash-title">
-          {användare ? `Hej, ${användare.namn.split(' ')[0]}! 👋` : 'Hur går det? ⚽'}
-        </h1>
-
-        {/* ── Stats strip ── */}
-        <div className="dash-stats">
-          {målData?.totalMål > 0 && (
-            <div className="dash-stat">
-              <span className="dash-stat-num">{målData.totalMål}</span>
-              <span className="dash-stat-lbl">Mål totalt</span>
+        {/* ── Banner C: stats grid + wine pot ── */}
+        <div className="home-banner">
+          <div className="home-banner-main">
+            <div className="home-banner-grid">
+              {målData?.totalMål > 0 && (
+                <div className="hb-stat">
+                  <span className="hb-icon">⚽</span>
+                  <span className="hb-num">{målData.totalMål}</span>
+                  <span className="hb-lbl">Mål totalt</span>
+                </div>
+              )}
+              {målData?.speladeMatcher > 0 && (
+                <div className="hb-stat">
+                  <span className="hb-icon">📅</span>
+                  <span className="hb-num">{målData.speladeMatcher}</span>
+                  <span className="hb-lbl">Matcher spelat</span>
+                </div>
+              )}
+              {målData?.snitMålPerMatch > 0 && (
+                <div className="hb-stat">
+                  <span className="hb-icon">📊</span>
+                  <span className="hb-num">{målData.snitMålPerMatch}</span>
+                  <span className="hb-lbl">Mål / match</span>
+                </div>
+              )}
+              {ticker?.antalBetalda > 0 && (
+                <div className="hb-stat">
+                  <span className="hb-icon">👥</span>
+                  <span className="hb-num">{ticker.antalBetalda}</span>
+                  <span className="hb-lbl">Deltagare</span>
+                </div>
+              )}
             </div>
-          )}
-          {målData?.speladeMatcher > 0 && (
-            <div className="dash-stat">
-              <span className="dash-stat-num">{målData.speladeMatcher}</span>
-              <span className="dash-stat-lbl">Matcher spelat</span>
-            </div>
-          )}
-          {målData?.snitMålPerMatch > 0 && (
-            <div className="dash-stat">
-              <span className="dash-stat-num">{målData.snitMålPerMatch}</span>
-              <span className="dash-stat-lbl">Mål/match</span>
-            </div>
-          )}
-          {ticker?.antalDeltagare > 0 && (
-            <div className="dash-stat">
-              <span className="dash-stat-num">{ticker.antalDeltagare}</span>
-              <span className="dash-stat-lbl">Deltagare</span>
-            </div>
-          )}
-          {ticker?.pottVärde > 0 && (
-            <div className="dash-stat">
-              <span className="dash-stat-num">{ticker.pottVärde} kr</span>
-              <span className="dash-stat-lbl">Vinpotten</span>
-            </div>
-          )}
+          </div>
+          <div className="home-banner-pot">
+            <span className="hb-pot-icon">🍷</span>
+            <span className="hb-pot-num">{ticker?.pottVärde > 0 ? `${ticker.pottVärde} kr` : '—'}</span>
+            <span className="hb-pot-lbl">Vinstpotten</span>
+          </div>
         </div>
 
-        {/* ── Today's ongoing matches ── */}
+        {/* ── Yesterday's best (match points only) ── */}
+        {igårBäst.length > 0 && (
+          <div className="dash-section">
+            <div className="dash-section-header">
+              <span className="dash-section-pill gold">🏅 Gårdagens bästa</span>
+              <div className="dash-section-line" />
+            </div>
+            <div className="igd-card">
+              <div className="igd-header">
+                <span className="igd-crown">🥇</span>
+                <div className="igd-header-text">
+                  <span className="igd-eyebrow">Matchpoäng — gårdagen</span>
+                  <span className="igd-sub">Exkl. frågor</span>
+                </div>
+              </div>
+              {igårBäst.map((r, i) => (
+                <div key={r.user_id} className="igd-row">
+                  <span className="igd-pos">{i + 1}</span>
+                  <span className="igd-name">{r.namn}</span>
+                  <div className="igd-badges">
+                    {r.exakta > 0 && <span className="igd-badge exact">⭐ {r.exakta}</span>}
+                    {r.rätta > 0  && <span className="igd-badge winner">✓ {r.rätta}</span>}
+                    <span className="igd-pts">+{r.poäng} p</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Live / ongoing matches ── */}
+        {pågående.length > 0 && (
+          <div className="dash-section">
+            <div className="dash-section-header">
+              <span className="dash-section-pill live">🔴 Pågår nu</span>
+              <div className="dash-section-line" />
+              <Link to="/matches" className="dash-see-all">Alla matcher →</Link>
+            </div>
+            {pågående.map(match => (
+              <MatchKort
+                key={match.match_id}
+                match={match}
+                tip={minaTips[match.match_id]}
+                inloggad={!!användare}
+                tipsLåst={true}
+                sparar={false}
+                onSpara={() => {}}
+                odds={oddsForMatch(match)}
+                stats={matchStats[match.match_id] || null}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* ── Upcoming matches today ── */}
         {kommande.length > 0 && (
           <div className="dash-section">
             <div className="dash-section-header">
-              <span className="dash-section-pill">🔴 Pågår idag</span>
+              <span className="dash-section-pill">📅 Kommande idag</span>
               <div className="dash-section-line" />
               <Link to="/matches" className="dash-see-all">Alla matcher →</Link>
             </div>
@@ -368,7 +566,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* ── Today's finished matches ── */}
+        {/* ── Finished matches today ── */}
         {speladaIdag.length > 0 && (
           <div className="dash-section">
             <div className="dash-section-header">
@@ -425,7 +623,6 @@ export default function Home() {
                   </div>
                 )
               })}
-              {/* Show user's position if outside top 7 */}
               {användare && minRank >= 7 && (
                 <>
                   <div className="lb-row" style={{ justifyContent:'center', padding:'.4rem', color:'#ccc', fontSize:'.75rem' }}>· · ·</div>
@@ -440,6 +637,63 @@ export default function Home() {
             </div>
           )}
         </div>
+
+        {/* ── Skytteligan — top 5 goal scorers ── */}
+        {topScorers.length > 0 && (
+          <div className="dash-section">
+            <div className="dash-section-header">
+              <span className="dash-section-pill gold">⚽ Skytteligan</span>
+              <div className="dash-section-line" />
+            </div>
+
+            {/* Podium: leader (left) + 2nd/3rd (right) */}
+            <div className="sk-podium">
+              <div className="sk-leader">
+                <span className="sk-leader-medal">🥇</span>
+                <span className="sk-leader-flag">{getFlag(topScorers[0].land)}</span>
+                <span className="sk-leader-goals">{topScorers[0].mål}</span>
+                <span className="sk-leader-goals-lbl">mål</span>
+                <span className="sk-leader-name">{topScorers[0].spelare}</span>
+                <span className="sk-leader-country">{topScorers[0].land}</span>
+              </div>
+
+              <div className="sk-sub-col">
+                {topScorers[1] && (
+                  <div className="sk-card">
+                    <span className="sk-card-medal">🥈</span>
+                    <span className="sk-card-flag">{getFlag(topScorers[1].land)}</span>
+                    <span className="sk-card-goals">{topScorers[1].mål}</span>
+                    <span className="sk-card-name">{topScorers[1].spelare}</span>
+                    <span className="sk-card-country">{topScorers[1].land}</span>
+                  </div>
+                )}
+                {topScorers[2] && (
+                  <div className="sk-card">
+                    <span className="sk-card-medal">🥉</span>
+                    <span className="sk-card-flag">{getFlag(topScorers[2].land)}</span>
+                    <span className="sk-card-goals">{topScorers[2].mål}</span>
+                    <span className="sk-card-name">{topScorers[2].spelare}</span>
+                    <span className="sk-card-country">{topScorers[2].land}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Compact rows for 4th/5th */}
+            {topScorers.slice(3).length > 0 && (
+              <div className="sk-rest-card">
+                {topScorers.slice(3).map((s, i) => (
+                  <div key={s.spelare} className="sk-rest-row">
+                    <span className="sk-rest-pos">{i + 4}</span>
+                    <span className="sk-rest-flag">{getFlag(s.land)}</span>
+                    <span className="sk-rest-name">{s.spelare}</span>
+                    <span className="sk-rest-goals">{s.mål} mål</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
       </div>
     </>

@@ -87,11 +87,26 @@ export default async (req) => {
         }
       })
 
+      // Score frequency — top 4 most tipped exact scores
+      const scoreFreq = {}
+      tips.forEach((tip) => {
+        const key = `${tip.hemma}-${tip.borta}`
+        scoreFreq[key] = (scoreFreq[key] || 0) + 1
+      })
+      const populäraste = Object.entries(scoreFreq)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 4)
+        .map(([key, count]) => {
+          const [hemma, borta] = key.split('-').map(Number)
+          return { hemma, borta, count }
+        })
+
       stats[match_id] = {
         totalt,
         hemma_pct: Math.round((hemmaVinst / totalt) * 100),
         draw_pct:  Math.round((oavgjort   / totalt) * 100),
         borta_pct: Math.round((bortaVinst / totalt) * 100),
+        populäraste,
         ...(res !== undefined
           ? { exakt, rätt_vinnare, fel, resultat_hemma: res.hemma, resultat_borta: res.borta }
           : {}),
