@@ -1,11 +1,14 @@
 import { getSheets, getRows } from './_sheets.js'
-import { gruppspelLåst, byggLåsMap } from './_settings.js'
+import { gruppspelLåst, byggLåsMap, getSettings } from './_settings.js'
 
 export default async (req) => {
   try {
     const sheets = await getSheets()
 
-    const matcherRader = await getRows(sheets, 'Matcher!A2:H1000')
+    const [matcherRader, inställningar] = await Promise.all([
+      getRows(sheets, 'Matcher!A2:H1000'),
+      getSettings().catch(() => ({})),
+    ])
 
     const allaMatcher = matcherRader.map((rad) => ({
       match_id: rad[0],
@@ -28,6 +31,7 @@ export default async (req) => {
         tips_låst:    låst ? 'true' : 'false', // sträng för bakåtkompatibilitet med Admin.jsx
         frågor_låsta: låst,                    // boolean
         match_lås:    matchLås,                // { match_001: true, match_002: false, ... }
+        swish_nummer: inställningar.swish_nummer || '',
       }),
       {
         status: 200,

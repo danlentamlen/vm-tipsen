@@ -10,6 +10,7 @@
 // Auth: Bearer <ADMIN_SECRET> required for all methods.
 
 import { getSheets, getRows } from './_sheets.js'
+import { getSettings } from './_settings.js'
 import { skickaMail } from './_mail.js'
 
 // ── Security ──────────────────────────────────────────────────────────────────
@@ -40,8 +41,9 @@ function wrap(content) {
   return `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:24px">${header()}${content}${footer()}</div>`
 }
 
-function vinPåminnelseMail(namn) {
+function vinPåminnelseMail(namn, swishNummer = '') {
   const förnamn = namn.split(' ')[0]
+  const swishMeddelande = `VM-Tips-${namn.replace(/\s+/g, '-')}`
   return {
     subject: '🍷 Glöm inte din vinflaska — VM-tipsen 2026',
     html: wrap(`
@@ -66,10 +68,19 @@ function vinPåminnelseMail(namn) {
           <span style="font-size:1.1rem">💸</span>
           <div>
             <p style="margin:0;font-weight:600;color:#0a1628;font-size:0.88rem">2. Swisha insatsen</p>
-            <p style="margin:4px 0 0;color:#777;font-size:0.82rem">Vinpriset + 10 kr i adminavgift till admins Swish-nummer. Du hittar detaljer på sidan.</p>
+            <p style="margin:4px 0 0;color:#777;font-size:0.82rem">Vinpriset + 10 kr i adminavgift. Märk med <strong>${swishMeddelande}</strong>.</p>
           </div>
         </div>
       </div>
+
+      ${swishNummer ? `
+      <div style="background:#0a1628;border-radius:10px;padding:16px;margin:16px 0;text-align:center">
+        <p style="color:rgba(255,255,255,0.45);font-size:0.68rem;font-weight:600;letter-spacing:0.16em;text-transform:uppercase;margin:0 0 4px">Swisha till</p>
+        <p style="color:#fff;font-size:1.4rem;font-weight:700;letter-spacing:0.06em;margin:0 0 10px">${swishNummer}</p>
+        <p style="color:rgba(255,255,255,0.45);font-size:0.68rem;font-weight:600;letter-spacing:0.16em;text-transform:uppercase;margin:0 0 4px">Swish-meddelande</p>
+        <p style="color:#F0D060;font-size:1rem;font-weight:700;letter-spacing:0.06em;margin:0">${swishMeddelande}</p>
+      </div>
+      ` : ''}
 
       <div style="background:rgba(200,16,46,0.05);border:1px solid rgba(200,16,46,0.15);border-radius:10px;padding:14px 16px;margin:16px 0">
         <p style="color:#C8102E;font-size:0.85rem;font-weight:600;margin:0 0 4px">⏰ Glöm inte deadline!</p>
@@ -105,11 +116,13 @@ export default async (req) => {
   try {
     const sheets = await getSheets()
 
-    // Load both sheets in parallel for efficiency
-    const [användareRader, vinerRader] = await Promise.all([
+    // Load settings + both sheets in parallel
+    const [settings, användareRader, vinerRader] = await Promise.all([
+      getSettings().catch(() => ({})),
       getRows(sheets, 'Användare!A2:C1000'),
       getRows(sheets, 'Viner!A2:F1000'),
     ])
+    const swishNummer = settings.swish_nummer || ''
 
     // Build a Set of user_ids that have a wine entry
     const harVin = new Set(vinerRader.map((r) => r[0]).filter(Boolean))
@@ -164,7 +177,7 @@ export default async (req) => {
       // Send emails concurrently (with settled promises so one failure won't abort others)
       const results = await Promise.allSettled(
         mottagare.map(async (p) => {
-          const { subject, html } = vinPåminnelseMail(p.namn)
+          const { subject, html } = vinPåminnelseMail(p.namn, swishNummer)
           await skickaMail(p.email, subject, html)
           return p.user_id
         })

@@ -1,4 +1,5 @@
 import { getSheets, getRows } from './_sheets.js'
+import { getSettings } from './_settings.js'
 import { vinBekräftelseMail, skickaMail } from './_mail.js'
 
 function verifyAdmin(req) {
@@ -20,10 +21,12 @@ export default async (req) => {
   try {
     const { user_id } = await req.json()
     const sheets = await getSheets()
-    const [vinerRader, användareRader] = await Promise.all([
+    const [settings, vinerRader, användareRader] = await Promise.all([
+      getSettings().catch(() => ({})),
       getRows(sheets, 'Viner!A2:F1000'),
       getRows(sheets, 'Användare!A2:C1000'),
     ])
+    const swishNummer = settings.swish_nummer || ''
 
     const vinRad = vinerRader.find((r) => r[0] === user_id)
     const användarRad = användareRader.find((r) => r[0] === user_id)
@@ -46,7 +49,7 @@ export default async (req) => {
       })
     }
 
-    const { subject, html } = vinBekräftelseMail(namn, vinNamn, vinUrl, vinPris, true)
+    const { subject, html } = vinBekräftelseMail(namn, vinNamn, vinUrl, vinPris, true, swishNummer)
     await skickaMail(email, subject, html)
 
     return new Response(

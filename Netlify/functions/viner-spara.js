@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken'
 import { getSheets, getRows, appendRow } from './_sheets.js'
+import { getSettings } from './_settings.js'
 import { vinBekräftelseMail, skickaMail } from './_mail.js'
 
 export default async (req) => {
@@ -74,7 +75,9 @@ export default async (req) => {
     const email = användarRad?.[2] || decoded.email
 
     if (email) {
-      const { subject, html } = vinBekräftelseMail(decoded.namn, vin_namn, vin_url, vin_pris, erUppdatering)
+      const settings = await getSettings().catch(() => ({}))
+      const swishNummer = settings.swish_nummer || ''
+      const { subject, html } = vinBekräftelseMail(decoded.namn, vin_namn, vin_url, vin_pris, erUppdatering, swishNummer)
       try {
         await skickaMail(email, subject, html)
       } catch (err) {

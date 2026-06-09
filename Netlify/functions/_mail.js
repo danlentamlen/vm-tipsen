@@ -79,7 +79,7 @@ export function välkomstMail(namn) {
 }
 
 // ── Bekräftelsemail vid vinval ──────────────────────────────
-export function vinBekräftelseMail(namn, vinNamn, vinUrl, vinPris, erUppdatering) {
+export function vinBekräftelseMail(namn, vinNamn, vinUrl, vinPris, erUppdatering, swishNummer = '') {
   const förnamn = namn.split(' ')[0]
   const total = vinPris ? Number(vinPris) + 10 : null
   const swishMeddelande = `VM-Tips-${namn.replace(/\s+/g, '-')}`
@@ -116,6 +116,10 @@ export function vinBekräftelseMail(namn, vinNamn, vinUrl, vinPris, erUppdaterin
       </div>
 
       <div style="background:#0a1628;border-radius:10px;padding:16px;margin:16px 0;text-align:center">
+        ${swishNummer ? `
+        <p style="color:rgba(255,255,255,0.45);font-size:0.68rem;font-weight:600;letter-spacing:0.16em;text-transform:uppercase;margin:0 0 4px">Swisha till</p>
+        <p style="color:#fff;font-size:1.4rem;font-weight:700;letter-spacing:0.06em;margin:0 0 12px">${swishNummer}</p>
+        ` : ''}
         <p style="color:rgba(255,255,255,0.45);font-size:0.68rem;font-weight:600;letter-spacing:0.16em;text-transform:uppercase;margin:0 0 6px">Swish-meddelande</p>
         <p style="color:#F0D060;font-size:1.1rem;font-weight:700;letter-spacing:0.06em;margin:0">${swishMeddelande}</p>
       </div>

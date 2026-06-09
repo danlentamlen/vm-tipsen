@@ -203,7 +203,11 @@ export default function MinVin() {
             <span className="mv-status-icon">⏳</span>
             <div>
               <p className="mv-status-title">{t('minVin.status.ejBetalt.titel')}</p>
-              <p className="mv-status-text">{t('minVin.status.ejBetalt.text')}</p>
+              <p className="mv-status-text">
+                {swishNummer
+                  ? <>Vinet är sparat. Swisha insatsen till <strong>{swishNummer}</strong> för att bekräfta din plats i potten.</>
+                  : t('minVin.status.ejBetalt.text')}
+              </p>
             </div>
           </div>
         ) : (
