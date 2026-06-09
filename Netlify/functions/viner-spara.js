@@ -75,9 +75,11 @@ export default async (req) => {
 
     if (email) {
       const { subject, html } = vinBekräftelseMail(decoded.namn, vin_namn, vin_url, vin_pris, erUppdatering)
-      skickaMail(email, subject, html).catch((err) =>
+      try {
+        await skickaMail(email, subject, html)
+      } catch (err) {
         console.error('[viner-spara] Kunde inte skicka bekräftelsemail:', err.message)
-      )
+      }
     }
 
     return new Response(

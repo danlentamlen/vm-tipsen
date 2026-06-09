@@ -90,7 +90,7 @@ const STYLES = `
 `
 
 // ── Betalningstabell — grupprader är nu <tr> för giltig HTML ─
-function VinTabell({ rader, grupp, pendingStatus, setPendingStatus, sparar, sänderMail, sparaStatus, skickaKvitto }) {
+function VinTabell({ rader, grupp, pendingStatus, setPendingStatus, sparar, sänderMail, sänderBekräftelse, sparaStatus, skickaKvitto, skickaBekräftelse }) {
   if (rader.length === 0) return null
 
   const pillKlass = grupp === 'ej' ? 'ej' : 'ok'
@@ -149,6 +149,16 @@ function VinTabell({ rader, grupp, pendingStatus, setPendingStatus, sparar, sän
                     {sänderMail === v.user_id ? '...' : '📧 Kvitto'}
                   </button>
                 )}
+                {v.vin_namn && grupp === 'ej' && (
+                  <button
+                    onClick={() => skickaBekräftelse(v.user_id)}
+                    disabled={sänderBekräftelse === v.user_id}
+                    className="adm-action-btn mail"
+                    title="Skicka om bekräftelsemail med Swish-instruktioner"
+                  >
+                    {sänderBekräftelse === v.user_id ? '...' : '📧 Bekräftelse'}
+                  </button>
+                )}
               </div>
             </td>
           </tr>
@@ -168,6 +178,7 @@ export default function Admin() {
   const [pendingStatus, setPendingStatus]   = useState({})
   const [sparar, setSparar]                 = useState(null)
   const [sänderMail, setSänderMail]         = useState(null)
+  const [sänderBekräftelse, setSänderBekräftelse] = useState(null)
   const [toast, setToast]                   = useState(null)
 
   function visaToast(text, ms = 3500) { setToast(text); setTimeout(() => setToast(null), ms) }
@@ -247,6 +258,22 @@ export default function Admin() {
     setSparar(null)
   }
 
+  async function skickaBekräftelse(user_id) {
+    const vin = viner.find(v => v.user_id === user_id)
+    if (!vin) return
+    setSänderBekräftelse(user_id)
+    try {
+      const res = await fetch('/.netlify/functions/admin-resend-vin-mail', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminSecret}` },
+        body: JSON.stringify({ user_id }),
+      })
+      const d = await res.json()
+      visaToast(res.ok ? `📧 Bekräftelsemail skickat till ${vin.namn}` : `❌ ${d.error || 'Kunde inte skicka mail'}`)
+    } catch { visaToast('❌ Kunde inte skicka bekräftelsemail') }
+    setSänderBekräftelse(null)
+  }
+
   async function skickaKvitto(user_id) {
     const vin = viner.find(v => v.user_id === user_id)
     if (!vin) return
@@ -270,7 +297,7 @@ export default function Admin() {
   const totalÅterbetald = viner.filter(v => v.betalt === 'återbetald').length
   const pottVärde       = viner.filter(v => v.betalt === 'betalt').reduce((s, v) => s + (Number(v.vin_pris) || 0), 0)
 
-  const tabellProps = { pendingStatus, setPendingStatus, sparar, sänderMail, sparaStatus, skickaKvitto }
+  const tabellProps = { pendingStatus, setPendingStatus, sparar, sänderMail, sänderBekräftelse, sparaStatus, skickaKvitto, skickaBekräftelse }
 
   if (!inloggad) {
     return (
