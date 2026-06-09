@@ -218,7 +218,7 @@ export default function Vinpotten() {
     fetch('/.netlify/functions/viner-hamta')
       .then((r) => r.json())
       .then((data) => {
-        setViner(Array.isArray(data) ? data.filter((v) => v.vin_namn) : [])
+        setViner(Array.isArray(data) ? data.filter((v) => v.vin_namn && v.betalt === 'betalt') : [])
       })
       .catch(() => {})
       .finally(() => setLaddar(false))

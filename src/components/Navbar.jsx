@@ -70,12 +70,12 @@ export default function Navbar() {
   // ── FIX: useMemo → stabil referens, skapas bara om på t() eller inloggning ──
   const allaLänkar = useMemo(() => [
     { to: '/matches',      label: t('navbar.links.matches'),      icon: '📅', inloggadKrävs: false },
-    { to: '/leaderboard',  label: t('navbar.links.leaderboard'),  icon: '🏆', inloggadKrävs: false },
-    { to: '/forum',        label: t('navbar.links.forum'),        icon: '💬', inloggadKrävs: true  },
     { to: '/questions',    label: t('navbar.links.questions'),    icon: '🎯', inloggadKrävs: false },
-    { to: '/vinpotten',    label: t('navbar.links.vinpotten'),    icon: '🍷', inloggadKrävs: false },
     { to: '/skytteliga',   label: t('navbar.links.skytteliga'),   icon: '👟', inloggadKrävs: false },
+    { to: '/leaderboard',  label: t('navbar.links.leaderboard'),  icon: '🏆', inloggadKrävs: false },
+    { to: '/vinpotten',    label: t('navbar.links.vinpotten'),    icon: '🍷', inloggadKrävs: false },
     { to: '/participants', label: t('navbar.links.participants'), icon: '👥', inloggadKrävs: true  },
+    { to: '/forum',        label: t('navbar.links.forum'),        icon: '💬', inloggadKrävs: true  },
     { to: '/info',         label: t('navbar.links.info'),         icon: '📋', inloggadKrävs: false },
   ].filter(({ inloggadKrävs }) => !inloggadKrävs || !!användare), [t, användare])
 

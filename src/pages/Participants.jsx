@@ -24,7 +24,8 @@ const STYLES = `
   .p-place { position:absolute; top:8px; left:8px; font-family:'Barlow Condensed',sans-serif; font-size:.68rem; font-weight:700; letter-spacing:.06em; padding:2px 7px; border-radius:100px; background:rgba(0,0,0,.06); color:#555; }
   .p-place.top { background:rgba(197,160,40,.15); color:#7a5c10; }
 
-  .p-avatar { width:48px; height:48px; border-radius:50%; background:linear-gradient(135deg,#0a1628,#1a2e4a); color:#F0D060; font-family:'Barlow Condensed',sans-serif; font-size:1.3rem; font-weight:700; display:flex; align-items:center; justify-content:center; margin-bottom:.625rem; flex-shrink:0; }
+  .p-avatar { width:48px; height:48px; border-radius:50%; background:linear-gradient(135deg,#0a1628,#1a2e4a); color:#F0D060; font-family:'Barlow Condensed',sans-serif; font-size:1.3rem; font-weight:700; display:flex; align-items:center; justify-content:center; margin-bottom:.625rem; flex-shrink:0; overflow:hidden; }
+  .p-avatar img { width:100%; height:100%; object-fit:cover; }
 
   .p-name { font-family:'Barlow',sans-serif; font-size:.9rem; font-weight:600; color:#0a1628; width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-bottom:.25rem; }
 
@@ -94,7 +95,9 @@ export default function Participants() {
     return <div style={{ textAlign:'center', padding:'4rem 1rem', color:'#888' }}>Laddar deltagare...</div>
   }
 
-  const sorterade = [...deltagare].sort((a, b) => {
+  const betalda = deltagare.filter(d => viner[d.user_id]?.betalt === 'betalt')
+
+  const sorterade = [...betalda].sort((a, b) => {
     const pa = poäng[a.user_id]?.plats
     const pb = poäng[b.user_id]?.plats
     if (pa && pb) return pa - pb
@@ -144,7 +147,11 @@ export default function Participants() {
                   </div>
                 )}
 
-                <div className="p-avatar">{d.namn.charAt(0).toUpperCase()}</div>
+                <div className="p-avatar">
+                  {vin?.bild_url
+                    ? <img src={vin.bild_url} alt={vin.vin_namn} />
+                    : d.namn.charAt(0).toUpperCase()}
+                </div>
                 <div className="p-name" title={d.namn}>{d.namn}</div>
 
                 {/* Rekryteringsbadge — bara om > 0 */}

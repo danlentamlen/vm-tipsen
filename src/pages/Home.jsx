@@ -29,6 +29,13 @@ const LANDING_STYLES = `
   .stat-lbl { font-size:0.65rem; font-weight:600; letter-spacing:0.15em; text-transform:uppercase; color:rgba(255,255,255,0.35); margin-top:0.25rem; display:block; }
   .rek-info { font-family:'Barlow',sans-serif; font-size:0.82rem; color:rgba(255,255,255,0.6); margin-top:1.25rem; line-height:1.65; text-align:center; max-width:440px; margin-left:auto; margin-right:auto; background:rgba(197,160,40,0.08); border:1px solid rgba(197,160,40,0.2); border-radius:9px; padding:0.75rem 1rem; }
   .rek-info a { color:#F0D060; text-decoration:underline; }
+  .countdown-wrap { display:flex; justify-content:center; gap:.75rem; margin:1.5rem auto; }
+  .cd-unit { background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.12); border-radius:10px; padding:.6rem .875rem; min-width:58px; text-align:center; }
+  .cd-num { font-family:'Barlow Condensed',sans-serif; font-size:1.8rem; font-weight:700; color:#F0D060; line-height:1; display:block; }
+  .cd-lbl { font-size:.58rem; font-weight:600; letter-spacing:.14em; text-transform:uppercase; color:rgba(255,255,255,.35); display:block; margin-top:2px; }
+  .cd-eyebrow { font-family:'Barlow Condensed',sans-serif; font-size:.68rem; font-weight:600; letter-spacing:.18em; text-transform:uppercase; color:rgba(255,255,255,.35); text-align:center; margin-bottom:.5rem; }
+  .fb-link { display:inline-flex; align-items:center; gap:8px; text-decoration:none; background:rgba(24,119,242,.15); border:1px solid rgba(24,119,242,.3); border-radius:100px; padding:6px 16px; font-family:'Barlow Condensed',sans-serif; font-size:.75rem; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:#6ba3f5; margin-top:1rem; transition:background .2s; }
+  .fb-link:hover { background:rgba(24,119,242,.25); }
   .goal-tracker { background:rgba(255,255,255,0.05); border:1px solid rgba(197,160,40,0.2); border-radius:12px; padding:1.25rem 1.5rem; margin:1.5rem auto 0; max-width:500px; text-align:center; }
   .goal-tracker-label { font-family:'Barlow Condensed',sans-serif; font-size:0.72rem; font-weight:600; letter-spacing:0.2em; text-transform:uppercase; color:rgba(255,255,255,0.4); margin-bottom:0.5rem; }
   .goal-tracker-num { font-family:'Barlow Condensed',sans-serif; font-size:3rem; font-weight:700; color:#F0D060; line-height:1; display:block; margin-bottom:0.25rem; }
@@ -88,6 +95,10 @@ const DASHBOARD_STYLES = `
   .li-hero-links { display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; }
   .li-hero-link { text-decoration:none; font-family:'Barlow Condensed',sans-serif; font-size:.68rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; padding:5px 10px; border-radius:6px; border:1px solid rgba(255,255,255,.15); color:rgba(255,255,255,.6); transition:all .15s; white-space:nowrap; }
   .li-hero-link:hover { border-color:rgba(197,160,40,.45); color:#F0D060; }
+
+  /* ── Facebook link (dashboard) ── */
+  .dash-fb-link { display:inline-flex; align-items:center; gap:8px; text-decoration:none; background:rgba(24,119,242,.1); border:1px solid rgba(24,119,242,.25); border-radius:100px; padding:7px 18px; font-family:'Barlow Condensed',sans-serif; font-size:.75rem; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:#6ba3f5; transition:background .2s; }
+  .dash-fb-link:hover { background:rgba(24,119,242,.2); }
 
   /* ── Banner C ── */
   .home-banner { display:flex; border:1px solid rgba(0,0,0,.07); border-radius:12px; overflow:hidden; margin-bottom:1.75rem; box-shadow:0 1px 3px rgba(0,0,0,.04); }
@@ -199,6 +210,24 @@ export default function Home() {
   const [målData, setMålData]         = useState(null)
   const gruppspelLåst = new Date() >= GRUPPSPEL_DEADLINE
 
+  // Countdown state
+  const [countdown, setCountdown] = useState(null)
+  useEffect(() => {
+    if (gruppspelLåst) return
+    function tick() {
+      const diff = GRUPPSPEL_DEADLINE - new Date()
+      if (diff <= 0) { setCountdown(null); return }
+      const d = Math.floor(diff / 86400000)
+      const h = Math.floor((diff % 86400000) / 3600000)
+      const m = Math.floor((diff % 3600000) / 60000)
+      const s = Math.floor((diff % 60000) / 1000)
+      setCountdown({ d, h, m, s })
+    }
+    tick()
+    const id = setInterval(tick, 1000)
+    return () => clearInterval(id)
+  }, [])
+
   // Dashboard state (post-lock only)
   const [matcher, setMatcher]         = useState([])
   const [minaTips, setMinaTips]       = useState({})
@@ -287,6 +316,18 @@ export default function Home() {
             <p className="hero-subtitle">{t('home.subtitle')}</p>
             <p className="hero-desc">{t('home.beskrivning')}</p>
 
+            {countdown && (
+              <div style={{ marginBottom: '1.5rem' }}>
+                <p className="cd-eyebrow">⏰ Tips stänger om</p>
+                <div className="countdown-wrap">
+                  <div className="cd-unit"><span className="cd-num">{countdown.d}</span><span className="cd-lbl">dagar</span></div>
+                  <div className="cd-unit"><span className="cd-num">{String(countdown.h).padStart(2,'0')}</span><span className="cd-lbl">timmar</span></div>
+                  <div className="cd-unit"><span className="cd-num">{String(countdown.m).padStart(2,'0')}</span><span className="cd-lbl">min</span></div>
+                  <div className="cd-unit"><span className="cd-num">{String(countdown.s).padStart(2,'0')}</span><span className="cd-lbl">sek</span></div>
+                </div>
+              </div>
+            )}
+
             {målData?.totalMål > 0 && (
               <div className="goal-tracker">
                 <p className="goal-tracker-label">{t('home.målTracker.etikett')}</p>
@@ -330,6 +371,18 @@ export default function Home() {
               {t('home.rekrytering.text')}{' '}
               <Link to="/mitt-vin">{t('home.rekrytering.länkText')}</Link>.
             </p>
+
+            <div style={{ textAlign: 'center', marginTop: '1.25rem' }}>
+              <a
+                href="https://www.facebook.com/groups/853847373249805/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="fb-link"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.41c0-3.025 1.792-4.697 4.533-4.697 1.312 0 2.686.236 2.686.236v2.97h-1.513c-1.491 0-1.956.93-1.956 1.886v2.268h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/></svg>
+                Vår Facebookgrupp
+              </a>
+            </div>
           </div>
         </div>
 
@@ -694,6 +747,19 @@ export default function Home() {
             )}
           </div>
         )}
+
+        {/* ── Facebook group link ── */}
+        <div style={{ textAlign:'center', padding:'.5rem 0 1rem' }}>
+          <a
+            href="https://www.facebook.com/groups/853847373249805/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="dash-fb-link"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.41c0-3.025 1.792-4.697 4.533-4.697 1.312 0 2.686.236 2.686.236v2.97h-1.513c-1.491 0-1.956.93-1.956 1.886v2.268h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/></svg>
+            Vår Facebookgrupp
+          </a>
+        </div>
 
       </div>
     </>

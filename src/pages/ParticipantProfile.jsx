@@ -186,6 +186,29 @@ const STYLES = `
     font-size: 0.9rem; font-weight: 500; color: #0a1628;
   }
 
+  /* Wine card */
+  .pp-wine-card {
+    background: #fff; border: 1px solid rgba(0,0,0,.07); border-radius: 12px;
+    overflow: hidden; display: flex; align-items: stretch;
+    margin-bottom: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,.04);
+  }
+  .pp-wine-img {
+    width: 90px; flex-shrink: 0; background: #f8f7f4;
+    display: flex; align-items: center; justify-content: center;
+    border-right: 1px solid rgba(0,0,0,.06); padding: .875rem .75rem;
+  }
+  .pp-wine-img img { width: 100%; max-height: 100px; object-fit: contain; }
+  .pp-wine-img-fallback { font-size: 2.2rem; opacity: .45; }
+  .pp-wine-body { flex: 1; padding: .875rem 1rem; display: flex; flex-direction: column; justify-content: center; gap: 4px; }
+  .pp-wine-eyebrow { font-family: 'Barlow Condensed',sans-serif; font-size: .62rem; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: #bbb; }
+  .pp-wine-name { font-family: 'Barlow',sans-serif; font-size: .92rem; font-weight: 500; color: #0a1628; }
+  .pp-wine-price { font-family: 'Barlow Condensed',sans-serif; font-size: .82rem; font-weight: 600; color: #C8102E; }
+  .pp-wine-link { font-family: 'Barlow',sans-serif; font-size: .75rem; color: #C5A028; text-decoration: none; }
+  .pp-wine-link:hover { text-decoration: underline; }
+
+  /* Avatar with image */
+  .pp-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+
   /* Empty states */
   .pp-empty {
     text-align: center; padding: 3rem 1rem;
@@ -202,14 +225,23 @@ const STYLES = `
 export default function ParticipantProfile() {
   const { user_id } = useParams()
   const [profil, setProfil] = useState(null)
+  const [vin, setVin] = useState(null)
   const [laddar, setLaddar] = useState(true)
   const [aktivFlik, setAktivFlik] = useState('tips')
   const { tipsLåst } = useSettings()
 
   useEffect(() => {
-    fetch(`/.netlify/functions/participants?user_id=${user_id}`)
-      .then((res) => res.json())
-      .then((data) => { setProfil(data); setLaddar(false) })
+    Promise.all([
+      fetch(`/.netlify/functions/participants?user_id=${user_id}`).then(r => r.json()),
+      fetch('/.netlify/functions/viner-hamta').then(r => r.json()).catch(() => []),
+    ]).then(([profilData, vinerData]) => {
+      setProfil(profilData)
+      if (Array.isArray(vinerData)) {
+        const mitt = vinerData.find(v => v.user_id === user_id && v.vin_namn)
+        setVin(mitt || null)
+      }
+      setLaddar(false)
+    })
   }, [user_id])
 
   if (laddar) {
@@ -263,7 +295,11 @@ export default function ParticipantProfile() {
         {/* Hero */}
         <div className="pp-hero">
           <div className="pp-hero-inner">
-            <div className="pp-avatar">{profil.namn.charAt(0).toUpperCase()}</div>
+            <div className="pp-avatar">
+              {vin?.bild_url
+                ? <img src={vin.bild_url} alt={vin.vin_namn} />
+                : profil.namn.charAt(0).toUpperCase()}
+            </div>
             <div className="pp-hero-text">
               <h1 className="pp-name">{profil.namn}</h1>
               <p className="pp-meta">{profil.tips.length} tips lämnade</p>
@@ -287,6 +323,27 @@ export default function ParticipantProfile() {
             </div>
           )}
         </div>
+
+        {/* Wine card */}
+        {vin && (
+          <div className="pp-wine-card">
+            <div className="pp-wine-img">
+              {vin.bild_url
+                ? <img src={vin.bild_url} alt={vin.vin_namn} />
+                : <span className="pp-wine-img-fallback">🍷</span>}
+            </div>
+            <div className="pp-wine-body">
+              <span className="pp-wine-eyebrow">Vald vinflaska</span>
+              <span className="pp-wine-name">{vin.vin_namn}</span>
+              {vin.vin_pris && <span className="pp-wine-price">{vin.vin_pris} kr</span>}
+              {vin.vin_url && (
+                <a href={vin.vin_url} target="_blank" rel="noopener noreferrer" className="pp-wine-link" onClick={e => e.stopPropagation()}>
+                  Visa på Systembolaget →
+                </a>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Content */}
         {tipsLåst ? (
