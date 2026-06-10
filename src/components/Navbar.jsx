@@ -18,6 +18,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
 import LanguageSwitcher from './LanguageSwitcher'
+import { useMyStatus } from '../hooks/useMyStatus'
 
 const OLÄST_KEY   = 'forum_senast_läst'
 const MER_BREDD   = 44
@@ -56,6 +57,8 @@ export default function Navbar() {
   const [adminLösenord, setAdminLösenord] = useState('')
   const [adminFel, setAdminFel]           = useState(null)
   const [adminLaddar, setAdminLaddar]     = useState(false)
+
+  const myStatus = useMyStatus(användare)
 
   const location      = useLocation()
   const navigate      = useNavigate()
@@ -204,6 +207,25 @@ export default function Navbar() {
         .mob-link.aktiv { background:rgba(197,160,40,.15); color:#F0D060; border-left-color:#C5A028; }
         .mob-link:not(.aktiv) { color:rgba(255,255,255,.8); }
         .nav-mätrad { position:fixed; top:-9999px; left:0; visibility:hidden; pointer-events:none; display:flex; gap:4px; z-index:-1; }
+        .status-dot { position:absolute; top:0; right:0; width:10px; height:10px; border-radius:50%; border:2px solid #0a1628; pointer-events:none; }
+        .status-dot.ok   { background:#5DCAA5; }
+        .status-dot.warn { background:#E24B4A; }
+        .dd-status-section { padding:10px 14px; border-bottom:1px solid rgba(0,0,0,.07); }
+        .dd-status-row { display:flex; align-items:center; gap:7px; margin-bottom:5px; font-size:12px; color:#444; font-family:'Barlow',sans-serif; }
+        .dd-status-row:last-of-type { margin-bottom:0; }
+        .dd-status-icon { font-size:13px; width:16px; text-align:center; flex-shrink:0; }
+        .dd-pbar { flex:1; height:3px; background:rgba(0,0,0,.08); border-radius:2px; overflow:hidden; }
+        .dd-pbar-fill { height:100%; border-radius:2px; transition:width .3s; }
+        .dd-pbar-fill.ok   { background:#5DCAA5; }
+        .dd-pbar-fill.warn { background:#E24B4A; }
+        .dd-status-num { font-size:11px; font-weight:600; white-space:nowrap; color:#888; min-width:36px; text-align:right; }
+        .mob-status-wrap { margin-top:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,.08); display:flex; flex-direction:column; gap:5px; }
+        .mob-status-row { display:flex; align-items:center; gap:7px; font-size:12px; color:rgba(255,255,255,.55); font-family:'Barlow',sans-serif; }
+        .mob-pbar { flex:1; height:3px; background:rgba(255,255,255,.1); border-radius:2px; overflow:hidden; }
+        .mob-pbar-fill { height:100%; border-radius:2px; }
+        .mob-pbar-fill.ok   { background:#5DCAA5; }
+        .mob-pbar-fill.warn { background:#E24B4A; }
+        .mob-status-num { font-size:11px; font-weight:600; color:rgba(255,255,255,.35); min-width:36px; text-align:right; }
       `}</style>
 
       {/* Osynlig mätrad — utanför nav */}
@@ -261,19 +283,53 @@ export default function Navbar() {
               {användare ? (
                 <div ref={avatarRef} style={{ position:'relative' }}>
                   <div className="avatar-pill" onClick={() => setAvatarOpen(v => !v)} role="button" aria-expanded={avatarOpen}>
-                    <div className="av-cirkel">{initialer(användare.namn)}</div>
+                    <div style={{ position:'relative' }}>
+                      <div className="av-cirkel">{initialer(användare.namn)}</div>
+                      {!myStatus.laddar && myStatus.matchTotal > 0 && (
+                        <span className={`status-dot ${myStatus.allaKlara ? 'ok' : 'warn'}`} aria-hidden="true" />
+                      )}
+                    </div>
                     <span style={{ fontSize:12, color:'rgba(255,255,255,.85)', fontWeight:500, fontFamily:"'Barlow',sans-serif" }}>{förnamn(användare.namn)}</span>
                     <span style={{ fontSize:9, color:'rgba(255,255,255,.4)', transition:'transform .2s', transform: avatarOpen ? 'rotate(180deg)' : 'none', display:'block' }}>▾</span>
                   </div>
                   {avatarOpen && (
                     <div className="dropdown">
                       <div style={{ padding:'12px 16px', borderBottom:'1px solid rgba(0,0,0,.07)', display:'flex', alignItems:'center', gap:10 }}>
-                        <div style={{ width:36, height:36, borderRadius:'50%', background:'linear-gradient(135deg,#C5A028,#F0D060)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:700, color:'#0a1628', flexShrink:0, fontFamily:"'Barlow Condensed',sans-serif" }}>{initialer(användare.namn)}</div>
+                        <div style={{ position:'relative', flexShrink:0 }}>
+                          <div style={{ width:36, height:36, borderRadius:'50%', background:'linear-gradient(135deg,#C5A028,#F0D060)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:700, color:'#0a1628', fontFamily:"'Barlow Condensed',sans-serif" }}>{initialer(användare.namn)}</div>
+                          {!myStatus.laddar && myStatus.matchTotal > 0 && (
+                            <span className={`status-dot ${myStatus.allaKlara ? 'ok' : 'warn'}`} style={{ borderColor:'#fff' }} aria-hidden="true" />
+                          )}
+                        </div>
                         <div style={{ minWidth:0 }}>
                           <p style={{ margin:0, fontFamily:"'Barlow',sans-serif", fontSize:14, fontWeight:600, color:'#0a1628', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{användare.namn}</p>
                           <p style={{ margin:0, fontFamily:"'Barlow',sans-serif", fontSize:12, color:'#888', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{användare.email || ''}</p>
                         </div>
                       </div>
+                      {!myStatus.laddar && myStatus.matchTotal > 0 && (
+                        <div className="dd-status-section">
+                          <div className="dd-status-row">
+                            <span className="dd-status-icon">{myStatus.matchDone >= myStatus.matchTotal ? '✅' : '⚠️'}</span>
+                            <span style={{ flex:'0 0 auto' }}>Matcher</span>
+                            <div className="dd-pbar">
+                              <div className={`dd-pbar-fill ${myStatus.matchDone >= myStatus.matchTotal ? 'ok' : 'warn'}`}
+                                style={{ width: `${Math.round(myStatus.matchDone / myStatus.matchTotal * 100)}%` }} />
+                            </div>
+                            <span className="dd-status-num">{myStatus.matchDone}/{myStatus.matchTotal}</span>
+                          </div>
+                          {myStatus.frågaTotal > 0 && (
+                            <div className="dd-status-row">
+                              <span className="dd-status-icon">{myStatus.frågaDone >= myStatus.frågaTotal ? '✅' : '⚠️'}</span>
+                              <span style={{ flex:'0 0 auto' }}>Frågor</span>
+                              <div className="dd-pbar">
+                                <div className={`dd-pbar-fill ${myStatus.frågaDone >= myStatus.frågaTotal ? 'ok' : 'warn'}`}
+                                  style={{ width: `${Math.round(myStatus.frågaDone / myStatus.frågaTotal * 100)}%` }} />
+                              </div>
+                              <span className="dd-status-num">{myStatus.frågaDone}/{myStatus.frågaTotal}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
                       <div style={{ padding:'6px' }}>
                         <Link to="/mitt-vin" className="dd-link"><span style={{ fontSize:16 }}>🍾</span>{t('navbar.links.minVin')}</Link>
                         <Link to={`/participant/${användare.user_id}`} className="dd-link"><span style={{ fontSize:16 }}>👤</span>{t('navbar.minProfil')}</Link>
@@ -315,12 +371,43 @@ export default function Navbar() {
       {/* Mobile drawer */}
       <div style={{ position:'fixed', top:60, left:0, right:0, zIndex:50, background:'linear-gradient(180deg,#0d1f3c 0%,#0a1628 100%)', borderBottom:'1px solid rgba(197,160,40,.2)', transform: menuOpen ? 'translateY(0)' : 'translateY(-110%)', transition:'transform .3s cubic-bezier(.4,0,.2,1)', padding:'1rem 1.25rem 1.5rem', display:'flex', flexDirection:'column', gap:4 }}>
         {användare && (
-          <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 16px', background:'rgba(197,160,40,.08)', borderRadius:10, marginBottom:8 }}>
-            <div style={{ width:36, height:36, borderRadius:'50%', background:'linear-gradient(135deg,#C5A028,#F0D060)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:700, color:'#0a1628', flexShrink:0, fontFamily:"'Barlow Condensed',sans-serif" }}>{initialer(användare.namn)}</div>
-            <div>
-              <p style={{ margin:0, fontSize:14, fontWeight:600, color:'#F0D060', fontFamily:"'Barlow',sans-serif" }}>{användare.namn}</p>
-              <p style={{ margin:0, fontSize:11, color:'rgba(255,255,255,.4)', fontFamily:"'Barlow',sans-serif" }}>{användare.email || ''}</p>
+          <div style={{ padding:'10px 16px', background:'rgba(197,160,40,.08)', borderRadius:10, marginBottom:8 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+              <div style={{ position:'relative', flexShrink:0 }}>
+                <div style={{ width:36, height:36, borderRadius:'50%', background:'linear-gradient(135deg,#C5A028,#F0D060)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:700, color:'#0a1628', fontFamily:"'Barlow Condensed',sans-serif" }}>{initialer(användare.namn)}</div>
+                {!myStatus.laddar && myStatus.matchTotal > 0 && (
+                  <span className={`status-dot ${myStatus.allaKlara ? 'ok' : 'warn'}`} style={{ borderColor:'#0d1f3c' }} aria-hidden="true" />
+                )}
+              </div>
+              <div>
+                <p style={{ margin:0, fontSize:14, fontWeight:600, color:'#F0D060', fontFamily:"'Barlow',sans-serif" }}>{användare.namn}</p>
+                <p style={{ margin:0, fontSize:11, color:'rgba(255,255,255,.4)', fontFamily:"'Barlow',sans-serif" }}>{användare.email || ''}</p>
+              </div>
             </div>
+            {!myStatus.laddar && myStatus.matchTotal > 0 && (
+              <div className="mob-status-wrap">
+                <div className="mob-status-row">
+                  <span style={{ fontSize:11 }}>{myStatus.matchDone >= myStatus.matchTotal ? '✅' : '⚠️'}</span>
+                  <span>Matcher</span>
+                  <div className="mob-pbar">
+                    <div className={`mob-pbar-fill ${myStatus.matchDone >= myStatus.matchTotal ? 'ok' : 'warn'}`}
+                      style={{ width:`${Math.round(myStatus.matchDone / myStatus.matchTotal * 100)}%` }} />
+                  </div>
+                  <span className="mob-status-num">{myStatus.matchDone}/{myStatus.matchTotal}</span>
+                </div>
+                {myStatus.frågaTotal > 0 && (
+                  <div className="mob-status-row">
+                    <span style={{ fontSize:11 }}>{myStatus.frågaDone >= myStatus.frågaTotal ? '✅' : '⚠️'}</span>
+                    <span>Frågor</span>
+                    <div className="mob-pbar">
+                      <div className={`mob-pbar-fill ${myStatus.frågaDone >= myStatus.frågaTotal ? 'ok' : 'warn'}`}
+                        style={{ width:`${Math.round(myStatus.frågaDone / myStatus.frågaTotal * 100)}%` }} />
+                    </div>
+                    <span className="mob-status-num">{myStatus.frågaDone}/{myStatus.frågaTotal}</span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
         {allaLänkar.map(({ to, label, icon }) => (
