@@ -308,22 +308,38 @@ export default function Navbar() {
                       </div>
                       {!myStatus.laddar && myStatus.matchTotal > 0 && (
                         <div className="dd-status-section">
-                          <div className="dd-status-row">
-                            <span className="dd-status-icon">{myStatus.matchDone >= myStatus.matchTotal ? '✅' : '⚠️'}</span>
-                            <span style={{ flex:'0 0 auto' }}>Matcher</span>
-                            <div className="dd-pbar">
-                              <div className={`dd-pbar-fill ${myStatus.matchDone >= myStatus.matchTotal ? 'ok' : 'warn'}`}
-                                style={{ width: `${Math.round(myStatus.matchDone / myStatus.matchTotal * 100)}%` }} />
+                          {/* Före deadline: visa gruppspelsstatus */}
+                          {!myStatus.efterDeadline && (
+                            <div className="dd-status-row">
+                              <span className="dd-status-icon">{myStatus.matchDone >= myStatus.matchTotal ? '✅' : '⚠️'}</span>
+                              <span style={{ flex:'0 0 auto' }}>Matcher</span>
+                              <div className="dd-pbar">
+                                <div className={`dd-pbar-fill ${myStatus.matchDone >= myStatus.matchTotal ? 'ok' : 'warn'}`}
+                                  style={{ width:`${Math.round(myStatus.matchDone / myStatus.matchTotal * 100)}%` }} />
+                              </div>
+                              <span className="dd-status-num">{myStatus.matchDone}/{myStatus.matchTotal}</span>
                             </div>
-                            <span className="dd-status-num">{myStatus.matchDone}/{myStatus.matchTotal}</span>
-                          </div>
+                          )}
+                          {/* Efter deadline: visa aktiv slutspelsomgång */}
+                          {myStatus.efterDeadline && myStatus.slutspel && (
+                            <div className="dd-status-row">
+                              <span className="dd-status-icon">{myStatus.slutspel.done >= myStatus.slutspel.total ? '✅' : '⚠️'}</span>
+                              <span style={{ flex:'0 0 auto', maxWidth:90, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{myStatus.slutspel.omgång}</span>
+                              <div className="dd-pbar">
+                                <div className={`dd-pbar-fill ${myStatus.slutspel.done >= myStatus.slutspel.total ? 'ok' : 'warn'}`}
+                                  style={{ width:`${Math.round(myStatus.slutspel.done / myStatus.slutspel.total * 100)}%` }} />
+                              </div>
+                              <span className="dd-status-num">{myStatus.slutspel.done}/{myStatus.slutspel.total}</span>
+                            </div>
+                          )}
+                          {/* Frågor — visas alltid */}
                           {myStatus.frågaTotal > 0 && (
                             <div className="dd-status-row">
                               <span className="dd-status-icon">{myStatus.frågaDone >= myStatus.frågaTotal ? '✅' : '⚠️'}</span>
                               <span style={{ flex:'0 0 auto' }}>Frågor</span>
                               <div className="dd-pbar">
                                 <div className={`dd-pbar-fill ${myStatus.frågaDone >= myStatus.frågaTotal ? 'ok' : 'warn'}`}
-                                  style={{ width: `${Math.round(myStatus.frågaDone / myStatus.frågaTotal * 100)}%` }} />
+                                  style={{ width:`${Math.round(myStatus.frågaDone / myStatus.frågaTotal * 100)}%` }} />
                               </div>
                               <span className="dd-status-num">{myStatus.frågaDone}/{myStatus.frågaTotal}</span>
                             </div>
@@ -355,7 +371,19 @@ export default function Navbar() {
           </div>
 
           {/* Hamburger */}
-          <div style={{ marginLeft:'auto', display:'none' }} className="hamburger-btn">
+          <div style={{ marginLeft:'auto', display:'none', alignItems:'center', gap:8 }} className="hamburger-btn">
+            {/* Statusdot på mobil — synlig utan att öppna menyn */}
+            {användare && !myStatus.laddar && myStatus.matchTotal > 0 && (
+              <span
+                style={{
+                  width:10, height:10, borderRadius:'50%',
+                  background: myStatus.allaKlara ? '#5DCAA5' : '#E24B4A',
+                  border:'2px solid rgba(255,255,255,.25)',
+                  flexShrink:0,
+                }}
+                aria-label={myStatus.allaKlara ? 'Alla tips inlämnade' : 'Tips saknas'}
+              />
+            )}
             <button onClick={() => setMenuOpen(v => !v)} aria-label="Meny" style={{ display:'flex', flexDirection:'column', gap:5, background:'none', border:'none', padding:6, cursor:'pointer' }}>
               <span style={{ display:'block', width:24, height:2, background:'#fff', borderRadius:2, transition:'all .3s', transform: menuOpen ? 'translateY(7px) rotate(45deg)' : 'none' }} />
               <span style={{ display:'block', width:24, height:2, background:'#fff', borderRadius:2, transition:'all .3s', opacity: menuOpen ? 0 : 1 }} />
@@ -386,15 +414,31 @@ export default function Navbar() {
             </div>
             {!myStatus.laddar && myStatus.matchTotal > 0 && (
               <div className="mob-status-wrap">
-                <div className="mob-status-row">
-                  <span style={{ fontSize:11 }}>{myStatus.matchDone >= myStatus.matchTotal ? '✅' : '⚠️'}</span>
-                  <span>Matcher</span>
-                  <div className="mob-pbar">
-                    <div className={`mob-pbar-fill ${myStatus.matchDone >= myStatus.matchTotal ? 'ok' : 'warn'}`}
-                      style={{ width:`${Math.round(myStatus.matchDone / myStatus.matchTotal * 100)}%` }} />
+                {/* Före deadline: gruppspel */}
+                {!myStatus.efterDeadline && (
+                  <div className="mob-status-row">
+                    <span style={{ fontSize:11 }}>{myStatus.matchDone >= myStatus.matchTotal ? '✅' : '⚠️'}</span>
+                    <span>Matcher</span>
+                    <div className="mob-pbar">
+                      <div className={`mob-pbar-fill ${myStatus.matchDone >= myStatus.matchTotal ? 'ok' : 'warn'}`}
+                        style={{ width:`${Math.round(myStatus.matchDone / myStatus.matchTotal * 100)}%` }} />
+                    </div>
+                    <span className="mob-status-num">{myStatus.matchDone}/{myStatus.matchTotal}</span>
                   </div>
-                  <span className="mob-status-num">{myStatus.matchDone}/{myStatus.matchTotal}</span>
-                </div>
+                )}
+                {/* Efter deadline: aktiv slutspelsomgång */}
+                {myStatus.efterDeadline && myStatus.slutspel && (
+                  <div className="mob-status-row">
+                    <span style={{ fontSize:11 }}>{myStatus.slutspel.done >= myStatus.slutspel.total ? '✅' : '⚠️'}</span>
+                    <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:90 }}>{myStatus.slutspel.omgång}</span>
+                    <div className="mob-pbar">
+                      <div className={`mob-pbar-fill ${myStatus.slutspel.done >= myStatus.slutspel.total ? 'ok' : 'warn'}`}
+                        style={{ width:`${Math.round(myStatus.slutspel.done / myStatus.slutspel.total * 100)}%` }} />
+                    </div>
+                    <span className="mob-status-num">{myStatus.slutspel.done}/{myStatus.slutspel.total}</span>
+                  </div>
+                )}
+                {/* Frågor — alltid */}
                 {myStatus.frågaTotal > 0 && (
                   <div className="mob-status-row">
                     <span style={{ fontSize:11 }}>{myStatus.frågaDone >= myStatus.frågaTotal ? '✅' : '⚠️'}</span>
