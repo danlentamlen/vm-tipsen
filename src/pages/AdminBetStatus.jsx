@@ -240,15 +240,15 @@ export default function AdminBetStatus() {
     })
   }
 
+  const filteredStats = data ? data.stats.filter((s) => s.harVin) : []
+
   function selectAll() {
-    if (!data) return
-    setSelected(new Set(data.stats.map((s) => s.user_id)))
+    setSelected(new Set(filteredStats.map((s) => s.user_id)))
   }
 
   function selectIncomplete() {
-    if (!data) return
     setSelected(new Set(
-      data.stats.filter((s) => s.groupBetPct < 100 || s.questionPct < 100).map((s) => s.user_id)
+      filteredStats.filter((s) => s.groupBetPct < 100 || s.questionPct < 100).map((s) => s.user_id)
     ))
   }
 
@@ -275,7 +275,7 @@ export default function AdminBetStatus() {
 
   function avgKnockout(round) {
     if (!data) return null
-    const vals = data.stats
+    const vals = filteredStats
       .map((s) => s.knockoutRounds[round])
       .filter((v) => v !== null && v !== undefined)
     if (vals.length === 0) return null
@@ -338,9 +338,14 @@ export default function AdminBetStatus() {
           <>
             {/* Summary chips */}
             <div className="abs-chips">
-              <span className="abs-chip"><strong>{data.summary.totalUsers}</strong> deltagare</span>
+              <span className="abs-chip"><strong>{filteredStats.length}</strong> deltagare med vinflaska</span>
               <span className="abs-chip"><strong>{data.summary.totalGroupMatches}</strong> gruppspelsmatcher</span>
               <span className="abs-chip"><strong>{data.summary.totalQuestions}</strong> tilläggsfrågor</span>
+              {data.summary.totalUsers - filteredStats.length > 0 && (
+                <span className="abs-chip" style={{ background:'#fff5f5', borderColor:'rgba(200,16,46,.2)', color:'#C8102E' }}>
+                  <strong>{data.summary.totalUsers - filteredStats.length}</strong> saknar vinflaska (dold)
+                </span>
+              )}
             </div>
 
             {/* ── Group stage + questions ─────────────── */}
@@ -351,8 +356,8 @@ export default function AdminBetStatus() {
                 <span className="abs-remind-label">
                   Deadline: <strong>11 jun kl 16:00 CEST</strong>
                 </span>
-                <button className="abs-remind-btn outline" onClick={selectIncomplete}>
-                  Välj ofärdiga
+                <button className="abs-remind-btn outline" onClick={selectIncomplete} title="Markerar alla med &lt; 100% på gruppspel eller tilläggsfrågor">
+                  Välj alla &lt; 100%
                 </button>
                 <button
                   className="abs-remind-btn primary"
@@ -367,7 +372,7 @@ export default function AdminBetStatus() {
 
               <div className="abs-sel">
                 <button className="abs-sel-btn" onClick={selectAll}>Välj alla</button>
-                <button className="abs-sel-btn" onClick={selectIncomplete}>Välj ofärdiga</button>
+                <button className="abs-sel-btn" onClick={selectIncomplete}>Välj alla &lt; 100%</button>
                 <button className="abs-sel-btn" onClick={selectNone}>Rensa</button>
                 {selected.size > 0 && <span className="abs-sel-count">{selected.size} markerade</span>}
               </div>
@@ -383,7 +388,7 @@ export default function AdminBetStatus() {
                     </tr>
                   </thead>
                   <tbody>
-                    {data.stats
+                    {filteredStats
                       .slice()
                       .sort((a, b) => a.namn.localeCompare(b.namn, 'sv'))
                       .map((s) => (
@@ -475,7 +480,7 @@ export default function AdminBetStatus() {
                     </tr>
                   </thead>
                   <tbody>
-                    {data.stats
+                    {filteredStats
                       .slice()
                       .sort((a, b) => a.namn.localeCompare(b.namn, 'sv'))
                       .map((s) => (

@@ -45,13 +45,22 @@ export default async (req) => {
       tipsRader,
       frågorRader,
       frågorSvarRader,
+      vinerRader,
     ] = await Promise.all([
       getRows(sheets, 'Användare!A2:C1000'),     // user_id, namn, email
       getRows(sheets, 'Matcher!A2:G1000'),        // match_id, datum, tid, hemma, borta, grupp, omgång
       getRows(sheets, 'Tips!A2:E100000'),         // tip_id, user_id, match_id, hemma_mål, borta_mål
       getRows(sheets, 'Frågor!A2:A1000'),         // fråga_id, ...
       getRows(sheets, 'FrågorSvar!A2:C100000'),   // svar_id, user_id, fråga_id, ...
+      getRows(sheets, 'Viner!A2:C1000'),          // user_id, namn, vin_namn
     ])
+
+    // Build set of users who have a row in the Viner sheet (regardless of contents)
+    const usersWithWine = new Set(
+      vinerRader
+        .filter((r) => r[0] && r[0].trim())
+        .map((r) => r[0].trim())
+    )
 
     // Build user map
     const användare = användareRader
@@ -130,6 +139,7 @@ export default async (req) => {
         user_id: uid,
         namn: u.namn,
         email: u.email,
+        harVin: usersWithWine.has(uid),
         groupBetPct,
         groupBets,
         totalGroupMatches: totalGruppsmatcher,
