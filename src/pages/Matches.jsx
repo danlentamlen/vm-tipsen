@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useLås } from '../hooks/useLås'
 import { useLanguage } from '../context/LanguageContext'
-import MatchKort, { normName, getFlag, MATCH_KORT_STYLES } from '../components/MatchKort'
+import MatchKort, { normName, getFlag, MATCH_KORT_STYLES, dagOffset } from '../components/MatchKort'
 
 function formatDatum(datum, språk) {
   if (!datum) return ''
@@ -11,6 +11,17 @@ function formatDatum(datum, språk) {
     const locale = språk === 'en' ? 'en-GB' : 'sv-SE'
     return d.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' })
   } catch { return datum }
+}
+
+/** Justerar matchens datum om CEST-konverteringen korsar midnatt (dagOffset = +1). */
+function adjustedDatum(match) {
+  const offset = dagOffset(match.tid)
+  if (offset === 0 || !match.datum) return match.datum || 'Okänt datum'
+  try {
+    const d = new Date(match.datum)
+    d.setUTCDate(d.getUTCDate() + offset)
+    return d.toISOString().slice(0, 10) // "YYYY-MM-DD"
+  } catch { return match.datum }
 }
 
 const SLUTSPELS_ORDNING = [
@@ -62,6 +73,17 @@ const STYLES = `
   .m-group-line { flex:1; height:1px; background:rgba(0,0,0,.07); }
   .m-date-header { font-family:'Barlow Condensed',sans-serif; font-size:.72rem; font-weight:600; letter-spacing:.14em; text-transform:uppercase; color:#aaa; margin:.75rem 0 .5rem; }
 
+  /* Sort toggle */
+  .m-sort-toggle { display:inline-flex; background:rgba(0,0,0,.05); border-radius:8px; padding:3px; gap:2px; margin-bottom:1.25rem; }
+  .m-sort-btn { font-family:'Barlow Condensed',sans-serif; font-size:.75rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; padding:6px 16px; border:none; border-radius:6px; cursor:pointer; background:transparent; color:#999; transition:all .15s; }
+  .m-sort-btn.active { background:#fff; color:#0a1628; box-shadow:0 1px 3px rgba(0,0,0,.12); }
+  .m-sort-btn:hover:not(.active) { color:#555; }
+
+  /* Match label in date view */
+  .m-match-label { display:flex; align-items:center; gap:6px; margin-bottom:.25rem; }
+  .m-match-pill { font-family:'Barlow Condensed',sans-serif; font-size:.62rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase; padding:2px 8px; border-radius:20px; background:#0a1628; color:#F0D060; white-space:nowrap; }
+  .m-match-pill.slutspel { background:linear-gradient(135deg,#C5A028,#a8881f); color:#fff; }
+
   ${MATCH_KORT_STYLES}
 `
 
@@ -73,6 +95,7 @@ export default function Matches() {
   const [laddar, setLaddar] = useState(true)
   const [sparar, setSparar] = useState(null)
   const [aktivGrupp, setAktivGrupp] = useState(null)
+  const [sortering, setSortering]   = useState('grupp')
   const gruppRefs = useRef({})
   const { användare } = useAuth()
   const { ärLåst, adminOverride } = useLås()
@@ -169,7 +192,7 @@ export default function Matches() {
   const gruppspelets = gruppspelsMatcher.reduce((acc, m) => {
     const g = m.grupp || 'Övrigt'
     if (!acc[g]) acc[g] = {}
-    const d = m.datum || 'Okänt datum'
+    const d = adjustedDatum(m)
     if (!acc[g][d]) acc[g][d] = []
     acc[g][d].push(m)
     return acc
@@ -178,7 +201,7 @@ export default function Matches() {
   const slutspelet = slutspelsMatcher.reduce((acc, m) => {
     const omg = m.omgång || 'Slutspel'
     if (!acc[omg]) acc[omg] = {}
-    const d = m.datum || 'Okänt datum'
+    const d = adjustedDatum(m)
     if (!acc[omg][d]) acc[omg][d] = []
     acc[omg][d].push(m)
     return acc
@@ -223,26 +246,50 @@ export default function Matches() {
   const gruppNycklar = Object.keys(gruppspelets)
   const slutspelNycklar = sorteradSlutspel.map(([omg]) => omg)
 
+  // Datum-sorted view: all matches chronologically grouped by Swedish date
+  const datumSorterade = [...matcher].sort((a, b) => {
+    const da = adjustedDatum(a), db = adjustedDatum(b)
+    if (da !== db) return da.localeCompare(db)
+    // within same day, sort by CEST time (original tid, since offset is same within a day)
+    return (a.tid || '').localeCompare(b.tid || '')
+  })
+  const datumGrupperade = datumSorterade.reduce((acc, m) => {
+    const d = adjustedDatum(m)
+    if (!acc[d]) acc[d] = []
+    acc[d].push(m)
+    return acc
+  }, {})
+
   if (laddar) return (
     <div style={{ textAlign: 'center', padding: '4rem 1rem', color: '#888' }}>
       {t('matches.laddar')}
     </div>
   )
 
-  function renderMatch(match) {
+  function renderMatch(match, visaLabel = false) {
+    const label = match.omgång && SLUTSPELS_ORDNING.includes(match.omgång)
+      ? slutspelsNamn(match.omgång)
+      : match.grupp || null
+    const ärSlutspelMatch = match.omgång && SLUTSPELS_ORDNING.includes(match.omgång)
     return (
-      <MatchKort
-        key={match.match_id}
-        match={match}
-        tip={minaTips[match.match_id]}
-        inloggad={!!användare}
-        tipsLåst={ärLåst(match)}
-        sparar={sparar === match.match_id}
-        onSpara={sparaTips}
-        odds={oddsForMatch(match)}
-        stats={matchStats[match.match_id] || null}
-        t={t}
-      />
+      <div key={match.match_id}>
+        {visaLabel && label && (
+          <div className="m-match-label">
+            <span className={`m-match-pill${ärSlutspelMatch ? ' slutspel' : ''}`}>{label}</span>
+          </div>
+        )}
+        <MatchKort
+          match={match}
+          tip={minaTips[match.match_id]}
+          inloggad={!!användare}
+          tipsLåst={ärLåst(match)}
+          sparar={sparar === match.match_id}
+          onSpara={sparaTips}
+          odds={oddsForMatch(match)}
+          stats={matchStats[match.match_id] || null}
+          t={t}
+        />
+      </div>
     )
   }
 
@@ -281,7 +328,17 @@ export default function Matches() {
           </div>
         )}
 
-        {användare && (
+        {/* Sort toggle */}
+        <div className="m-sort-toggle">
+          <button className={`m-sort-btn${sortering === 'grupp' ? ' active' : ''}`} onClick={() => setSortering('grupp')}>
+            {språk === 'en' ? 'Group' : 'Grupp'}
+          </button>
+          <button className={`m-sort-btn${sortering === 'datum' ? ' active' : ''}`} onClick={() => setSortering('datum')}>
+            {språk === 'en' ? 'Date' : 'Datum'}
+          </button>
+        </div>
+
+        {användare && sortering === 'grupp' && (
           <div className="m-nav">
             <div className="m-nav-grid">
               {gruppNycklar.map((grupp) => {
@@ -327,35 +384,55 @@ export default function Matches() {
           </div>
         )}
 
-        {Object.entries(gruppspelets).map(([grupp, datumGrupper]) => (
-          <div key={grupp} className="m-group" ref={el => gruppRefs.current[grupp] = el}>
-            <div className="m-group-header">
-              <span className="m-group-pill">{grupp}</span>
-              <div className="m-group-line" />
-            </div>
-            {Object.entries(datumGrupper).map(([datum, dagensMatcherna]) => (
-              <div key={datum}>
-                <div className="m-date-header">{formatDatum(datum, språk)}</div>
-                {dagensMatcherna.map(renderMatch)}
+        {/* ── Gruppvy ── */}
+        {sortering === 'grupp' && (
+          <>
+            {Object.entries(gruppspelets).map(([grupp, datumGrupper]) => (
+              <div key={grupp} className="m-group" ref={el => gruppRefs.current[grupp] = el}>
+                <div className="m-group-header">
+                  <span className="m-group-pill">{grupp}</span>
+                  <div className="m-group-line" />
+                </div>
+                {Object.entries(datumGrupper).map(([datum, dagensMatcherna]) => (
+                  <div key={datum}>
+                    <div className="m-date-header">{formatDatum(datum, språk)}</div>
+                    {dagensMatcherna.map(m => renderMatch(m))}
+                  </div>
+                ))}
               </div>
             ))}
-          </div>
-        ))}
 
-        {sorteradSlutspel.map(([omgång, datumGrupper]) => (
-          <div key={omgång} className="m-group" ref={el => gruppRefs.current[omgång] = el}>
-            <div className="m-group-header">
-              <span className="m-group-pill slutspel">🏆 {slutspelsNamn(omgång)}</span>
-              <div className="m-group-line" />
-            </div>
-            {Object.entries(datumGrupper).map(([datum, dagensMatcherna]) => (
-              <div key={datum}>
-                <div className="m-date-header">{formatDatum(datum, språk)}</div>
-                {dagensMatcherna.map(renderMatch)}
+            {sorteradSlutspel.map(([omgång, datumGrupper]) => (
+              <div key={omgång} className="m-group" ref={el => gruppRefs.current[omgång] = el}>
+                <div className="m-group-header">
+                  <span className="m-group-pill slutspel">🏆 {slutspelsNamn(omgång)}</span>
+                  <div className="m-group-line" />
+                </div>
+                {Object.entries(datumGrupper).map(([datum, dagensMatcherna]) => (
+                  <div key={datum}>
+                    <div className="m-date-header">{formatDatum(datum, språk)}</div>
+                    {dagensMatcherna.map(m => renderMatch(m))}
+                  </div>
+                ))}
               </div>
             ))}
-          </div>
-        ))}
+          </>
+        )}
+
+        {/* ── Datumvy: alla matcher kronologiskt ── */}
+        {sortering === 'datum' && (
+          <>
+            {Object.entries(datumGrupperade).map(([datum, dagensMatcherna]) => (
+              <div key={datum} className="m-group">
+                <div className="m-group-header">
+                  <span className="m-group-pill">{formatDatum(datum, språk)}</span>
+                  <div className="m-group-line" />
+                </div>
+                {dagensMatcherna.map(m => renderMatch(m, true))}
+              </div>
+            ))}
+          </>
+        )}
       </div>
     </>
   )

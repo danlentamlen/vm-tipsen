@@ -2,7 +2,21 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
-import MatchKort, { normName, getFlag, MATCH_KORT_STYLES } from '../components/MatchKort'
+import MatchKort, { normName, getFlag, MATCH_KORT_STYLES, formatTid, dagOffset } from '../components/MatchKort'
+
+/**
+ * Justerar matchens datum (YYYY-MM-DD) om CEST-konverteringen korsar midnatt.
+ * Returnerar det svenska datumet för matchen.
+ */
+function adjustedDatumHome(match) {
+  const offset = dagOffset(match.tid)
+  if (offset === 0 || !match.datum) return match.datum || ''
+  try {
+    const d = new Date(match.datum)
+    d.setUTCDate(d.getUTCDate() + offset)
+    return d.toISOString().slice(0, 10)
+  } catch { return match.datum }
+}
 
 const GRUPPSPEL_DEADLINE = new Date('2026-06-11T16:00:00+02:00')
 
@@ -437,9 +451,29 @@ export default function Home() {
 
   // ── Post-lock dashboard ─────────────────────────────────────────────────
   const now  = new Date()
-  const idag = now.toISOString().slice(0, 10)
+  // Använd CEST (UTC+2) som "dagens datum" för att matcha adjusted datum
+  const cestNow    = new Date(now.getTime() + 2 * 3600000)
+  const idag       = cestNow.toISOString().slice(0, 10)
+  const imorganStr = (() => {
+    const d = new Date(cestNow)
+    d.setUTCDate(d.getUTCDate() + 1)
+    return d.toISOString().slice(0, 10)
+  })()
 
-  const dagensMatcherRaw = matcher.filter(m => m.datum === idag)
+  // Inkludera matcher för:
+  //  1. Dagens datum (CEST-justerat)
+  //  2. Morgondagens datum (CEST-justerat) om starttid < 08:00 CEST
+  const dagensMatcherRaw = matcher.filter(m => {
+    const adj = adjustedDatumHome(m)
+    if (adj === idag) return true
+    if (adj === imorganStr) {
+      const cestTid = formatTid(m.tid)
+      if (!cestTid || !cestTid.includes(':')) return false
+      const h = parseInt(cestTid.split(':')[0])
+      return h < 8 // före 08:00 CEST
+    }
+    return false
+  })
   const harResultat = (m) => matchStats[m.match_id] && matchStats[m.match_id].resultat_hemma !== undefined
   const harStartat  = (m) => { const t = parseMatchTidFrontend(m.datum, m.tid); return t ? t <= now : false }
 
@@ -541,19 +575,19 @@ export default function Home() {
           </div>
         </div>
 
-        {/* ── Yesterday's best (match points only) ── */}
+        {/* ── Yesterday's best (match points 16:00–08:00) ── */}
         {igårBäst.length > 0 && (
           <div className="dash-section">
             <div className="dash-section-header">
-              <span className="dash-section-pill gold">🏅 Gårdagens bästa</span>
+              <span className="dash-section-pill gold">🏅 Bäst igår</span>
               <div className="dash-section-line" />
             </div>
             <div className="igd-card">
               <div className="igd-header">
                 <span className="igd-crown">🥇</span>
                 <div className="igd-header-text">
-                  <span className="igd-eyebrow">Matchpoäng — gårdagen</span>
-                  <span className="igd-sub">Exkl. frågor</span>
+                  <span className="igd-eyebrow">Topp 3 — bäst igår</span>
+                  <span className="igd-sub">Matcher 16:00 igår – 08:00 idag</span>
                 </div>
               </div>
               {igårBäst.map((r, i) => (
@@ -599,7 +633,7 @@ export default function Home() {
         {kommande.length > 0 && (
           <div className="dash-section">
             <div className="dash-section-header">
-              <span className="dash-section-pill">📅 Kommande idag</span>
+              <span className="dash-section-pill">📅 Kommande matcher</span>
               <div className="dash-section-line" />
               <Link to="/matches" className="dash-see-all">Alla matcher →</Link>
             </div>
@@ -646,11 +680,11 @@ export default function Home() {
         {dagensMatcherRaw.length === 0 && (
           <div className="dash-section">
             <div className="dash-section-header">
-              <span className="dash-section-pill">📅 Idag</span>
+              <span className="dash-section-pill">📅 Matcher idag</span>
               <div className="dash-section-line" />
               <Link to="/matches" className="dash-see-all">Alla matcher →</Link>
             </div>
-            <div className="dash-empty">Inga matcher spelas idag.</div>
+            <div className="dash-empty">Inga matcher spelas idag eller tidigt imorgon bitti.</div>
           </div>
         )}
 

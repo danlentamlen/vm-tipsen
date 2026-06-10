@@ -9,10 +9,24 @@ function räknaPoäng(tipH, tipB, resH, resB) {
 }
 
 /**
+ * Parsar "HH:MM UTC±N" och returnerar ett UTC Date-objekt för matchens starttid.
+ */
+function parseMatchStart(datum, tid) {
+  if (!datum || !tid) return null
+  const m = tid.match(/(\d{1,2}):(\d{2})\s*UTC([+-]?\d+(?:\.\d+)?)/i)
+  if (!m) return null
+  const h = parseInt(m[1]), min = parseInt(m[2]), offset = parseFloat(m[3])
+  const d = new Date(`${datum}T${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}:00Z`)
+  d.setTime(d.getTime() - offset * 3600000) // konvertera till UTC
+  return d
+}
+
+/**
  * GET /.netlify/functions/scores-yesterday
  *
- * Returns top 3 performers based on match points from yesterday's matches only.
- * Questions are excluded.
+ * Returnerar topp 3 baserat på matchpoäng för matcher som spelades
+ * mellan igår 16:00 CEST och idag 08:00 CEST.
+ * Tilläggsfrågor exkluderas.
  *
  * Response: Array of up to 3 objects:
  *   { user_id, namn, poäng, exakta, rätta }
@@ -28,16 +42,22 @@ export default async (req) => {
   try {
     const sheets = await getSheets()
 
-    // Yesterday's date string (YYYY-MM-DD)
-    const igår = new Date()
-    igår.setDate(igår.getDate() - 1)
-    const igårStr = igår.toISOString().slice(0, 10)
+    // Tidsfönster: igår 16:00 CEST → idag 08:00 CEST (CEST = UTC+2)
+    const now = new Date()
+    const fönsterStart = new Date(now)
+    fönsterStart.setUTCDate(fönsterStart.getUTCDate() - 1)
+    fönsterStart.setUTCHours(14, 0, 0, 0)  // igår 16:00 CEST = 14:00 UTC
+    const fönsterSlut = new Date(now)
+    fönsterSlut.setUTCHours(6, 0, 0, 0)    // idag 08:00 CEST = 06:00 UTC
 
-    // Find match_ids played yesterday
+    // Hitta match_ids vars CEST-starttid ligger i fönstret
     const matcherRader = await getRows(sheets, 'Matcher!A2:H1000')
     const igårMatchIds = new Set(
       matcherRader
-        .filter((r) => r[1] === igårStr)
+        .filter((r) => {
+          const start = parseMatchStart(r[1], r[2])
+          return start && start >= fönsterStart && start < fönsterSlut
+        })
         .map((r) => r[0])
         .filter(Boolean)
     )

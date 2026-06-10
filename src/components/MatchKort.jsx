@@ -56,7 +56,26 @@ export function getFlag(lagnamn) {
 
 export function formatTid(tid) {
   if (!tid) return ''
-  return tid.replace(/\s*UTC[+-]?\d*/i, '').trim()
+  // Parse "HH:MM UTC±N" and convert to Swedish time (CEST = UTC+2)
+  const m = tid.match(/(\d{1,2}):(\d{2})\s*UTC([+-]?\d+(?:\.\d+)?)/i)
+  if (!m) return tid.replace(/\s*UTC[+-]?\d*/i, '').trim()
+  const utcMin = parseInt(m[1]) * 60 + parseInt(m[2]) - parseFloat(m[3]) * 60
+  const sweMin = ((utcMin + 120) % 1440 + 1440) % 1440 // +2h, wrap at midnight
+  return `${String(Math.floor(sweMin / 60)).padStart(2, '0')}:${String(sweMin % 60).padStart(2, '0')}`
+}
+
+/**
+ * Returnerar dagförskjutningen (+1 eller 0) som uppstår när matchens tid
+ * konverteras till svensk tid (CEST = UTC+2). Används för att justera datumet
+ * när matchen korsar midnatt vid omvandling.
+ */
+export function dagOffset(tid) {
+  if (!tid) return 0
+  const m = tid.match(/(\d{1,2}):(\d{2})\s*UTC([+-]?\d+(?:\.\d+)?)/i)
+  if (!m) return 0
+  const utcMin = parseInt(m[1]) * 60 + parseInt(m[2]) - parseFloat(m[3]) * 60
+  const sweMinRaw = utcMin + 120 // CEST = UTC+2, utan modulo
+  return sweMinRaw >= 1440 ? 1 : sweMinRaw < 0 ? -1 : 0
 }
 
 export function beräknaPoäng(tip, stats) {
