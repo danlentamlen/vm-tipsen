@@ -26,7 +26,7 @@ export async function setSetting(nyckel, värde) {
 }
 
 // Deadline för gruppspelstips: 11 juni 2026 kl 16:00 svensk tid (CEST)
-/export const GRUPPSPEL_DEADLINE = new Date('2026-06-11T16:00:00+02:00')
+export const GRUPPSPEL_DEADLINE = new Date('2026-06-11T16:00:00+02:00')
 
 /**
  * Returnerar true om gruppspelet är låst (klockan har passerat deadline)
