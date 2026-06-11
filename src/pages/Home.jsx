@@ -18,7 +18,7 @@ function adjustedDatumHome(match) {
   } catch { return match.datum }
 }
 
-const GRUPPSPEL_DEADLINE = new Date('2026-06-11T16:00:00+02:00')
+const GRUPPSPEL_DEADLINE = new Date('2026-06-11T19:00:00+02:00')
 
 const LANDING_STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,400;0,600;0,700;1,400&family=Barlow:wght@400;500&display=swap');

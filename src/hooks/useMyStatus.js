@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 
-const GRUPPSPEL_DEADLINE = new Date('2026-06-11T16:00:00+02:00')
+const GRUPPSPEL_DEADLINE = new Date('2026-06-11T19:00:00+02:00')
 
 /**
  * useMyStatus — hämtar inloggad användares tips-status.
