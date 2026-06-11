@@ -40,8 +40,10 @@ export default async (req) => {
         { headers: { 'X-Auth-Token': process.env.FOOTBALL_DATA_KEY } }
       )
       if (!res.ok) {
-        console.error('[live-scores] API error', res.status, await res.text())
-        return []
+        const errText = await res.text()
+        console.error('[live-scores] API error', res.status, errText)
+        // Temporarily expose error for debugging
+        return [{ _error: res.status, _msg: errText }]
       }
 
       const data = await res.json()
