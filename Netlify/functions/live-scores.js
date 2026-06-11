@@ -1,6 +1,6 @@
 import { withCache } from './_cache.js'
 
-const CACHE_TTL = 60 * 1000 // 60 seconds — matches update frequently
+const CACHE_TTL = 60 * 1000 // 60 seconds
 const API_BASE  = 'https://api.football-data.org/v4'
 
 // Lagnamn-mapping: football-data.org → vårt format
@@ -35,30 +35,36 @@ export default async (req) => {
 
   try {
     const live = await withCache('live-scores', CACHE_TTL, async () => {
+      // Fetch today's WC matches by date — status=LIVE filter is unreliable
+      // on the current subscription tier, so we fetch all of today's matches
+      // and filter locally for IN_PLAY / PAUSED.
+      const today = new Date().toISOString().slice(0, 10)
       const res = await fetch(
-        `${API_BASE}/competitions/WC/matches?season=2026&status=LIVE`,
+        `${API_BASE}/competitions/WC/matches?season=2026&dateFrom=${today}&dateTo=${today}`,
         { headers: { 'X-Auth-Token': process.env.FOOTBALL_DATA_KEY } }
       )
+
       if (!res.ok) {
-        const errText = await res.text()
-        console.error('[live-scores] API error', res.status, errText)
-        // Temporarily expose error for debugging
-        return [{ _error: res.status, _msg: errText }]
+        console.error('[live-scores] API error', res.status)
+        return []
       }
 
       const data = await res.json()
-      const matches = data.matches || []
+      const matches = (data.matches || []).filter(
+        (m) => m.status === 'IN_PLAY' || m.status === 'PAUSED'
+      )
 
       return matches.map((m) => {
+        // During a live match fullTime is updated in real-time
         const score = m.score?.fullTime ?? m.score?.halfTime ?? {}
         return {
-          hemmalag:    norm(m.homeTeam?.name),
-          bortalag:    norm(m.awayTeam?.name),
-          hemma:       score.home ?? null,
-          borta:       score.away ?? null,
-          minut:       m.minute ?? null,
-          injuryTime:  m.injuryTime ?? null,
-          status:      m.status, // IN_PLAY | PAUSED
+          hemmalag:   norm(m.homeTeam?.name),
+          bortalag:   norm(m.awayTeam?.name),
+          hemma:      score.home ?? null,
+          borta:      score.away ?? null,
+          minut:      m.minute ?? null,
+          injuryTime: m.injuryTime ?? null,
+          status:     m.status,
         }
       })
     })

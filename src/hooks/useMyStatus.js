@@ -43,7 +43,7 @@ export function useMyStatus(användare) {
   // Quiet/rest period: after group stage but before June 26, AND no knockout round is open yet.
   // Once the admin adds R32 matches (≈1.5 days before first game), slutspel.öppen flips to true
   // and we exit quiet mode — showing the real green/red status again.
-  const iVilaFas = efterDeadline && nu < QUIET_UNTIL && !slutspel?.öppen
+  const iVilaFas = efterDeadline && nu < QUIET_UNTIL
 
   // Vad som räknas som "saknas" beror på var i turneringen vi är
   let saknasCount = 0
