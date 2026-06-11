@@ -36,7 +36,7 @@ export default async (req) => {
   try {
     const live = await withCache('live-scores', CACHE_TTL, async () => {
       const res = await fetch(
-        `${API_BASE}/competitions/WC/matches?season=2026&status=IN_PLAY,PAUSED`,
+        `${API_BASE}/competitions/WC/matches?season=2026&status=LIVE`,
         { headers: { 'X-Auth-Token': process.env.FOOTBALL_DATA_KEY } }
       )
       if (!res.ok) {

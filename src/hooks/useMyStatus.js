@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react'
 
 const GRUPPSPEL_DEADLINE = new Date('2026-06-11T19:00:00+02:00')
+// Quiet period: after group stage deadline, show green dot until first knockout round opens.
+// As soon as slutspel.öppen=true (≈1.5 days before first R32 game), real status kicks in.
+const QUIET_UNTIL = new Date('2026-06-26T00:00:00+02:00')
 
 /**
  * useMyStatus — hämtar inloggad användares tips-status.
@@ -35,13 +38,22 @@ export function useMyStatus(användare) {
   }
 
   const { matcher, frågor, slutspel } = status
-  const efterDeadline = new Date() >= GRUPPSPEL_DEADLINE
+  const nu            = new Date()
+  const efterDeadline = nu >= GRUPPSPEL_DEADLINE
+  // Quiet/rest period: after group stage but before June 26, AND no knockout round is open yet.
+  // Once the admin adds R32 matches (≈1.5 days before first game), slutspel.öppen flips to true
+  // and we exit quiet mode — showing the real green/red status again.
+  const iVilaFas = efterDeadline && nu < QUIET_UNTIL && !slutspel?.öppen
 
   // Vad som räknas som "saknas" beror på var i turneringen vi är
   let saknasCount = 0
   let allaKlara   = false
 
-  if (!efterDeadline) {
+  if (iVilaFas) {
+    // Rest period between rounds — nothing to do, always green
+    allaKlara   = true
+    saknasCount = 0
+  } else if (!efterDeadline) {
     // Före deadline: gruppspel + frågor
     saknasCount = (matcher.total - matcher.done) + (frågor.total - frågor.done)
     allaKlara   = saknasCount === 0 && matcher.total > 0
