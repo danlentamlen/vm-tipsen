@@ -50,9 +50,13 @@ export default async (req) => {
       }
 
       const data = await res.json()
+      // DEBUG: return all matches with their statuses so we can see what the API returns
+      if (!data.matches?.length) return [{ _debug: 'no matches', count: 0, resultCount: data.resultSet?.count }]
+      const allStatuses = data.matches.map(m => ({ home: m.homeTeam?.name, away: m.awayTeam?.name, status: m.status, utcDate: m.utcDate }))
       const matches = (data.matches || []).filter(
         (m) => m.status === 'IN_PLAY' || m.status === 'PAUSED'
       )
+      if (!matches.length) return [{ _debug: 'no live matches', allMatches: allStatuses }]
 
       return matches.map((m) => {
         // During a live match fullTime is updated in real-time
