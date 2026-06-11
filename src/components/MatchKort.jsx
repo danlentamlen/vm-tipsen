@@ -152,6 +152,13 @@ export const MATCH_KORT_STYLES = `
   .mc-odds-draw-label { font-family:'Barlow',sans-serif; font-size:.65rem; color:#aaa; }
   .mc-odds-draw-pct { font-family:'Barlow Condensed',sans-serif; font-size:.78rem; font-weight:700; color:#888; }
   .mc-result-label { font-family:'Barlow Condensed',sans-serif; font-size:.6rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:#aaa; }
+  .mc-live-wrap { display:flex; flex-direction:column; align-items:center; gap:5px; }
+  .mc-live-score { display:flex; align-items:center; gap:4px; }
+  .mc-live-box { font-family:'Barlow Condensed',sans-serif; font-size:1.25rem; font-weight:800; color:#fff; background:#C8102E; border-radius:7px; padding:3px 10px; min-width:30px; text-align:center; }
+  .mc-live-sep { font-family:'Barlow Condensed',sans-serif; font-size:1rem; font-weight:700; color:#ccc; }
+  .mc-live-badge { display:inline-flex; align-items:center; gap:4px; font-family:'Barlow Condensed',sans-serif; font-size:.65rem; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:#C8102E; }
+  .mc-live-dot { width:7px; height:7px; border-radius:50%; background:#C8102E; animation:mc-pulse 1.2s ease-in-out infinite; flex-shrink:0; }
+  @keyframes mc-pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.35;transform:scale(.7)} }
   .mc-combo-wrap { display:flex; flex-direction:column; gap:6px; padding:.45rem 1rem .55rem; border-top:1px solid rgba(0,0,0,.04); }
   .mc-combo-eyebrow { font-family:'Barlow Condensed',sans-serif; font-size:.62rem; font-weight:700; letter-spacing:.18em; text-transform:uppercase; color:#bbb; }
   .mc-combo-grid { display:grid; grid-template-columns:68px 1fr; gap:12px; align-items:center; }
@@ -171,7 +178,7 @@ export const MATCH_KORT_STYLES = `
   .mc-footer-dot { width:3px; height:3px; border-radius:50%; background:#ddd; }
 `
 
-export default function MatchKort({ match, tip, inloggad, tipsLåst, sparar, onSpara, odds, stats, t }) {
+export default function MatchKort({ match, tip, inloggad, tipsLåst, sparar, onSpara, odds, stats, liveScore, t }) {
   const [hemma, setHemma] = useState(tip?.hemma_mål ?? '')
   const [borta, setBorta] = useState(tip?.borta_mål ?? '')
 
@@ -182,6 +189,7 @@ export default function MatchKort({ match, tip, inloggad, tipsLåst, sparar, onS
 
   const harTips     = tip !== undefined
   const harResultat = stats && stats.resultat_hemma !== undefined
+  const ärLive      = !!liveScore
   const tid         = formatTid(match.tid)
 
   const poäng = harResultat && harTips ? beräknaPoäng(tip, stats) : null
@@ -189,7 +197,7 @@ export default function MatchKort({ match, tip, inloggad, tipsLåst, sparar, onS
 
   const cardClass = [
     'mc',
-    harResultat && harTips ? outcomeClass : harTips ? 'has-tip' : '',
+    harResultat && harTips ? outcomeClass : ärLive ? 'has-tip' : harTips ? 'has-tip' : '',
   ].filter(Boolean).join(' ')
 
   return (
@@ -202,7 +210,19 @@ export default function MatchKort({ match, tip, inloggad, tipsLåst, sparar, onS
           </div>
 
           <div className="mc-centre">
-            {inloggad && !tipsLåst ? (
+            {ärLive ? (
+              <div className="mc-live-wrap">
+                <div className="mc-live-score">
+                  <span className="mc-live-box">{liveScore.hemma ?? '–'}</span>
+                  <span className="mc-live-sep">–</span>
+                  <span className="mc-live-box">{liveScore.borta ?? '–'}</span>
+                </div>
+                <span className="mc-live-badge">
+                  <span className="mc-live-dot" />
+                  LIVE{liveScore.minut ? ` ${liveScore.minut}'` : ''}{liveScore.status === 'PAUSED' ? ' HTP' : ''}
+                </span>
+              </div>
+            ) : inloggad && !tipsLåst ? (
               <>
                 <div className="mc-inputs" onClick={(e) => e.stopPropagation()}>
                   <input type="number" min="0" max="99" value={hemma} onChange={(e) => setHemma(e.target.value)} className="mc-input" placeholder="–" />
@@ -241,8 +261,8 @@ export default function MatchKort({ match, tip, inloggad, tipsLåst, sparar, onS
         </div>
       </div>
 
-      {/* Played match: compact tip strip */}
-      {tipsLåst && harResultat && inloggad && (
+      {/* Played/live match: compact tip strip */}
+      {tipsLåst && (harResultat || ärLive) && inloggad && (
         <div className="mc-tip-strip">
           <span className="mc-result-label">{t?.('matches.dittTips') || 'Ditt tips'}</span>
           {harTips ? (
@@ -263,7 +283,7 @@ export default function MatchKort({ match, tip, inloggad, tipsLåst, sparar, onS
       )}
 
       {/* Played match: group accuracy stats */}
-      {tipsLåst && harResultat && stats.totalt > 0 && (
+      {tipsLåst && harResultat && !ärLive && stats.totalt > 0 && (
         <div className="mc-stat-row">
           <span className="mc-stat-chip exact">⚽ {Math.round((stats.exakt / stats.totalt) * 100)}% {t?.('matches.exakt') || 'exakt'}</span>
           <span className="mc-stat-chip winner">✓ {Math.round((stats.rätt_vinnare / stats.totalt) * 100)}% {t?.('matches.rättVinnare') || 'rätt vinnare'}</span>

@@ -45,7 +45,9 @@ const STYLES = `
     display: flex; align-items: center; justify-content: center;
     font-family: 'Barlow Condensed', sans-serif;
     font-size: 1.4rem; font-weight: 700; color: #F0D060;
+    overflow: hidden;
   }
+  .pp-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
   .pp-hero-text {}
   .pp-name {
     font-family: 'Barlow Condensed', sans-serif;
@@ -58,9 +60,20 @@ const STYLES = `
     font-size: 0.8rem; color: rgba(255,255,255,0.4);
   }
 
+  /* Rekryteringsbadge in hero */
+  .pp-rek-badge-hero {
+    margin-left: auto; flex-shrink: 0;
+    display: inline-flex; align-items: center; gap: 5px;
+    background: rgba(197,160,40,0.15); border: 1px solid rgba(197,160,40,0.3);
+    border-radius: 100px; padding: 4px 12px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.72rem; font-weight: 700; letter-spacing: .1em;
+    color: #F0D060;
+  }
+
   /* Stats row */
   .pp-stats {
-    display: grid; grid-template-columns: repeat(3, 1fr);
+    display: grid; grid-template-columns: repeat(4, 1fr);
     gap: 0; margin-top: 1.25rem; padding-top: 1.25rem;
     border-top: 1px solid rgba(255,255,255,0.08);
     position: relative; z-index: 1;
@@ -123,24 +136,30 @@ const STYLES = `
   .pp-group-title {
     font-family: 'Barlow Condensed', sans-serif;
     font-size: 0.75rem; font-weight: 700; letter-spacing: 0.18em;
-    text-transform: uppercase; color: #0a1628;
+    text-transform: uppercase; color: #0a1628; white-space: nowrap;
   }
   .pp-group-line { flex: 1; height: 1px; background: rgba(0,0,0,0.07); }
+  .pp-group-summary {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em;
+    color: #888; white-space: nowrap;
+  }
   .pp-group-wrap { margin-bottom: 1.75rem; }
 
   /* Tip row */
   .pp-tip {
     display: flex; align-items: center;
     background: #fff; border: 1px solid rgba(0,0,0,0.07);
-    border-radius: 8px; padding: 0.625rem 0.875rem;
+    border-radius: 0 8px 8px 0; border-left-width: 3px;
+    padding: 0.55rem 0.875rem;
     margin-bottom: 0.4rem;
     box-shadow: 0 1px 2px rgba(0,0,0,0.03);
     gap: 8px;
   }
-  .pp-tip.exact  { border-left: 3px solid #C8102E;  background: rgba(200,16,46,0.03); }
-  .pp-tip.right  { border-left: 3px solid #C5A028;  background: rgba(197,160,40,0.03); }
-  .pp-tip.wrong  { border-left: 3px solid rgba(0,0,0,0.1); }
-  .pp-tip.pending { border-left: 3px solid rgba(0,0,0,0.06); opacity: 0.7; }
+  .pp-tip.exact  { border-left-color: #C8102E; background: rgba(200,16,46,0.03); }
+  .pp-tip.right  { border-left-color: #C5A028; background: rgba(197,160,40,0.03); }
+  .pp-tip.wrong  { border-left-color: rgba(0,0,0,0.1); }
+  .pp-tip.pending { border-left-color: rgba(0,0,0,0.06); background: #fafafa; opacity: 0.7; }
 
   .pp-tip-team {
     font-family: 'Barlow', sans-serif;
@@ -148,10 +167,9 @@ const STYLES = `
     flex: 1; min-width: 0;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
-  .pp-tip-team.away { text-align: left; }
   .pp-tip-team.home { text-align: right; }
 
-  .pp-tip-score-wrap { text-align: center; flex-shrink: 0; }
+  .pp-tip-score-wrap { text-align: center; flex-shrink: 0; min-width: 56px; }
   .pp-tip-score {
     font-family: 'Barlow Condensed', sans-serif;
     font-size: 1rem; font-weight: 700; color: #0a1628; line-height: 1;
@@ -164,26 +182,72 @@ const STYLES = `
   .pp-tip-pts {
     font-family: 'Barlow Condensed', sans-serif;
     font-size: 0.82rem; font-weight: 700;
-    min-width: 28px; text-align: right; flex-shrink: 0;
+    min-width: 32px; text-align: right; flex-shrink: 0;
   }
   .pp-tip-pts.exact  { color: #C8102E; }
   .pp-tip-pts.right  { color: #8a6e1a; }
   .pp-tip-pts.wrong  { color: #ccc; }
   .pp-tip-pts.pending { color: #ddd; }
 
-  /* Answers */
+  /* Tips legend */
+  .pp-legend {
+    display: flex; align-items: center; gap: 1rem; margin-top: 0.5rem;
+    flex-wrap: wrap;
+  }
+  .pp-legend-item {
+    display: flex; align-items: center; gap: 6px;
+    font-family: 'Barlow', sans-serif; font-size: 0.72rem; color: #888;
+  }
+  .pp-legend-dot {
+    width: 3px; height: 14px; border-radius: 0; flex-shrink: 0;
+  }
+
+  /* Answer cards */
   .pp-answer {
     background: #fff; border: 1px solid rgba(0,0,0,0.07);
-    border-radius: 8px; padding: 0.875rem 1rem; margin-bottom: 0.5rem;
+    border-radius: 0 8px 8px 0; border-left-width: 3px;
+    padding: 0.875rem 1rem; margin-bottom: 0.5rem;
     box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  }
+  .pp-answer.correct { border-left-color: #C8102E; background: rgba(200,16,46,0.02); }
+  .pp-answer.wrong   { border-left-color: rgba(0,0,0,0.1); }
+  .pp-answer.pending { border-left-color: rgba(0,0,0,0.06); background: #fafafa; opacity: 0.75; }
+
+  .pp-answer-nr {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.67rem; font-weight: 700; letter-spacing: 0.14em;
+    text-transform: uppercase; color: #bbb; margin-bottom: 0.3rem;
   }
   .pp-answer-q {
     font-family: 'Barlow', sans-serif;
-    font-size: 0.78rem; color: #aaa; margin-bottom: 4px;
+    font-size: 0.9rem; font-weight: 500; color: #0a1628;
+    margin-bottom: 0.5rem; line-height: 1.4;
   }
+  .pp-answer-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  }
+  .pp-answer-a-wrap {
+    display: flex; align-items: center; gap: 6px;
+  }
+  .pp-answer-arrow { font-size: 0.75rem; color: #ccc; }
   .pp-answer-a {
     font-family: 'Barlow', sans-serif;
-    font-size: 0.9rem; font-weight: 500; color: #0a1628;
+    font-size: 0.88rem; color: #555;
+  }
+  .pp-answer-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    border-radius: 100px; padding: 2px 10px; flex-shrink: 0;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em;
+  }
+  .pp-answer-badge.correct {
+    background: rgba(200,16,46,0.08); border: 1px solid rgba(200,16,46,0.2); color: #C8102E;
+  }
+  .pp-answer-badge.wrong {
+    background: rgba(0,0,0,0.04); border: 1px solid rgba(0,0,0,0.1); color: #bbb;
+  }
+  .pp-answer-badge.pending {
+    background: rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.08); color: #ccc;
   }
 
   /* Wine card */
@@ -206,9 +270,6 @@ const STYLES = `
   .pp-wine-link { font-family: 'Barlow',sans-serif; font-size: .75rem; color: #C5A028; text-decoration: none; }
   .pp-wine-link:hover { text-decoration: underline; }
 
-  /* Avatar with image */
-  .pp-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
-
   /* Empty states */
   .pp-empty {
     text-align: center; padding: 3rem 1rem;
@@ -218,14 +279,48 @@ const STYLES = `
   @media (max-width: 480px) {
     .pp-hero { padding: 1.25rem; }
     .pp-avatar { width: 48px; height: 48px; font-size: 1.2rem; }
-    .pp-stat-val { font-size: 1.4rem; }
+    .pp-stat-val { font-size: 1.3rem; }
+    .pp-stats { grid-template-columns: repeat(2, 1fr); gap: 0; }
+    .pp-stat { padding: 0.5rem 0; }
+    .pp-stat:nth-child(2) { border-right: none; }
+    .pp-stat:nth-child(1), .pp-stat:nth-child(2) { border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .pp-rek-badge-hero { display: none; }
   }
 `
+
+function tipClass(poäng) {
+  if (poäng === 5) return 'pp-tip exact'
+  if (poäng === 2) return 'pp-tip right'
+  if (poäng === 0) return 'pp-tip wrong'
+  return 'pp-tip pending'
+}
+
+function ptsClass(poäng) {
+  if (poäng === 5) return 'pp-tip-pts exact'
+  if (poäng === 2) return 'pp-tip-pts right'
+  if (poäng === 0) return 'pp-tip-pts wrong'
+  return 'pp-tip-pts pending'
+}
+
+function answerClass(svar, rätt_svar) {
+  if (!rätt_svar) return 'pp-answer pending'
+  return svar?.trim().toLowerCase() === rätt_svar.trim().toLowerCase()
+    ? 'pp-answer correct'
+    : 'pp-answer wrong'
+}
+
+function answerBadge(svar, rätt_svar) {
+  if (!rätt_svar) return { cls: 'pending', label: 'PÅGÅR' }
+  return svar?.trim().toLowerCase() === rätt_svar.trim().toLowerCase()
+    ? { cls: 'correct', label: 'RÄTT' }
+    : { cls: 'wrong', label: 'FEL' }
+}
 
 export default function ParticipantProfile() {
   const { user_id } = useParams()
   const [profil, setProfil] = useState(null)
   const [vin, setVin] = useState(null)
+  const [placering, setPlacering] = useState(null)
   const [laddar, setLaddar] = useState(true)
   const [aktivFlik, setAktivFlik] = useState('tips')
   const { tipsLåst } = useSettings()
@@ -234,11 +329,16 @@ export default function ParticipantProfile() {
     Promise.all([
       fetch(`/.netlify/functions/participants?user_id=${user_id}`).then(r => r.json()),
       fetch('/.netlify/functions/viner-hamta').then(r => r.json()).catch(() => []),
-    ]).then(([profilData, vinerData]) => {
+      fetch('/.netlify/functions/scores').then(r => r.json()).catch(() => []),
+    ]).then(([profilData, vinerData, scoresData]) => {
       setProfil(profilData)
       if (Array.isArray(vinerData)) {
         const mitt = vinerData.find(v => v.user_id === user_id && v.vin_namn)
         setVin(mitt || null)
+      }
+      if (Array.isArray(scoresData)) {
+        const rad = scoresData.find(r => r.user_id === user_id)
+        if (rad) setPlacering(rad.plats)
       }
       setLaddar(false)
     })
@@ -261,7 +361,7 @@ export default function ParticipantProfile() {
 
   const totalPoäng = profil.tips.reduce((sum, t) => sum + (t.poäng || 0), 0)
   const exakta = profil.tips.filter((t) => t.poäng === 5).length
-  const rätta = profil.tips.filter((t) => t.poäng === 2).length
+  const rätta  = profil.tips.filter((t) => t.poäng === 2).length
 
   const grupperande = profil.tips.reduce((acc, tip) => {
     const g = tip.grupp || 'Övrigt'
@@ -269,19 +369,6 @@ export default function ParticipantProfile() {
     acc[g].push(tip)
     return acc
   }, {})
-
-  function tipClass(poäng) {
-    if (poäng === 5) return 'pp-tip exact'
-    if (poäng === 2) return 'pp-tip right'
-    if (poäng === 0) return 'pp-tip wrong'
-    return 'pp-tip pending'
-  }
-  function ptsClass(poäng) {
-    if (poäng === 5) return 'pp-tip-pts exact'
-    if (poäng === 2) return 'pp-tip-pts right'
-    if (poäng === 0) return 'pp-tip-pts wrong'
-    return 'pp-tip-pts pending'
-  }
 
   return (
     <>
@@ -304,6 +391,11 @@ export default function ParticipantProfile() {
               <h1 className="pp-name">{profil.namn}</h1>
               <p className="pp-meta">{profil.tips.length} tips lämnade</p>
             </div>
+            {profil.rekryterade_antal > 0 && (
+              <div className="pp-rek-badge-hero">
+                👤 {profil.rekryterade_antal} rekryterad{profil.rekryterade_antal !== 1 ? 'e' : ''}
+              </div>
+            )}
           </div>
 
           {tipsLåst && (
@@ -319,6 +411,10 @@ export default function ParticipantProfile() {
               <div className="pp-stat">
                 <span className="pp-stat-val neutral">{rätta}</span>
                 <span className="pp-stat-lbl">Rätta utgångar</span>
+              </div>
+              <div className="pp-stat">
+                <span className="pp-stat-val neutral">{placering ? `#${placering}` : '–'}</span>
+                <span className="pp-stat-lbl">Placering</span>
               </div>
             </div>
           )}
@@ -370,35 +466,63 @@ export default function ParticipantProfile() {
                 {profil.tips.length === 0 ? (
                   <div className="pp-empty">Inga tips lämnade.</div>
                 ) : (
-                  Object.entries(grupperande).map(([grupp, tips]) => (
-                    <div key={grupp} className="pp-group-wrap">
-                      <div className="pp-group-header">
-                        <span className="pp-group-title">{grupp}</span>
-                        <div className="pp-group-line" />
-                      </div>
-                      {tips.map((tip) => (
-                        <div key={tip.match_id} className={tipClass(tip.poäng)}>
-                          <span className="pp-tip-team home">{tip.hemmalag}</span>
-                          <div className="pp-tip-score-wrap">
-                            <div className="pp-tip-score">
-                              {tip.tip_hemma} – {tip.tip_borta}
-                            </div>
-                            {tip.resultat_hemma !== null && (
-                              <div className="pp-tip-result">
-                                {tip.resultat_hemma}–{tip.resultat_borta}
-                              </div>
+                  <>
+                    {Object.entries(grupperande).map(([grupp, tips]) => {
+                      const gruppPoäng = tips.reduce((s, t) => s + (t.poäng || 0), 0)
+                      const gruppExakta = tips.filter(t => t.poäng === 5).length
+                      const harPoäng = tips.some(t => t.poäng !== null)
+
+                      return (
+                        <div key={grupp} className="pp-group-wrap">
+                          <div className="pp-group-header">
+                            <span className="pp-group-title">{grupp}</span>
+                            <div className="pp-group-line" />
+                            {harPoäng && (
+                              <span className="pp-group-summary">
+                                +{gruppPoäng}p{gruppExakta > 0 ? ` · ${gruppExakta} exakta` : ''}
+                              </span>
                             )}
                           </div>
-                          <span className="pp-tip-team away">{tip.bortalag}</span>
-                          {tip.poäng !== null && (
-                            <span className={ptsClass(tip.poäng)}>
-                              {tip.poäng > 0 ? `+${tip.poäng}p` : '0p'}
-                            </span>
-                          )}
+                          {tips.map((tip) => (
+                            <div key={tip.match_id} className={tipClass(tip.poäng)}>
+                              <span className="pp-tip-team home">{tip.hemmalag}</span>
+                              <div className="pp-tip-score-wrap">
+                                <div className="pp-tip-score">
+                                  {tip.tip_hemma} – {tip.tip_borta}
+                                </div>
+                                {tip.resultat_hemma !== null && (
+                                  <div className="pp-tip-result">
+                                    {tip.resultat_hemma}–{tip.resultat_borta}
+                                  </div>
+                                )}
+                              </div>
+                              <span className="pp-tip-team">{tip.bortalag}</span>
+                              {tip.poäng !== null && (
+                                <span className={ptsClass(tip.poäng)}>
+                                  {tip.poäng > 0 ? `+${tip.poäng}p` : '0p'}
+                                </span>
+                              )}
+                            </div>
+                          ))}
                         </div>
-                      ))}
+                      )
+                    })}
+
+                    <div className="pp-legend">
+                      <div className="pp-legend-item">
+                        <div className="pp-legend-dot" style={{ background: '#C8102E' }} />
+                        Exakt resultat (+5p)
+                      </div>
+                      <div className="pp-legend-item">
+                        <div className="pp-legend-dot" style={{ background: '#C5A028' }} />
+                        Rätt utgång (+2p)
+                      </div>
+                      <div className="pp-legend-item">
+                        <div className="pp-legend-dot" style={{ background: 'rgba(0,0,0,0.15)' }} />
+                        Fel / ej spelad
+                      </div>
                     </div>
-                  ))
+                  </>
                 )}
               </div>
             )}
@@ -409,12 +533,30 @@ export default function ParticipantProfile() {
                 {profil.svar.length === 0 ? (
                   <div className="pp-empty">Inga svar lämnade.</div>
                 ) : (
-                  profil.svar.map((s) => (
-                    <div key={s.fråga_id} className="pp-answer">
-                      <p className="pp-answer-q">{s.fråga}</p>
-                      <p className="pp-answer-a">{s.svar}</p>
-                    </div>
-                  ))
+                  [...profil.svar].sort((a, b) => (a.fråga_nr ?? 999) - (b.fråga_nr ?? 999)).map((s) => {
+                    const badge = answerBadge(s.svar, s.rätt_svar)
+                    return (
+                      <div key={s.fråga_id} className={answerClass(s.svar, s.rätt_svar)}>
+                        {s.fråga_nr && (
+                          <div className="pp-answer-nr">Fråga {s.fråga_nr}</div>
+                        )}
+                        {s.fråga && (
+                          <div className="pp-answer-q">{s.fråga}</div>
+                        )}
+                        <div className="pp-answer-row">
+                          <div className="pp-answer-a-wrap">
+                            <span className="pp-answer-arrow">→</span>
+                            <span className="pp-answer-a">{s.svar}</span>
+                          </div>
+                          <div className={`pp-answer-badge ${badge.cls}`}>
+                            {badge.cls === 'correct' && '✓ '}
+                            {badge.cls === 'wrong' && '✗ '}
+                            {badge.label}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })
                 )}
               </div>
             )}

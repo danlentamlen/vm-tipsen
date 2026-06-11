@@ -1,4 +1,8 @@
 import { getSheets, getRows } from './_sheets.js'
+import { withCache, invalidate } from './_cache.js'
+
+const CACHE_KEY = 'viner'
+const CACHE_TTL = 30 * 60 * 1000 // 30 minutes — no writes when bets are locked
 
 async function hämtaOgImage(url) {
   if (!url || !url.includes('systembolaget.se')) return null
@@ -33,56 +37,63 @@ export default async (req) => {
   }
 
   try {
-    const sheets = await getSheets()
+    const viner = await withCache(CACHE_KEY, CACHE_TTL, async () => {
+      const sheets = await getSheets()
 
-    // Kolumner: A=user_id, B=namn, C=vin_namn, D=vin_url, E=vin_pris, F=betalt, G=bild_url
-    const rader = await getRows(sheets, 'Viner!A2:G1000')
+      // Kolumner: A=user_id, B=namn, C=vin_namn, D=vin_url, E=vin_pris, F=betalt, G=bild_url
+      const rader = await getRows(sheets, 'Viner!A2:G1000')
+      const uppdateringar = []
 
-    console.log(`[viner-hamta] ${rader.length} rader. Första:`, JSON.stringify(rader[0] ?? []))
+      const result = await Promise.all(
+        rader.map(async (r, i) => {
+          const vin_url = (r[3] || '').trim()
+          let bild_url = (r[6] || '').trim()
 
-    const uppdateringar = []
-
-    const viner = await Promise.all(
-      rader.map(async (r, i) => {
-        const vin_url = (r[3] || '').trim()
-        let bild_url = (r[6] || '').trim()
-
-        if (vin_url && !bild_url) {
-          const scrapad = await hämtaOgImage(vin_url)
-          if (scrapad) {
-            bild_url = scrapad
-            uppdateringar.push({ rowIndex: i, bild_url })
+          if (vin_url && !bild_url) {
+            const scrapad = await hämtaOgImage(vin_url)
+            if (scrapad) {
+              bild_url = scrapad
+              uppdateringar.push({ rowIndex: i, bild_url })
+            }
           }
-        }
 
-        return {
-          user_id:  (r[0] || '').trim(),
-          namn:     (r[1] || '').trim(),
-          vin_namn: (r[2] || '').trim(),
-          vin_url,
-          vin_pris: (r[4] || '').trim(),
-          betalt:   (r[5] || 'ej_betalt').trim(),
-          bild_url,
-        }
-      })
-    )
-
-    if (uppdateringar.length > 0) {
-      await Promise.all(
-        uppdateringar.map(({ rowIndex, bild_url }) =>
-          sheets.spreadsheets.values.update({
-            spreadsheetId: process.env.GOOGLE_SHEET_ID,
-            range: `Viner!G${rowIndex + 2}`,
-            valueInputOption: 'RAW',
-            requestBody: { values: [[bild_url]] },
-          })
-        )
+          return {
+            user_id:  (r[0] || '').trim(),
+            namn:     (r[1] || '').trim(),
+            vin_namn: (r[2] || '').trim(),
+            vin_url,
+            vin_pris: (r[4] || '').trim(),
+            betalt:   (r[5] || 'ej_betalt').trim(),
+            bild_url,
+          }
+        })
       )
-    }
+
+      // Write back any newly-scraped images, then bust cache so next
+      // request picks up the persisted bild_url from the sheet.
+      if (uppdateringar.length > 0) {
+        await Promise.all(
+          uppdateringar.map(({ rowIndex, bild_url }) =>
+            sheets.spreadsheets.values.update({
+              spreadsheetId: process.env.GOOGLE_SHEET_ID,
+              range: `Viner!G${rowIndex + 2}`,
+              valueInputOption: 'RAW',
+              requestBody: { values: [[bild_url]] },
+            })
+          )
+        )
+        invalidate(CACHE_KEY) // next request will re-read with persisted images
+      }
+
+      return result
+    })
 
     return new Response(JSON.stringify(viner), {
       status: 200,
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'public, max-age=1800', // 30 minutes
+      },
     })
   } catch (err) {
     console.error('[viner-hamta] FEL:', err)

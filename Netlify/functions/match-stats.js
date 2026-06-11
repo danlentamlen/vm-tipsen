@@ -1,5 +1,8 @@
-import { getSheets, getRows } from './_sheets.js'
+import { getSheets, getMultipleRanges } from './_sheets.js'
 import { gruppspelLåst } from './_settings.js'
+import { withCache } from './_cache.js'
+
+const CACHE_TTL = 3 * 60 * 1000 // 3 minutes
 
 /**
  * GET /.netlify/functions/match-stats
@@ -32,11 +35,12 @@ export default async (req) => {
   }
 
   try {
+    const stats = await withCache('match-stats', CACHE_TTL, async () => {
     const sheets = await getSheets()
 
-    const [tipsRader, resultatRader] = await Promise.all([
-      getRows(sheets, 'Tips!A2:E100000'),
-      getRows(sheets, 'Resultat!A2:C1000'),
+    const [tipsRader, resultatRader] = await getMultipleRanges(sheets, [
+      'Tips!A2:E100000',
+      'Resultat!A2:C1000',
     ])
 
     // Build result map: match_id → { hemma, borta }
@@ -113,11 +117,14 @@ export default async (req) => {
       }
     })
 
+    return stats
+    }) // end withCache
+
     return new Response(JSON.stringify(stats), {
       status: 200,
       headers: {
         'Content-Type': 'application/json',
-        'Cache-Control': 'public, max-age=300', // 5-min browser cache
+        'Cache-Control': 'public, max-age=180', // 3 minutes
       },
     })
   } catch (err) {

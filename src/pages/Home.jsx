@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
@@ -250,6 +250,8 @@ export default function Home() {
   const [topplista, setTopplista]     = useState([])
   const [igårBäst, setIgårBäst]       = useState([])
   const [topScorers, setTopScorers]   = useState([])
+  const [liveScores, setLiveScores]   = useState([])
+  const liveIntervalRef               = useRef(null)
 
   useEffect(() => {
     Promise.all([
@@ -308,6 +310,31 @@ export default function Home() {
         setMinaTips(map)
       }).catch(() => {})
     }
+  }
+
+  async function hämtaLiveScores() {
+    try {
+      const data = await fetch('/.netlify/functions/live-scores').then(r => r.json())
+      setLiveScores(Array.isArray(data) ? data : [])
+    } catch {
+      setLiveScores([])
+    }
+  }
+
+  // Poll live scores every 60s while there are ongoing matches
+  useEffect(() => {
+    if (!gruppspelLåst) return
+    hämtaLiveScores()
+    liveIntervalRef.current = setInterval(hämtaLiveScores, 60 * 1000)
+    return () => clearInterval(liveIntervalRef.current)
+  }, [gruppspelLåst])
+
+  function liveScoreForMatch(match) {
+    return liveScores.find(
+      (ls) =>
+        ls.hemmalag.toLowerCase().trim() === match.hemmalag.toLowerCase().trim() &&
+        ls.bortalag.toLowerCase().trim() === match.bortalag.toLowerCase().trim()
+    ) || null
   }
 
   function oddsForMatch(match) {
@@ -514,20 +541,14 @@ export default function Home() {
               <span className="li-hero-eyebrow">⚽ FIFA World Cup 2026 pågår</span>
               <h1 className="li-hero-name">Hej, {användare.namn.split(' ')[0]}!</h1>
             </div>
-            <div className="li-hero-right">
-              {minRank >= 0 && (
+            {minRank >= 0 && (
+              <div className="li-hero-right">
                 <div className="li-hero-rank">
                   <span className="li-hero-rank-pos">#{minRank + 1}</span>
                   <span className="li-hero-rank-pts">{topplista[minRank]?.poäng ?? 0} poäng</span>
                 </div>
-              )}
-              <div className="li-hero-links">
-                <Link to="/matches" className="li-hero-link">📅 Matcher</Link>
-                <Link to="/leaderboard" className="li-hero-link">🏆 Topplistan</Link>
-                <Link to="/questions" className="li-hero-link">🎯 Frågor</Link>
-                <Link to="/mitt-vin" className="li-hero-link">🍷 Mitt vin</Link>
               </div>
-            </div>
+            )}
           </div>
         </div>
       )}
@@ -624,6 +645,7 @@ export default function Home() {
                 onSpara={() => {}}
                 odds={oddsForMatch(match)}
                 stats={matchStats[match.match_id] || null}
+                liveScore={liveScoreForMatch(match)}
               />
             ))}
           </div>

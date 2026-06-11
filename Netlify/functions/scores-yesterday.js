@@ -1,5 +1,8 @@
-import { getSheets, getRows } from './_sheets.js'
+import { getSheets, getMultipleRanges } from './_sheets.js'
 import { gruppspelLåst } from './_settings.js'
+import { withCache } from './_cache.js'
+
+const CACHE_TTL = 10 * 60 * 1000 // 10 minutes
 
 function räknaPoäng(tipH, tipB, resH, resB) {
   if (tipH === resH && tipB === resB) return 5
@@ -40,97 +43,76 @@ export default async (req) => {
   }
 
   try {
-    const sheets = await getSheets()
+    // Cache key includes the current date so results auto-refresh at midnight
+    const dateKey = new Date().toISOString().slice(0, 10)
+    const topplista = await withCache(`scores-yesterday:${dateKey}`, CACHE_TTL, async () => {
+      const sheets = await getSheets()
 
-    // Tidsfönster: igår 16:00 CEST → idag 08:00 CEST (CEST = UTC+2)
-    const now = new Date()
-    const fönsterStart = new Date(now)
-    fönsterStart.setUTCDate(fönsterStart.getUTCDate() - 1)
-    fönsterStart.setUTCHours(14, 0, 0, 0)  // igår 16:00 CEST = 14:00 UTC
-    const fönsterSlut = new Date(now)
-    fönsterSlut.setUTCHours(6, 0, 0, 0)    // idag 08:00 CEST = 06:00 UTC
+      // One batchGet for all four ranges
+      const [matcherRader, resultatRader, tipsRader, användareRader] =
+        await getMultipleRanges(sheets, [
+          'Matcher!A2:H1000',
+          'Resultat!A2:C1000',
+          'Tips!A2:E100000',
+          'Användare!A2:B1000',
+        ])
 
-    // Hitta match_ids vars CEST-starttid ligger i fönstret
-    const matcherRader = await getRows(sheets, 'Matcher!A2:H1000')
-    const igårMatchIds = new Set(
-      matcherRader
-        .filter((r) => {
-          const start = parseMatchStart(r[1], r[2])
-          return start && start >= fönsterStart && start < fönsterSlut
-        })
-        .map((r) => r[0])
-        .filter(Boolean)
-    )
+      // Tidsfönster: igår 16:00 CEST → idag 08:00 CEST (CEST = UTC+2)
+      const now = new Date()
+      const fönsterStart = new Date(now)
+      fönsterStart.setUTCDate(fönsterStart.getUTCDate() - 1)
+      fönsterStart.setUTCHours(14, 0, 0, 0)
+      const fönsterSlut = new Date(now)
+      fönsterSlut.setUTCHours(6, 0, 0, 0)
 
-    if (igårMatchIds.size === 0) {
-      return new Response(JSON.stringify([]), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
+      const igårMatchIds = new Set(
+        matcherRader
+          .filter((r) => { const s = parseMatchStart(r[1], r[2]); return s && s >= fönsterStart && s < fönsterSlut })
+          .map((r) => r[0])
+          .filter(Boolean)
+      )
+      if (igårMatchIds.size === 0) return []
+
+      const resultatMap = {}
+      resultatRader.forEach((r) => {
+        if (r[0] && igårMatchIds.has(r[0]) && r[1] !== '' && r[2] !== '') {
+          resultatMap[r[0]] = { hemma: Number(r[1]), borta: Number(r[2]) }
+        }
       })
-    }
+      const matchesWithResults = new Set(Object.keys(resultatMap))
+      if (matchesWithResults.size === 0) return []
 
-    // Get results for yesterday's matches
-    const resultatRader = await getRows(sheets, 'Resultat!A2:C1000')
-    const resultatMap = {}
-    resultatRader.forEach((r) => {
-      if (r[0] && igårMatchIds.has(r[0]) && r[1] !== '' && r[2] !== '') {
-        resultatMap[r[0]] = { hemma: Number(r[1]), borta: Number(r[2]) }
-      }
-    })
-
-    // Only count matches that actually have results
-    const matchesWithResults = new Set(Object.keys(resultatMap))
-    if (matchesWithResults.size === 0) {
-      return new Response(JSON.stringify([]), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
+      const poängMap = {}, exaktaMap = {}, rättaMap = {}
+      tipsRader.forEach((r) => {
+        const res = resultatMap[r[2]]
+        if (!res || !r[1]) return
+        const p = räknaPoäng(Number(r[3]), Number(r[4]), res.hemma, res.borta)
+        poängMap[r[1]]  = (poängMap[r[1]]  || 0) + p
+        if (p === 5) exaktaMap[r[1]] = (exaktaMap[r[1]] || 0) + 1
+        if (p === 2) rättaMap[r[1]]  = (rättaMap[r[1]]  || 0) + 1
       })
-    }
 
-    // Calculate match points per user for yesterday only
-    const tipsRader = await getRows(sheets, 'Tips!A2:E100000')
-    const poängMap = {}
-    const exaktaMap = {}
-    const rättaMap = {}
+      const namnMap = {}
+      användareRader.forEach((r) => { if (r[0]) namnMap[r[0]] = r[1] })
 
-    tipsRader.forEach((r) => {
-      const match_id = r[2]
-      if (!matchesWithResults.has(match_id)) return
-      const res = resultatMap[match_id]
-      if (!res) return
-
-      const user_id = r[1]
-      if (!user_id) return
-
-      const p = räknaPoäng(Number(r[3]), Number(r[4]), res.hemma, res.borta)
-      poängMap[user_id]  = (poängMap[user_id]  || 0) + p
-      if (p === 5) exaktaMap[user_id] = (exaktaMap[user_id] || 0) + 1
-      if (p === 2) rättaMap[user_id]  = (rättaMap[user_id]  || 0) + 1
+      return Object.entries(poängMap)
+        .filter(([, p]) => p > 0)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([user_id, poäng]) => ({
+          user_id,
+          namn:   namnMap[user_id] || 'Okänd',
+          poäng,
+          exakta: exaktaMap[user_id] || 0,
+          rätta:  rättaMap[user_id]  || 0,
+        }))
     })
-
-    // Get user names
-    const användareRader = await getRows(sheets, 'Användare!A2:B1000')
-    const namnMap = {}
-    användareRader.forEach((r) => { if (r[0]) namnMap[r[0]] = r[1] })
-
-    // Build top 3
-    const topplista = Object.entries(poängMap)
-      .filter(([, p]) => p > 0)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 3)
-      .map(([user_id, poäng]) => ({
-        user_id,
-        namn:   namnMap[user_id] || 'Okänd',
-        poäng,
-        exakta: exaktaMap[user_id] || 0,
-        rätta:  rättaMap[user_id]  || 0,
-      }))
 
     return new Response(JSON.stringify(topplista), {
       status: 200,
       headers: {
         'Content-Type': 'application/json',
-        'Cache-Control': 'public, max-age=300',
+        'Cache-Control': 'public, max-age=600', // 10 minutes
       },
     })
   } catch (err) {
