@@ -26,6 +26,13 @@ const TSDB_LEAGUE = process.env.THESPORTSDB_LEAGUE || '' // tom = sekundärkäll
 const TSDB_SEASON = process.env.THESPORTSDB_SEASON || '2026'
 const TSDB_BASE = 'https://www.thesportsdb.com/api/v1/json'
 
+// BALLDONTLIE (gratis: 5 req/min) — enda gratiskällan som ger LIVE-MINUTEN via
+// clock_display. HELT opt-in: utan BALLDONTLIE_KEY görs inga anrop dit, så
+// beteendet är identiskt med tidigare och kan inte bryta nuvarande version.
+const BDL_KEY = process.env.BALLDONTLIE_KEY || '' // tom = källan av
+const BDL_SEASON = process.env.BALLDONTLIE_SEASON || '2026'
+const BDL_BASE = 'https://api.balldontlie.io/fifa/worldcup/v1'
+
 // ── Lagnamn-mappning → vårt format ──────────────────────────────────────────
 export const LAGNAMN_MAP = {
   'Bosnia and Herzegovina': 'Bosnia & Herzegovina',
@@ -103,6 +110,52 @@ async function tsdbFetchSeason() {
   return (data.events || []).map(tsdbNormalize)
 }
 
+// ── BALLDONTLIE (gratis, ger live-minut) ────────────────────────────────────
+function bdlStatus(s) {
+  const v = (s || '').toLowerCase()
+  if (v === 'completed') return 'FINISHED'
+  if (v === 'in_progress') return 'IN_PLAY'
+  return 'SCHEDULED'
+}
+
+// clock_display → minut: "47:15" → 47, "90+02:30" → 92, null → null
+function bdlMinut(clock) {
+  if (!clock) return null
+  const m = String(clock).match(/^(\d+)(?:\+(\d+))?/)
+  if (!m) return null
+  return parseInt(m[1], 10) + (m[2] ? parseInt(m[2], 10) : 0)
+}
+
+function bdlNormalize(ev) {
+  return {
+    hemmalag: LAGNAMN_MAP[ev.home_team?.name] || ev.home_team?.name || '',
+    bortalag: LAGNAMN_MAP[ev.away_team?.name] || ev.away_team?.name || '',
+    hemma:    ev.home_score ?? null,
+    borta:    ev.away_score ?? null,
+    status:   bdlStatus(ev.status),
+    minut:    bdlMinut(ev.clock_display),
+    källa:    'balldontlie',
+  }
+}
+
+// Hämtar säsongens matcher med cursor-paginering (VM = 104 matcher, sida = 100).
+// Max 3 sidor som säkerhetsspärr så en trasig cursor aldrig blir oändlig loop.
+async function bdlFetchSeason() {
+  if (!BDL_KEY) return [] // källan avstängd
+  const alla = []
+  let cursor = null
+  for (let i = 0; i < 3; i++) {
+    const url = `${BDL_BASE}/matches?seasons[]=${BDL_SEASON}&per_page=100${cursor ? `&cursor=${cursor}` : ''}`
+    const res = await fetch(url, { headers: { Authorization: BDL_KEY } })
+    if (!res.ok) throw new Error(`balldontlie ${res.status}`)
+    const data = await res.json()
+    alla.push(...(data.data || []).map(bdlNormalize))
+    cursor = data.meta?.next_cursor
+    if (!cursor) break
+  }
+  return alla
+}
+
 // ── Sammanslagning ──────────────────────────────────────────────────────────
 // Slår ihop två normaliserade listor per matchKey. För varje match väljs den
 // "starkaste" posten: ett FINISHED-resultat slår IN_PLAY som slår SCHEDULED.
@@ -131,10 +184,12 @@ export async function getFinishedResults() {
   const resultat = await Promise.allSettled([
     process.env.FOOTBALL_DATA_KEY ? fdFetch('status=FINISHED').then((d) => (d.matches || []).map(fdNormalize)) : Promise.resolve([]),
     tsdbFetchSeason(),
+    bdlFetchSeason(),
   ])
   const fd   = resultat[0].status === 'fulfilled' ? resultat[0].value : []
   const tsdb = resultat[1].status === 'fulfilled' ? resultat[1].value : []
-  return mergeResults(fd, tsdb).filter(
+  const bdl  = resultat[2].status === 'fulfilled' ? resultat[2].value : []
+  return mergeResults(fd, tsdb, bdl).filter(
     (m) => m.status === 'FINISHED' && m.hemma != null && m.borta != null,
   )
 }
@@ -193,11 +248,13 @@ export async function getLiveScores() {
       ? fdFetch(`dateFrom=${today}&dateTo=${today}`).then((d) => (d.matches || []).map(fdNormalize))
       : Promise.resolve([]),
     tsdbFetchSeason(),
+    bdlFetchSeason(),
   ])
   const fd   = resultat[0].status === 'fulfilled' ? resultat[0].value : []
   const tsdb = resultat[1].status === 'fulfilled' ? resultat[1].value : []
+  const bdl  = resultat[2].status === 'fulfilled' ? resultat[2].value : []
 
-  const pågående = [...fd, ...tsdb].filter((m) => m.status === 'IN_PLAY' || m.status === 'PAUSED')
+  const pågående = [...fd, ...tsdb, ...bdl].filter((m) => m.status === 'IN_PLAY' || m.status === 'PAUSED')
   const map = new Map()
   for (const m of pågående) {
     const key = matchKey(m.hemmalag, m.bortalag)

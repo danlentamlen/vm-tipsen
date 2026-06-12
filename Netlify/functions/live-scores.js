@@ -18,7 +18,7 @@ export default async (req) => {
     return new Response('Method Not Allowed', { status: 405 })
   }
 
-  if (!process.env.FOOTBALL_DATA_KEY && !process.env.THESPORTSDB_LEAGUE) {
+  if (!process.env.FOOTBALL_DATA_KEY && !process.env.THESPORTSDB_LEAGUE && !process.env.BALLDONTLIE_KEY) {
     return new Response(JSON.stringify([]), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
