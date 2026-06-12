@@ -1,8 +1,9 @@
 import { getSheets, getMultipleRanges } from './_sheets.js'
 import { gruppspelLåst } from './_settings.js'
-import { withCache } from './_cache.js'
+import { getCached } from './_persistentCache.js'
+import { dedupliceraTips } from './_scoring.js'
 
-const CACHE_TTL = 3 * 60 * 1000 // 3 minutes
+const CACHE_TTL = 5 * 60 * 1000 // 5 min — delas mellan instanser via persistent cache
 
 /**
  * GET /.netlify/functions/match-stats
@@ -35,7 +36,7 @@ export default async (req) => {
   }
 
   try {
-    const stats = await withCache('match-stats', CACHE_TTL, async () => {
+    const stats = await getCached('match-stats:v1', CACHE_TTL, async () => {
     const sheets = await getSheets()
 
     const [tipsRader, resultatRader] = await getMultipleRanges(sheets, [
@@ -49,9 +50,10 @@ export default async (req) => {
       if (rad[0]) resultat[rad[0]] = { hemma: Number(rad[1]), borta: Number(rad[2]) }
     })
 
-    // Group tips by match_id
+    // Group tips by match_id — dedupe först så ett redigerat tips bara räknas en
+    // gång per användare (annars blir fördelning/träffsäkerhet uppblåst).
     const tipsByMatch = {}
-    tipsRader.forEach((rad) => {
+    dedupliceraTips(tipsRader).forEach((rad) => {
       const match_id = rad[2]
       if (!match_id) return
       if (!tipsByMatch[match_id]) tipsByMatch[match_id] = []

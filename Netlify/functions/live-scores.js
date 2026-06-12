@@ -1,32 +1,24 @@
-import { withCache } from './_cache.js'
+/**
+ * live-scores.js — Pågående matcher för startsidans "Live".
+ *
+ * Använder den sammanslagna resultatkällan (_resultsSource): football-data.org
+ * som primär + valfri gratis sekundärkälla (TheSportsDB) som snabbare alternativ.
+ * Den källa som rapporterar IN_PLAY/PAUSED vinner. Trasig källa väller aldrig
+ * den andra (Promise.allSettled internt).
+ *
+ * Output (oförändrad form): [{ hemmalag, bortalag, hemma, borta, minut, status }]
+ */
+import { getCached } from './_persistentCache.js'
+import { getLiveScores } from './_resultsSource.js'
 
-const CACHE_TTL = 60 * 1000 // 60 seconds
-const API_BASE  = 'https://api.football-data.org/v4'
-
-// Lagnamn-mapping: football-data.org → vårt format
-const LAGNAMN_MAP = {
-  'Bosnia and Herzegovina': 'Bosnia & Herzegovina',
-  'Bosnia-Herzegovina':     'Bosnia & Herzegovina',
-  'United States':          'USA',
-  'Korea Republic':         'South Korea',
-  'Korea DPR':              'North Korea',
-  'IR Iran':                'Iran',
-  'Czechia':                'Czech Republic',
-  'Türkiye':                'Turkey',
-  "Côte d'Ivoire":          'Ivory Coast',
-  'China PR':               'China',
-}
-
-function norm(name) {
-  return (LAGNAMN_MAP[name] || name || '').trim()
-}
+const CACHE_TTL = 30 * 1000 // 30 s — live ska vara färskt men inte spamma API:t
 
 export default async (req) => {
   if (req.method !== 'GET') {
     return new Response('Method Not Allowed', { status: 405 })
   }
 
-  if (!process.env.FOOTBALL_DATA_KEY) {
+  if (!process.env.FOOTBALL_DATA_KEY && !process.env.THESPORTSDB_LEAGUE) {
     return new Response(JSON.stringify([]), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
@@ -34,46 +26,23 @@ export default async (req) => {
   }
 
   try {
-    const live = await withCache('live-scores', CACHE_TTL, async () => {
-      // Fetch today's WC matches by date — status=LIVE filter is unreliable
-      // on the current subscription tier, so we fetch all of today's matches
-      // and filter locally for IN_PLAY / PAUSED.
-      const today = new Date().toISOString().slice(0, 10)
-      const res = await fetch(
-        `${API_BASE}/competitions/WC/matches?season=2026&dateFrom=${today}&dateTo=${today}`,
-        { headers: { 'X-Auth-Token': process.env.FOOTBALL_DATA_KEY } }
-      )
-
-      if (!res.ok) {
-        console.error('[live-scores] API error', res.status)
-        return []
-      }
-
-      const data = await res.json()
-      const matches = (data.matches || []).filter(
-        (m) => m.status === 'IN_PLAY' || m.status === 'PAUSED'
-      )
-
-      return matches.map((m) => {
-        // During a live match fullTime is updated in real-time
-        const score = m.score?.fullTime ?? m.score?.halfTime ?? {}
-        return {
-          hemmalag:   norm(m.homeTeam?.name),
-          bortalag:   norm(m.awayTeam?.name),
-          hemma:      score.home ?? null,
-          borta:      score.away ?? null,
-          minut:      m.minute ?? null,
-          injuryTime: m.injuryTime ?? null,
-          status:     m.status,
-        }
-      })
+    const live = await getCached('live-scores:v1', CACHE_TTL, async () => {
+      const matcher = await getLiveScores()
+      return matcher.map((m) => ({
+        hemmalag: m.hemmalag,
+        bortalag: m.bortalag,
+        hemma:    m.hemma,
+        borta:    m.borta,
+        minut:    m.minut ?? null,
+        status:   m.status,
+      }))
     })
 
     return new Response(JSON.stringify(live), {
       status: 200,
       headers: {
         'Content-Type': 'application/json',
-        'Cache-Control': 'public, max-age=60',
+        'Cache-Control': 'public, max-age=30',
       },
     })
   } catch (err) {

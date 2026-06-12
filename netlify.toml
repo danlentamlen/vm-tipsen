@@ -33,10 +33,10 @@
   to   = "/index.html"
   status = 200
 
-# Kör var 15:e minut under VM (11 jun – 19 jul 2026)
+# Kör var 5:e minut under VM (11 jun – 19 jul 2026) — snabbare resultat & snapshot
 [[scheduled-functions]]
   name = "sync-results"
-  schedule = "*/15 * * * *"
+  schedule = "*/5 * * * *"
 
 # Hämtar odds från The Odds API en gång per dag kl 15:00 CEST (13:00 UTC)
 [[scheduled-functions]]

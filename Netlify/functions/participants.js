@@ -1,5 +1,6 @@
 import { getSheets, getRows, getMultipleRanges } from './_sheets.js'
 import { withCache } from './_cache.js'
+import { räknaMatchPoäng, dedupliceraTips, dedupliceraSvar } from './_scoring.js'
 import jwt from 'jsonwebtoken'
 
 const LIST_TTL    = 15 * 60 * 1000  // participant list — 15 minutes
@@ -82,22 +83,15 @@ export default async (req) => {
         if (rad[0]) resultatMap[rad[0]] = { hemma: rad[1], borta: rad[2] }
       })
 
-      const minaTips = tipsRader
-        .filter((rad) => rad[1] === user_id)
+      // Dedupe: Tips-arket kan ha flera rader per match (redigerat tips) — visa
+      // bara senaste, annars dyker samma match upp flera gånger. Se [[dedupliceraTips]].
+      const minaTips = dedupliceraTips(tipsRader.filter((rad) => rad[1] === user_id))
         .map((rad) => {
           const match   = matcherMap[rad[2]] || {}
           const resultat = resultatMap[rad[2]]
-          let poäng = null
-          if (resultat) {
-            const th = parseInt(rad[3]), tb = parseInt(rad[4])
-            const rh = parseInt(resultat.hemma), rb = parseInt(resultat.borta)
-            if (th === rh && tb === rb) poäng = 5
-            else {
-              const tipUtg = th > tb ? 'h' : th < tb ? 'b' : 'o'
-              const resUtg = rh > rb ? 'h' : rh < rb ? 'b' : 'o'
-              poäng = tipUtg === resUtg ? 2 : 0
-            }
-          }
+          const poäng = resultat
+            ? räknaMatchPoäng(rad[3], rad[4], resultat.hemma, resultat.borta)
+            : null
           return {
             match_id: rad[2],
             tip_hemma: rad[3], tip_borta: rad[4],
@@ -112,8 +106,7 @@ export default async (req) => {
         if (rad[0]) frågorMap[rad[0]] = { fråga: rad[1], poäng: parseInt(rad[2]) || 0, rätt_svar: rad[4] || null, index: i + 1 }
       })
 
-      const minaSvar = frågorSvarRader
-        .filter((rad) => rad[1] === user_id)
+      const minaSvar = dedupliceraSvar(frågorSvarRader.filter((rad) => rad[1] === user_id))
         .map((rad) => {
           const fråga = frågorMap[rad[2]] || {}
           return {
