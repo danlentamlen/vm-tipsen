@@ -168,8 +168,23 @@ export async function getTopScorers(antal = 15) {
 }
 
 /**
+ * Färskhetsmått för en pågående match. Mål kan bara öka under en match, så flest
+ * mål = senaste ställningen; minuten är tiebreak. Används för att välja rätt post
+ * när flera källor rapporterar samma live-match.
+ */
+function liveFräschhet(m) {
+  const mål = (Number(m.hemma) || 0) + (Number(m.borta) || 0)
+  const minut = Number(m.minut) || 0
+  return mål * 1000 + minut
+}
+
+/**
  * Pågående matcher (IN_PLAY/PAUSED) från alla källor, sammanslagna.
  * Används av live-scores för startsidans "Live".
+ *
+ * OBS: till skillnad från mergeResults (som rankar på status) väljs här den
+ * FÄRSKASTE posten per match — annars skulle en eftersläpande 0–0 från en källa
+ * kunna slå en korrekt 0–1 från en annan bara för att den råkar svara först.
  */
 export async function getLiveScores() {
   const today = new Date().toISOString().slice(0, 10)
@@ -181,5 +196,13 @@ export async function getLiveScores() {
   ])
   const fd   = resultat[0].status === 'fulfilled' ? resultat[0].value : []
   const tsdb = resultat[1].status === 'fulfilled' ? resultat[1].value : []
-  return mergeResults(fd, tsdb).filter((m) => m.status === 'IN_PLAY' || m.status === 'PAUSED')
+
+  const pågående = [...fd, ...tsdb].filter((m) => m.status === 'IN_PLAY' || m.status === 'PAUSED')
+  const map = new Map()
+  for (const m of pågående) {
+    const key = matchKey(m.hemmalag, m.bortalag)
+    const befintlig = map.get(key)
+    if (!befintlig || liveFräschhet(m) > liveFräschhet(befintlig)) map.set(key, m)
+  }
+  return [...map.values()]
 }

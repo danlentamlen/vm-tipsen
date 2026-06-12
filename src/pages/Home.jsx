@@ -276,6 +276,7 @@ export default function Home() {
   const [topScorers, setTopScorers]   = useState([])
   const [liveScores, setLiveScores]   = useState([])
   const liveIntervalRef               = useRef(null)
+  const förraLiveRef                  = useRef(null) // senaste uppsättningen pågående matcher
 
   useEffect(() => {
     Promise.all([
@@ -341,18 +342,39 @@ export default function Home() {
   async function hämtaLiveScores() {
     try {
       const data = await fetch('/.netlify/functions/live-scores').then(r => r.json())
-      setLiveScores(Array.isArray(data) ? data : [])
+      const lista = Array.isArray(data) ? data : []
+      setLiveScores(lista)
+      // När uppsättningen pågående matcher ändras (en match startar eller är slut)
+      // hämtas dashboarden om direkt — då dyker slutresultat, ny ställning och
+      // uppdaterad prognos upp utan att användaren behöver ladda om sidan.
+      const nyckel = lista.map(m => `${m.hemmalag}|${m.bortalag}`).sort().join(';')
+      if (förraLiveRef.current !== null && nyckel !== förraLiveRef.current) {
+        hämtaDashboard()
+      }
+      förraLiveRef.current = nyckel
     } catch {
       setLiveScores([])
     }
   }
 
-  // Poll live scores every 60s while there are ongoing matches
+  // Live-uppdatering utan browser-refresh: pollar den pågående matchen var 60:e
+  // sekund (mål + minut). När en match startar eller är slut ändras live-setet,
+  // och då — och bara då — hämtas dashboarden om så slutresultat/ställning följer
+  // med. Samma sak när fliken blir aktiv igen.
   useEffect(() => {
     if (!gruppspelLåst) return
     hämtaLiveScores()
     liveIntervalRef.current = setInterval(hämtaLiveScores, 60 * 1000)
-    return () => clearInterval(liveIntervalRef.current)
+
+    const vidFokus = () => {
+      if (document.visibilityState === 'visible') hämtaLiveScores()
+    }
+    document.addEventListener('visibilitychange', vidFokus)
+
+    return () => {
+      clearInterval(liveIntervalRef.current)
+      document.removeEventListener('visibilitychange', vidFokus)
+    }
   }, [gruppspelLåst])
 
   function liveScoreForMatch(match) {
