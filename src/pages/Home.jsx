@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
 import MatchKort, { normName, getFlag, MATCH_KORT_STYLES, formatTid, dagOffset } from '../components/MatchKort'
+import { prognosForSpelare } from '../utils/prediktion'
 
 /**
  * Justerar matchens datum (YYYY-MM-DD) om CEST-konverteringen korsar midnatt.
@@ -102,10 +103,27 @@ const DASHBOARD_STYLES = `
   .li-hero-left { display:flex; flex-direction:column; gap:4px; }
   .li-hero-eyebrow { font-family:'Barlow Condensed',sans-serif; font-size:.68rem; font-weight:600; letter-spacing:.2em; text-transform:uppercase; color:rgba(255,255,255,.35); }
   .li-hero-name { font-family:'Barlow Condensed',sans-serif; font-size:clamp(1.8rem,5vw,2.8rem); font-weight:700; color:#fff; line-height:1; letter-spacing:.02em; }
+  .li-hero-minsida { display:inline-flex; align-items:center; gap:5px; width:fit-content; margin-top:6px; text-decoration:none; font-family:'Barlow Condensed',sans-serif; font-size:.74rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:rgba(255,255,255,.55); border:1px solid rgba(255,255,255,.18); border-radius:100px; padding:4px 12px; transition:border-color .15s,color .15s; }
+  .li-hero-minsida:hover { border-color:rgba(197,160,40,.5); color:#F0D060; }
   .li-hero-right { display:flex; flex-direction:column; align-items:flex-end; gap:10px; }
-  .li-hero-rank { display:flex; align-items:baseline; gap:8px; }
-  .li-hero-rank-pos { font-family:'Barlow Condensed',sans-serif; font-size:2.2rem; font-weight:700; color:#F0D060; line-height:1; }
   .li-hero-rank-pts { font-family:'Barlow Condensed',sans-serif; font-size:.88rem; font-weight:600; color:rgba(255,255,255,.4); }
+
+  /* ── My standing: rank / points / gap / predicted finish ── */
+  .li-stats { display:flex; align-items:stretch; gap:0; }
+  .li-stat { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; padding:0 .95rem; border-right:1px solid rgba(255,255,255,.1); text-align:center; min-width:62px; }
+  .li-stat:last-child { border-right:none; padding-right:0; }
+  .li-stat:first-child { padding-left:0; }
+  .li-stat-num { font-family:'Barlow Condensed',sans-serif; font-size:1.9rem; font-weight:700; color:#fff; line-height:1; display:inline-flex; align-items:baseline; gap:3px; white-space:nowrap; }
+  .li-stat-lbl { font-family:'Barlow Condensed',sans-serif; font-size:.58rem; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:rgba(255,255,255,.35); }
+  .li-stat:first-child .li-stat-num { color:#F0D060; }
+  .li-stat-pred { background:rgba(197,160,40,.1); border-radius:9px; border-right:none; margin-left:.25rem; }
+  .li-stat-pred .li-stat-num { color:#F0D060; }
+  .li-stat-pred .li-stat-lbl { color:rgba(240,208,96,.7); }
+  .li-pred-pil { font-size:.7rem; font-weight:700; letter-spacing:0; }
+  .li-pred-pil.upp { color:#4ade80; }
+  .li-pred-pil.ned { color:#f87171; }
+  .li-pred-pil.still { color:rgba(255,255,255,.4); }
+  .li-winchance { font-family:'Barlow',sans-serif; font-size:.74rem; font-weight:500; color:rgba(240,208,96,.85); background:rgba(197,160,40,.1); border:1px solid rgba(197,160,40,.25); border-radius:100px; padding:3px 12px; white-space:nowrap; }
   .li-hero-links { display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; }
   .li-hero-link { text-decoration:none; font-family:'Barlow Condensed',sans-serif; font-size:.68rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; padding:5px 10px; border-radius:6px; border:1px solid rgba(255,255,255,.15); color:rgba(255,255,255,.6); transition:all .15s; white-space:nowrap; }
   .li-hero-link:hover { border-color:rgba(197,160,40,.45); color:#F0D060; }
@@ -196,6 +214,12 @@ const DASHBOARD_STYLES = `
   @media (max-width:480px) {
     .sk-podium { grid-template-columns:1fr; }
     .home-banner-pot { min-width:100px; }
+    .li-hero-inner { gap:.75rem; }
+    .li-hero-right { align-items:stretch; width:100%; }
+    .li-stats { width:100%; justify-content:space-between; }
+    .li-stat { min-width:0; flex:1; padding:0 .35rem; }
+    .li-stat-num { font-size:1.55rem; }
+    .li-winchance { text-align:center; align-self:center; }
   }
 
   ${MATCH_KORT_STYLES}
@@ -292,7 +316,9 @@ export default function Home() {
       setOdds(lookup)
     }
     if (scoreRes.status === 'fulfilled' && Array.isArray(scoreRes.value)) {
-      setTopplista(scoreRes.value.slice(0, 7))
+      // Spara HELA topplistan — behövs för verklig placering, gap till toppen
+      // och slutplaceringsprognos. Topp 7 plockas ut vid rendering.
+      setTopplista(scoreRes.value)
     }
     if (igårRes.status === 'fulfilled' && Array.isArray(igårRes.value)) {
       setIgårBäst(igårRes.value)
@@ -449,6 +475,10 @@ export default function Home() {
                   <span className="quick-link-icon">🍾</span>
                   <span className="quick-link-label">{t('home.quickLinks.minVinflaska')}</span>
                 </Link>
+                <Link to={`/participant/${användare.user_id}`} className="quick-link">
+                  <span className="quick-link-icon">👤</span>
+                  <span className="quick-link-label">{t('home.quickLinks.minSida')}</span>
+                </Link>
               </div>
             </div>
           </div>
@@ -512,6 +542,29 @@ export default function Home() {
   const minRank = användare && topplista.length > 0
     ? topplista.findIndex(r => r.user_id === användare.user_id)
     : -1
+  const minRad     = minRank >= 0 ? topplista[minRank] : null
+  const toppPoäng  = topplista[0]?.poäng ?? 0
+  const gapTillTopp = minRad ? Math.max(0, toppPoäng - minRad.poäng) : 0
+
+  // Slutplaceringsprognos (Monte Carlo) — körs bara när det finns underlag.
+  // useMemo: tung loop, ska inte köras om vid varje render utan bara när
+  // topplistan eller antal spelade matcher ändras.
+  const minPrognos = useMemo(() => {
+    if (!användare || topplista.length === 0) return null
+    return prognosForSpelare(topplista, användare.user_id, {
+      speladeMatcher: målData?.speladeMatcher || 0,
+    })
+  }, [topplista, användare, målData?.speladeMatcher])
+
+  // Pil som visar prognostiserad rörelse mot nuvarande placering.
+  const prognosPil = (() => {
+    if (!minPrognos || minRank < 0) return null
+    const nu = minRank + 1
+    const spådd = minPrognos.slutplacering
+    if (spådd < nu)  return { tecken: '▲', klass: 'upp',  diff: nu - spådd }
+    if (spådd > nu)  return { tecken: '▼', klass: 'ned',  diff: spådd - nu }
+    return { tecken: '▬', klass: 'still', diff: 0 }
+  })()
 
   function initials(namn) {
     return (namn || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
@@ -540,13 +593,53 @@ export default function Home() {
             <div className="li-hero-left">
               <span className="li-hero-eyebrow">⚽ FIFA World Cup 2026 pågår</span>
               <h1 className="li-hero-name">Hej, {användare.namn.split(' ')[0]}!</h1>
+              <Link to={`/participant/${användare.user_id}`} className="li-hero-minsida">
+                👤 {t('home.quickLinks.minSida')} →
+              </Link>
             </div>
-            {minRank >= 0 && (
+
+            {minRank >= 0 ? (
               <div className="li-hero-right">
-                <div className="li-hero-rank">
-                  <span className="li-hero-rank-pos">#{minRank + 1}</span>
-                  <span className="li-hero-rank-pts">{topplista[minRank]?.poäng ?? 0} poäng</span>
+                <div className="li-stats">
+                  <div className="li-stat">
+                    <span className="li-stat-num">#{minRank + 1}</span>
+                    <span className="li-stat-lbl">Placering</span>
+                  </div>
+                  <div className="li-stat">
+                    <span className="li-stat-num">{minRad?.poäng ?? 0}</span>
+                    <span className="li-stat-lbl">Poäng</span>
+                  </div>
+                  <div className="li-stat">
+                    <span className="li-stat-num">
+                      {minRank === 0 ? '🏆' : `−${gapTillTopp}`}
+                    </span>
+                    <span className="li-stat-lbl">
+                      {minRank === 0 ? 'I ledning' : 'Till toppen'}
+                    </span>
+                  </div>
+                  {minPrognos && (
+                    <div className="li-stat li-stat-pred">
+                      <span className="li-stat-num">
+                        #{minPrognos.slutplacering}
+                        {prognosPil && prognosPil.diff > 0 && (
+                          <span className={`li-pred-pil ${prognosPil.klass}`}>
+                            {prognosPil.tecken}{prognosPil.diff}
+                          </span>
+                        )}
+                      </span>
+                      <span className="li-stat-lbl">Spådd slutplacering</span>
+                    </div>
+                  )}
                 </div>
+                {minPrognos && minPrognos.vinstChansProcent >= 1 && (
+                  <span className="li-winchance">
+                    🔮 {minPrognos.vinstChansProcent}% chans att vinna hela tävlingen
+                  </span>
+                )}
+              </div>
+            ) : (
+              <div className="li-hero-right">
+                <span className="li-hero-rank-pts">Tippa matcher för att komma med på topplistan</span>
               </div>
             )}
           </div>
@@ -721,7 +814,7 @@ export default function Home() {
             <div className="dash-empty">Laddar topplista…</div>
           ) : (
             <div className="lb-card">
-              {topplista.map((rad, i) => {
+              {topplista.slice(0, 7).map((rad, i) => {
                 const ärJag = användare && rad.user_id === användare.user_id
                 return (
                   <div key={rad.user_id} className={`lb-row${ärJag ? ' me' : ''}`}>

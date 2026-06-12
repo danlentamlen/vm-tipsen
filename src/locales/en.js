@@ -58,6 +58,7 @@ const en = {
       topplista:      'Leaderboard',
       tilläggsfrågor: 'Bonus questions',
       minVinflaska:   'My wine bottle',
+      minSida:        'My page',
     },
     målTracker: {
       etikett:     '⚽ Total goals in the World Cup',

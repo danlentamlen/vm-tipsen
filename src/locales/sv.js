@@ -60,6 +60,7 @@ const sv = {
       topplista:     'Topplista',
       tilläggsfrågor:'Tilläggsfrågor',
       minVinflaska:  'Min vinflaska',
+      minSida:       'Min sida',
     },
     målTracker: {
       etikett:     '⚽ Totalt antal mål i VM',
