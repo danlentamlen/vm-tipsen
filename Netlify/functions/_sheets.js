@@ -58,3 +58,48 @@ export async function appendRow(sheets, range, values) {
     requestBody: { values: [values] },
   })
 }
+
+// ── Snapshot helpers ───────────────────────────────────────────────────────
+// Säkerställer att en flik (sheet/tab) finns. Skapar den annars. Returnerar
+// true om fliken redan fanns, false om den nyss skapades.
+export async function ensureSheet(sheets, title) {
+  const meta = await sheets.spreadsheets.get({
+    spreadsheetId: SHEET_ID,
+    fields: 'sheets.properties.title',
+  })
+  const finns = (meta.data.sheets || []).some(
+    (s) => s.properties?.title === title
+  )
+  if (finns) return true
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId: SHEET_ID,
+    requestBody: { requests: [{ addSheet: { properties: { title } } }] },
+  })
+  return false
+}
+
+// Skriver om ett helt intervall (rensar gammalt innehåll först). Används för
+// förberäknade snapshots där hela tabellen ska ersättas.
+export async function overwriteRange(sheets, sheetTitle, values) {
+  await sheets.spreadsheets.values.clear({
+    spreadsheetId: SHEET_ID,
+    range: `${sheetTitle}!A:Z`,
+  })
+  if (values.length === 0) return
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SHEET_ID,
+    range: `${sheetTitle}!A1`,
+    valueInputOption: 'RAW',
+    requestBody: { values },
+  })
+}
+
+// Skriver en enda kolumn (t.ex. matchpoäng på Tips) i ett anrop.
+export async function writeColumn(sheets, range, columnValues) {
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SHEET_ID,
+    range,
+    valueInputOption: 'RAW',
+    requestBody: { values: columnValues.map((v) => [v]) },
+  })
+}

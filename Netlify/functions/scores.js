@@ -1,109 +1,77 @@
-import { getSheets, getMultipleRanges } from './_sheets.js'
-import { withCache } from './_cache.js'
+/**
+ * scores.js — Topplistan (startsidan + /topplista)
+ *
+ * Snabb väg: läser den FÖRBERÄKNADE topplistan som sync-results skriver
+ * (persistent cache 'standings:v1', durabelt backat av Topplista-arket).
+ * Ingen full Tips-scan sker här längre → snabb sidladdning.
+ *
+ * Fallback (om snapshot saknas, t.ex. före första sync efter deploy):
+ * räkna live från råa ark med den delade _scoring-modulen. Identiskt resultat.
+ */
+import { getSheets, getRows, getMultipleRanges } from './_sheets.js'
+import { getCached } from './_persistentCache.js'
+import { getLockedSnapshot } from './_lockedData.js'
+import { beräknaTopplista } from './_scoring.js'
 
-const CACHE_TTL = 2 * 60 * 1000 // 2 minutes
+const CACHE_TTL = 10 * 60 * 1000 // 10 min — ändras bara när matcher avgörs
 
-function räknaMatchPoäng(tipHemma, tipBorta, resultatHemma, resultatBorta) {
-  const th = parseInt(tipHemma)
-  const tb = parseInt(tipBorta)
-  const rh = parseInt(resultatHemma)
-  const rb = parseInt(resultatBorta)
-
-  if (isNaN(th) || isNaN(tb) || isNaN(rh) || isNaN(rb)) return 0
-  if (th === rh && tb === rb) return 5
-
-  const tipUtgång      = th > tb ? 'hemma' : th < tb ? 'borta' : 'oavgjort'
-  const resultatUtgång = rh > rb ? 'hemma' : rh < rb ? 'borta' : 'oavgjort'
-  return tipUtgång === resultatUtgång ? 2 : 0
-}
-
-async function beräknaTopplista() {
-  const sheets = await getSheets()
-
-  // One batchGet instead of 5 sequential API calls
-  const [resultatRader, tipsRader, frågorRader, frågorSvarRader, användareRader] =
-    await getMultipleRanges(sheets, [
-      'Resultat!A2:D1000',
-      'Tips!A2:E100000',
-      'Frågor!A2:E1000',
-      'FrågorSvar!A2:D100000',
-      'Användare!A2:B1000',
-    ])
-
-  const resultatMap = {}
-  resultatRader.forEach((rad) => {
-    if (rad[0] && rad[1] !== '' && rad[2] !== '') {
-      resultatMap[rad[0]] = { hemma_mål: rad[1], borta_mål: rad[2] }
-    }
-  })
-
-  const frågorMap = {}
-  frågorRader.forEach((rad) => {
-    if (!rad[0]) return
-    const rättSvar = (rad[4] || '').trim()
-    if (rättSvar) {
-      frågorMap[rad[0]] = {
-        poäng:     parseInt(rad[2]) || 0,
-        rätt_svar: rättSvar.toLowerCase(),
-      }
-    }
-  })
-
-  const användareMap = {}
-  användareRader.forEach((rad) => { if (rad[0]) användareMap[rad[0]] = rad[1] })
-
-  const poängMap = {}
-  const init = (id) => { if (!poängMap[id]) poängMap[id] = { poäng: 0, exakta: 0, rätta: 0, frågepoäng: 0 } }
-
-  tipsRader.forEach((rad) => {
-    const user_id  = rad[1]
-    const resultat = resultatMap[rad[2]]
-    if (!resultat) return
-    init(user_id)
-    const p = räknaMatchPoäng(rad[3], rad[4], resultat.hemma_mål, resultat.borta_mål)
-    poängMap[user_id].poäng += p
-    if (p === 5) poängMap[user_id].exakta += 1
-    if (p === 2) poängMap[user_id].rätta  += 1
-  })
-
-  frågorSvarRader.forEach((rad) => {
-    const user_id = rad[1]
-    const svar    = rad[3]?.trim().toLowerCase()
-    const fråga   = frågorMap[rad[2]]
-    if (!fråga || !svar || svar !== fråga.rätt_svar) return
-    init(user_id)
-    poängMap[user_id].poäng      += fråga.poäng
-    poängMap[user_id].frågepoäng += fråga.poäng
-  })
-
-  return Object.entries(poängMap)
-    .map(([user_id, stats]) => ({
-      user_id,
-      namn:       användareMap[user_id] || 'Okänd',
-      poäng:      stats.poäng,
-      exakta:     stats.exakta,
-      rätta:      stats.rätta,
-      frågepoäng: stats.frågepoäng,
-    }))
-    .sort((a, b) => b.poäng - a.poäng)
-    .map((rad, index) => ({ ...rad, plats: index + 1 }))
-}
-
-export default async (req) => {
+// Läs förberäknad topplista från Topplista-arket (A2:H)
+async function läsSnapshotSheet(sheets) {
+  let rader = []
   try {
-    const topplista = await withCache('scores', CACHE_TTL, beräknaTopplista)
+    rader = await getRows(sheets, 'Topplista!A2:H10000')
+  } catch {
+    return [] // arket finns inte ännu
+  }
+  return rader
+    .filter((r) => r[0])
+    .map((r) => ({
+      user_id:    r[0],
+      namn:       r[1] || 'Okänd',
+      poäng:      Number(r[2]) || 0,
+      exakta:     Number(r[3]) || 0,
+      rätta:      Number(r[4]) || 0,
+      frågepoäng: Number(r[5]) || 0,
+      plats:      Number(r[6]) || 0,
+    }))
+}
+
+// Fallback: räkna live från råa ark
+async function räknaLive(sheets) {
+  const [resultatRader, tipsRader] = await getMultipleRanges(sheets, [
+    'Resultat!A2:D1000',
+    'Tips!A2:E100000',
+  ])
+  const { användare, frågor, frågorSvar } = await getLockedSnapshot()
+  return beräknaTopplista({
+    resultatRader,
+    tipsRader,
+    frågorRader: frågor,
+    frågorSvarRader: frågorSvar,
+    användareRader: användare,
+  })
+}
+
+export default async () => {
+  try {
+    const topplista = await getCached('standings:v1', CACHE_TTL, async () => {
+      const sheets = await getSheets()
+      const snap = await läsSnapshotSheet(sheets)
+      return snap.length ? snap : räknaLive(sheets)
+    })
+
     return new Response(JSON.stringify(topplista), {
       status: 200,
       headers: {
         'Content-Type': 'application/json',
-        'Cache-Control': 'public, max-age=120', // 2 min browser cache
+        'Cache-Control': 'public, max-age=120',
       },
     })
   } catch (err) {
     console.error('[scores] FEL:', err)
-    return new Response(
-      JSON.stringify({ error: 'Något gick fel' }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    )
+    return new Response(JSON.stringify({ error: 'Något gick fel' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    })
   }
 }

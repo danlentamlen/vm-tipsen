@@ -1,5 +1,65 @@
 # vm-tipsen — Komplett förbättringspaket
 
+## Korrekthet: dedupe av tips/svar + live skytteliga (2026-06-12)
+
+**Bugg (åtgärdad):** Topplistan och deltagarprofilen dubbelräknade poäng. Tips-
+och FrågorSvar-arken är append-baserade — en redigering kan ge flera rader för
+samma `(user, match)` resp. `(user, fråga)` — och poänglogiken summerade alla
+rader. En ledare visade t.ex. 23p i stället för 7p.
+
+**Lösning:** Två rena helpers i `_scoring.js` — `dedupliceraTips()` och
+`dedupliceraSvar()` — behåller bara den **sista** raden per nyckel (senare rad =
+senare sparad). De appliceras centralt så att alla vyer räknar lika:
+
+| Var | Fil | Effekt |
+|-----|-----|--------|
+| Match-/tippoäng | `_scoring.js` (`beräknaMatchpoängPerAnvändare`) | Topplista, "bäst igår", snapshot |
+| Frågepoäng | `_scoring.js` (`beräknaTopplista`) | Tilläggsfrågor räknas en gång |
+| Deltagarprofil | `participants.js` | Visar en rad per match/fråga, delad poänglogik |
+| Match-statistik | `match-stats.js` | Fördelning/träffsäkerhet ej uppblåst |
+| Regressionstester | `tests/unit/scoring.test.js` | Dubbletter → räknas en gång |
+
+**Skytteligan (live):** `top-scorers`-widgeten på startsidan läste ett manuellt
+`Skytteliga`-ark som saknades (kraschade med "Unable to parse range"). Nu hämtar
+writern topp-15 målskyttar live (`getTopScorers()` i `_resultsSource.js`) och
+skriver dem till `Skytteliga`-arket var 5:e minut. Läsvägen förblir billig (litet
+ark, inget API-anrop per sidladdning). Saknas data (innan VM) lämnas arket orört.
+
+**Viktigt vid uppgradering:** topplistan läses från snapshot — kör
+`sync-results` en gång (eller vänta på schemat) så att `Topplista`-arket och
+cachen `standings:v1` skrivs om med dedupe. Enbart omstart räcker inte.
+
+---
+
+## Prestanda & resultat (2026-06-12)
+
+Mål: snabbare startsida + topplista, snabbare resultatuppdatering, och poäng
+sparade per match i Sheets.
+
+| Område | Filer | Status |
+|--------|-------|--------|
+| Delad poänglogik | `_scoring.js` + `tests/unit/scoring.test.js` | ✅ |
+| Persistent cache (överlever cold starts) | `_persistentCache.js`, `_lockedData.js` | ✅ |
+| Förberäknad snapshot (writer) | `sync-results.js` → nytt `Topplista`-ark + Tips kol. F | ✅ |
+| Snabba läs-endpoints | `scores.js`, `scores-yesterday.js`, `match-stats.js`, `matches.js`, `my-status.js` | ✅ |
+| Gratis sekundär resultatkälla | `_resultsSource.js` + `tests/unit/resultsSource.test.js` | ✅ |
+| Snabbare sync (15→5 min) | `netlify.toml` | ✅ |
+
+**Kärnidé:** Den schemalagda `sync-results` (writer) räknar om topplista, "bäst
+igår" och matchpoäng EN gång var 5:e min och skriver förberäknade snapshots.
+De användarvända endpoints läser små snapshots i stället för att skanna hela
+`Tips`-arket vid varje sidladdning. De låsta arken (Matcher, Användare, Viner,
+Frågor, FrågorSvar) cachas i ett lager som överlever cold starts.
+
+**Att aktivera vid deploy:**
+1. `npm install` (lägger till `@netlify/blobs` för persistent cache).
+2. Valfritt: sätt env `THESPORTSDB_LEAGUE` (+ ev. `THESPORTSDB_KEY`, `THESPORTSDB_SEASON`)
+   för att slå på den fria sekundärkällan. Utan den är beteendet som tidigare.
+3. `Topplista`-arket skapas automatiskt av `sync-results` vid första körningen.
+4. Allt är additivt med fallback — saknas snapshot räknas allt live som förut.
+
+---
+
 ## Översikt — vad som ändrats
 
 | Område       | Filer | Status |

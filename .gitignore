@@ -30,3 +30,6 @@ google-credentials.json
 
 # Local Netlify folder
 .netlify
+
+# FUSE-spökfiler (skapas av monterade filsystem, ska aldrig committas)
+.fuse_hidden*

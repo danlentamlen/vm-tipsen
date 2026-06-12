@@ -1,157 +1,186 @@
-// Netlify Scheduled Function — kör var 15:e minut under VM
-// Hämtar slutresultat från football-data.org och sparar till Resultat-sheetet
-//
-// Miljövariabler som krävs:
-//   FOOTBALL_DATA_KEY   — API-nyckel från football-data.org
-//   GOOGLE_SHEET_ID     — Google Sheets ID
-//   GOOGLE_CREDENTIALS  — Google service account JSON
+/**
+ * sync-results.js — Schemalagd "writer" (kör var 5:e minut under VM)
+ *
+ * Ansvar:
+ *  1. Hämta resultat från flera källor (football-data.org + valfri sekundärkälla)
+ *     och spara NYA slutresultat till Resultat-arket.
+ *  2. Räkna om hela topplistan, "bäst igår" och matchpoäng EN gång och skriva
+ *     ner förberäknade snapshots — så att de användarvända läs-endpoints
+ *     (scores, scores-yesterday, match-stats) slipper läsa hela Tips-arket vid
+ *     varje sidladdning. Det är detta som gör startsidan snabb.
+ *
+ * Skriver:
+ *   - Resultat-arket      : nya slutresultat (A=match_id, B=hemma, C=borta)
+ *   - Topplista-arket     : förberäknad topplista (synlig/auditbar i Sheets)
+ *   - Tips-arket kolumn F : matchpoäng per tips
+ *   - Persistent cache    : 'standings:v1', 'yesterday:v1' (snabb läsning)
+ *
+ * Miljövariabler: FOOTBALL_DATA_KEY, GOOGLE_SHEET_ID, GOOGLE_CREDENTIALS
+ * Valfritt (sekundärkälla): THESPORTSDB_LEAGUE
+ */
+import { getSheets, getRows, ensureSheet, overwriteRange, writeColumn } from './_sheets.js'
+import { getMatcher, getLockedSnapshot } from './_lockedData.js'
+import { getFinishedResults, matchKey, getTopScorers } from './_resultsSource.js'
+import {
+  beräknaTopplista, beräknaIgår, beräknaTipsPoäng,
+  byggResultatMap, byggIgårMatchIds,
+} from './_scoring.js'
+import { setCached } from './_persistentCache.js'
 
-import { getSheets, getRows } from './_sheets.js'
+const TOPPLISTA_SHEET = 'Topplista'
+const TOPPLISTA_HEADER = ['user_id', 'namn', 'poäng', 'exakta', 'rätta', 'frågepoäng', 'plats', 'uppdaterad']
 
-// VM 2026 competition ID på football-data.org
-const COMPETITION_ID = 'WC'
-const SEASON = '2026'
-const API_BASE = 'https://api.football-data.org/v4'
-
-// Lagnamn-mapping: football-data.org → openfootball/vårt format
-const LAGNAMN_MAP = {
-  // Vanliga skillnader
-  'Bosnia and Herzegovina': 'Bosnia & Herzegovina',
-  'Bosnia-Herzegovina': 'Bosnia & Herzegovina',
-  'United States': 'USA',
-  'Korea Republic': 'South Korea',
-  'Korea DPR': 'North Korea',
-  'IR Iran': 'Iran',
-  'Czechia': 'Czech Republic',
-  'Türkiye': 'Turkey',
-  "Côte d'Ivoire": 'Ivory Coast',
-  'China PR': 'China',
-  // Lägg till fler vid behov
-}
-
-function normalisera(namn) {
-  return (LAGNAMN_MAP[namn] || namn)?.trim().toLowerCase()
-}
-
-async function hämtaFrånAPI(endpoint) {
-  const res = await fetch(`${API_BASE}${endpoint}`, {
-    headers: {
-      'X-Auth-Token': process.env.FOOTBALL_DATA_KEY,
-    },
-  })
-  if (!res.ok) {
-    throw new Error(`API-fel ${res.status}: ${await res.text()}`)
-  }
-  return res.json()
-}
+const SKYTTELIGA_SHEET = 'Skytteliga'
+const SKYTTELIGA_HEADER = ['Spelare', 'Land', 'Mål']
 
 export default async () => {
-  if (!process.env.FOOTBALL_DATA_KEY) {
-    console.error('[sync-results] FOOTBALL_DATA_KEY saknas')
+  if (!process.env.FOOTBALL_DATA_KEY && !process.env.THESPORTSDB_LEAGUE) {
+    console.error('[sync-results] Ingen resultatkälla konfigurerad')
     return
   }
 
   try {
     const sheets = await getSheets()
 
-    // Hämta våra matcher från Sheets (för att bygga en match_id-lookup)
-    const matcherRader = await getRows(sheets, 'Matcher!A2:H1000')
-    if (matcherRader.length === 0) {
-      console.log('[sync-results] Inga matcher i sheetet ännu')
+    // ── 1. Matchlookup från (cachat) Matcher-ark ────────────────────────────
+    const matcherRader = await getMatcher()
+    if (!matcherRader || matcherRader.length === 0) {
+      console.log('[sync-results] Inga matcher ännu')
       return
     }
-
-    // Bygg lookup: "hemmalag_bortalag" → match_id
     const matchLookup = {}
     matcherRader.forEach((rad) => {
-      const match_id = rad[0]
-      const hemma = normalisera(rad[3])
-      const borta = normalisera(rad[4])
-      if (match_id && hemma && borta) {
-        matchLookup[`${hemma}_${borta}`] = match_id
-      }
+      if (rad[0] && rad[3] && rad[4]) matchLookup[matchKey(rad[3], rad[4])] = rad[0]
     })
 
-    // Hämta befintliga resultat för att undvika onödiga skrivningar
+    // ── 2. Befintliga resultat ──────────────────────────────────────────────
     const befintligaRader = await getRows(sheets, 'Resultat!A2:C1000')
-    const befintligaResultat = new Set(befintligaRader.map((r) => r[0]))
+    const sparade = new Set(befintligaRader.map((r) => r[0]).filter(Boolean))
 
-    // Hämta avslutade matcher från football-data.org
-    let data
+    // ── 3. Hämta avslutade matcher (sammanslaget från alla källor) ──────────
+    let avslutade = []
     try {
-      data = await hämtaFrånAPI(`/competitions/${COMPETITION_ID}/matches?season=${SEASON}&status=FINISHED`)
+      avslutade = await getFinishedResults()
     } catch (err) {
-      console.error('[sync-results] Kunde inte hämta från API:', err.message)
-      return
+      console.error('[sync-results] Kunde inte hämta resultat:', err.message)
+      // fortsätt ändå — vi kan fortfarande räkna om snapshot på befintliga data
     }
+    console.log(`[sync-results] ${avslutade.length} avslutade matcher från källor`)
 
-    const avslutadeMatcher = data.matches || []
-    console.log(`[sync-results] ${avslutadeMatcher.length} avslutade matcher från API`)
-
-    if (avslutadeMatcher.length === 0) {
-      console.log('[sync-results] Inga avslutade matcher ännu')
-      return
-    }
-
-    // Matcha och förbered uppdateringar
-    const nyttaResultat = []
-    let matchade = 0
-    let omatchade = 0
-
-    for (const match of avslutadeMatcher) {
-      // Vi använder resultatet efter ordinarie tid (FT), inte straffar
-      const hemma_mål = match.score?.fullTime?.home
-      const borta_mål = match.score?.fullTime?.away
-
-      if (hemma_mål === null || hemma_mål === undefined ||
-          borta_mål === null || borta_mål === undefined) continue
-
-      const hemmaLag = normalisera(match.homeTeam?.name || match.homeTeam?.shortName)
-      const bortaLag = normalisera(match.awayTeam?.name || match.awayTeam?.shortName)
-
-      // Prova olika kombinationer för matchning
-      const nyckel = `${hemmaLag}_${bortaLag}`
-      const match_id = matchLookup[nyckel]
-
+    // ── 4. Mappa till våra match_id och hitta nya ───────────────────────────
+    const nya = []
+    for (const m of avslutade) {
+      const match_id = matchLookup[matchKey(m.hemmalag, m.bortalag)]
       if (!match_id) {
-        console.warn(`[sync-results] Hittade ingen match för: ${match.homeTeam?.name} vs ${match.awayTeam?.name} (nyckel: ${nyckel})`)
-        omatchade++
+        console.warn(`[sync-results] Ingen matchning: ${m.hemmalag} vs ${m.bortalag}`)
         continue
       }
-
-      matchade++
-
-      // Hoppa över om resultatet redan finns
-      if (befintligaResultat.has(match_id)) continue
-
-      nyttaResultat.push({ match_id, hemma_mål, borta_mål })
+      if (sparade.has(match_id)) continue
+      nya.push([match_id, String(m.hemma), String(m.borta)])
     }
 
-    console.log(`[sync-results] ${matchade} matchade, ${omatchade} omatchade, ${nyttaResultat.length} nya att spara`)
-
-    if (nyttaResultat.length === 0) {
-      console.log('[sync-results] Inga nya resultat att spara')
-      return
+    // ── 5. Spara nya resultat ───────────────────────────────────────────────
+    if (nya.length > 0) {
+      await sheets.spreadsheets.values.append({
+        spreadsheetId: process.env.GOOGLE_SHEET_ID,
+        range: 'Resultat!A:C',
+        valueInputOption: 'RAW',
+        insertDataOption: 'INSERT_ROWS',
+        requestBody: { values: nya },
+      })
+      console.log(`[sync-results] ✅ Sparade ${nya.length} nya resultat`)
+    } else {
+      console.log('[sync-results] Inga nya resultat')
     }
 
-    // Skriv nya resultat till Resultat-sheetet
-    await sheets.spreadsheets.values.append({
-      spreadsheetId: process.env.GOOGLE_SHEET_ID,
-      range: 'Resultat!A:C',
-      valueInputOption: 'RAW',
-      insertDataOption: 'INSERT_ROWS',
-      requestBody: {
-        values: nyttaResultat.map(({ match_id, hemma_mål, borta_mål }) => [
-          match_id,
-          String(hemma_mål),
-          String(borta_mål),
-        ]),
-      },
-    })
+    // Sammanlagd resultatuppsättning efter append (slipper läsa om Resultat)
+    const allaResultatRader = [...befintligaRader, ...nya]
 
-    console.log(`[sync-results] ✅ Sparade ${nyttaResultat.length} nya resultat`)
+    // ── 6. Räkna om snapshots ───────────────────────────────────────────────
+    // Körs av den schemalagda writern (ej användarvänd) → ok att den är tyngre.
+    await räknaOmSnapshots(sheets, matcherRader, allaResultatRader)
+
+    // ── 7. Uppdatera skytteligan (live → Skytteliga-arket) ──────────────────
+    // Widgeten på startsidan (top-scorers) läser detta ark; writern håller det
+    // färskt så att läsvägen förblir billig (ett litet ark, inget API per anrop).
+    await uppdateraSkytteliga(sheets)
 
   } catch (err) {
     console.error('[sync-results] FEL:', err)
+  }
+}
+
+/**
+ * Läser Tips + låsta ark, räknar om topplista / igår / matchpoäng och skriver
+ * snapshots till Sheets + persistent cache.
+ */
+async function räknaOmSnapshots(sheets, matcherRader, resultatRader) {
+  // Tips läses här (i writern), INTE i de användarvända endpoints.
+  const tipsRader = await getRows(sheets, 'Tips!A2:E100000')
+  const { användare, frågor, frågorSvar } = await getLockedSnapshot()
+
+  // ── Topplista ──
+  const standings = beräknaTopplista({
+    resultatRader,
+    tipsRader,
+    frågorRader: frågor,
+    frågorSvarRader: frågorSvar,
+    användareRader: användare,
+  })
+
+  const uppdaterad = new Date().toISOString()
+  await ensureSheet(sheets, TOPPLISTA_SHEET)
+  await overwriteRange(sheets, TOPPLISTA_SHEET, [
+    TOPPLISTA_HEADER,
+    ...standings.map((r) => [
+      r.user_id, r.namn, r.poäng, r.exakta, r.rätta, r.frågepoäng, r.plats, uppdaterad,
+    ]),
+  ])
+  await setCached('standings:v1', standings)
+
+  // ── Bäst igår ──
+  const nu = new Date()
+  const igårIds = byggIgårMatchIds(matcherRader, nu)
+  const igår = beräknaIgår({
+    igårMatchIds: igårIds,
+    resultatRader,
+    tipsRader,
+    användareRader: användare,
+    antal: 3,
+  })
+  // Samma datum-nyckel som scores-yesterday läser med
+  await setCached(`yesterday:v1:${nu.toISOString().slice(0, 10)}`, igår)
+
+  // ── Matchpoäng per tips → Tips kolumn F ──
+  if (tipsRader.length > 0) {
+    const resultatMap = byggResultatMap(resultatRader)
+    const poängKol = beräknaTipsPoäng(tipsRader, resultatMap)
+    await writeColumn(sheets, `Tips!F2:F${tipsRader.length + 1}`, poängKol)
+  }
+
+  console.log(`[sync-results] Snapshot klar: ${standings.length} deltagare, ${igår.length} i "bäst igår"`)
+}
+
+/**
+ * Hämtar topp-målskyttar live och skriver dem till Skytteliga-arket, som
+ * startsidans top-scorers-widget läser. Allt är inkapslat: om hämtningen
+ * misslyckas eller VM inte startat (tom lista) behålls befintligt ark orört,
+ * så vi aldrig nollställer en redan ifylld skytteliga av misstag.
+ */
+async function uppdateraSkytteliga(sheets) {
+  try {
+    const skyttar = await getTopScorers(15)
+    if (skyttar.length === 0) {
+      console.log('[sync-results] Inga skyttekungar än — behåller befintlig Skytteliga')
+      return
+    }
+    await ensureSheet(sheets, SKYTTELIGA_SHEET)
+    await overwriteRange(sheets, SKYTTELIGA_SHEET, [
+      SKYTTELIGA_HEADER,
+      ...skyttar.map((s) => [s.spelare, s.land, s.mål]),
+    ])
+    console.log(`[sync-results] ✅ Skytteliga uppdaterad: ${skyttar.length} spelare`)
+  } catch (err) {
+    console.error('[sync-results] Kunde inte uppdatera skytteligan:', err.message)
   }
 }

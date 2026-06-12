@@ -1,4 +1,5 @@
 import { getSheets, getRows } from './_sheets.js'
+import { getLockedSnapshot } from './_lockedData.js'
 import { GRUPPSPEL_DEADLINE, parseMatchTid } from './_settings.js'
 import jwt from 'jsonwebtoken'
 
@@ -78,12 +79,13 @@ export default async (req) => {
   try {
     const sheets = await getSheets()
 
-    const [matcherRader, tipsRader, frågorRader, svarRader] = await Promise.all([
-      getRows(sheets, 'Matcher!A2:H1000'),
-      getRows(sheets, 'Tips!A2:E100000'),
-      getRows(sheets, 'Frågor!A2:G1000'),
-      getRows(sheets, 'FrågorSvar!A2:D100000'),
-    ])
+    // Matcher/Frågor/FrågorSvar är låsta → ur persistent cache (ett Sheets-anrop,
+    // delat mellan instanser). Bara Tips läses live (kan växa för slutspel).
+    const [{ matcher: matcherRader, frågor: frågorRader, frågorSvar: svarRader }, tipsRader] =
+      await Promise.all([
+        getLockedSnapshot(),
+        getRows(sheets, 'Tips!A2:E100000'),
+      ])
 
     const nu = new Date()
     const efterDeadline = nu >= GRUPPSPEL_DEADLINE
