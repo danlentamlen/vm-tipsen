@@ -65,6 +65,27 @@ export function formatTid(tid) {
 }
 
 /**
+ * Tolkar matchens datum ("YYYY-MM-DD") + tid ("HH:MM UTC±N") till en absolut
+ * UTC-tidsstämpel i millisekunder. Returnerar null om något saknas/inte går att tolka.
+ *
+ * Lokal avsparkstid HH:MM gäller i tidszonen UTC±N, så sann UTC = lokal − offset.
+ * Används för att sortera matcher kronologiskt oberoende av tidszon (matcherna i
+ * VM 2026 spelas över flera amerikanska zoner, UTC-4 till UTC-7).
+ */
+export function matchStartMs(datum, tid) {
+  if (!datum || !tid) return null
+  const dm = String(datum).match(/(\d{4})-(\d{2})-(\d{2})/)
+  const tm = String(tid).match(/(\d{1,2}):(\d{2})\s*UTC([+-]?\d+(?:\.\d+)?)/i)
+  if (!dm || !tm) return null
+  const [, y, mo, d] = dm
+  const tim = parseInt(tm[1], 10)
+  const min = parseInt(tm[2], 10)
+  const offset = parseFloat(tm[3]) // timmar
+  const localMs = Date.UTC(+y, +mo - 1, +d, tim, min)
+  return localMs - offset * 3600 * 1000
+}
+
+/**
  * Returnerar dagförskjutningen (+1 eller 0) som uppstår när matchens tid
  * konverteras till svensk tid (CEST = UTC+2). Används för att justera datumet
  * när matchen korsar midnatt vid omvandling.
@@ -152,13 +173,24 @@ export const MATCH_KORT_STYLES = `
   .mc-odds-draw-label { font-family:'Barlow',sans-serif; font-size:.65rem; color:#aaa; }
   .mc-odds-draw-pct { font-family:'Barlow Condensed',sans-serif; font-size:.78rem; font-weight:700; color:#888; }
   .mc-result-label { font-family:'Barlow Condensed',sans-serif; font-size:.6rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:#aaa; }
-  .mc-live-wrap { display:flex; flex-direction:column; align-items:center; gap:5px; }
-  .mc-live-score { display:flex; align-items:center; gap:4px; }
-  .mc-live-box { font-family:'Barlow Condensed',sans-serif; font-size:1.25rem; font-weight:800; color:#fff; background:#C8102E; border-radius:7px; padding:3px 10px; min-width:30px; text-align:center; }
+  /* Live-kort: livfull behandling — pulserande glöd + animerad accent. */
+  .mc.live { position:relative; border:1px solid rgba(200,16,46,.35); border-left:3px solid #C8102E; animation:mc-live-glow 2.4s ease-in-out infinite; }
+  @keyframes mc-live-glow { 0%,100%{box-shadow:0 2px 10px rgba(200,16,46,.12)} 50%{box-shadow:0 4px 22px rgba(200,16,46,.30)} }
+  .mc-live-accent { height:3px; background:linear-gradient(90deg,#C8102E,#e63950,#C8102E); background-size:200% 100%; animation:mc-live-shimmer 2s linear infinite; }
+  @keyframes mc-live-shimmer { 0%{background-position:0% 0} 100%{background-position:200% 0} }
+  .mc-live-wrap { display:flex; flex-direction:column; align-items:center; gap:6px; }
+  .mc-live-score { display:flex; align-items:center; gap:5px; }
+  .mc-live-box { font-family:'Barlow Condensed',sans-serif; font-size:1.45rem; font-weight:800; color:#fff; background:linear-gradient(135deg,#C8102E,#e63950); border-radius:7px; padding:4px 12px; min-width:32px; text-align:center; box-shadow:0 2px 6px rgba(200,16,46,.35); }
   .mc-live-sep { font-family:'Barlow Condensed',sans-serif; font-size:1rem; font-weight:700; color:#ccc; }
-  .mc-live-badge { display:inline-flex; align-items:center; gap:4px; font-family:'Barlow Condensed',sans-serif; font-size:.65rem; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:#C8102E; }
-  .mc-live-dot { width:7px; height:7px; border-radius:50%; background:#C8102E; animation:mc-pulse 1.2s ease-in-out infinite; flex-shrink:0; }
+  .mc-live-badge { display:inline-flex; align-items:center; gap:5px; font-family:'Barlow Condensed',sans-serif; font-size:.66rem; font-weight:800; letter-spacing:.14em; text-transform:uppercase; color:#fff; background:#C8102E; padding:3px 9px; border-radius:20px; box-shadow:0 1px 4px rgba(200,16,46,.4); }
+  .mc-live-min { font-weight:700; opacity:.92; }
+  .mc-live-dot { width:7px; height:7px; border-radius:50%; background:#fff; animation:mc-pulse 1.2s ease-in-out infinite; flex-shrink:0; }
   @keyframes mc-pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.35;transform:scale(.7)} }
+  @media (prefers-reduced-motion: reduce) {
+    .mc.live { animation:none; box-shadow:0 2px 12px rgba(200,16,46,.20); }
+    .mc-live-accent { animation:none; }
+    .mc-live-dot { animation:none; }
+  }
   .mc-combo-wrap { display:flex; flex-direction:column; gap:6px; padding:.45rem 1rem .55rem; border-top:1px solid rgba(0,0,0,.04); }
   .mc-combo-eyebrow { font-family:'Barlow Condensed',sans-serif; font-size:.62rem; font-weight:700; letter-spacing:.18em; text-transform:uppercase; color:#bbb; }
   .mc-combo-grid { display:grid; grid-template-columns:68px 1fr; gap:12px; align-items:center; }
@@ -197,11 +229,12 @@ export default function MatchKort({ match, tip, inloggad, tipsLåst, sparar, onS
 
   const cardClass = [
     'mc',
-    harResultat && harTips ? outcomeClass : ärLive ? 'has-tip' : harTips ? 'has-tip' : '',
+    ärLive ? 'live' : harResultat && harTips ? outcomeClass : harTips ? 'has-tip' : '',
   ].filter(Boolean).join(' ')
 
   return (
     <div className={cardClass}>
+      {ärLive && <div className="mc-live-accent" />}
       <div className="mc-body">
         <div className="mc-teams">
           <div className="mc-team-home">
@@ -219,7 +252,10 @@ export default function MatchKort({ match, tip, inloggad, tipsLåst, sparar, onS
                 </div>
                 <span className="mc-live-badge">
                   <span className="mc-live-dot" />
-                  LIVE{liveScore.minut ? ` ${liveScore.minut}'` : ''}{liveScore.status === 'PAUSED' ? ' HTP' : ''}
+                  LIVE
+                  {liveScore.status === 'PAUSED'
+                    ? <span className="mc-live-min">HTP</span>
+                    : liveScore.minut ? <span className="mc-live-min">{liveScore.minut}'</span> : null}
                 </span>
               </div>
             ) : inloggad && !tipsLåst ? (

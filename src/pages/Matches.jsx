@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useLås } from '../hooks/useLås'
 import { useLanguage } from '../context/LanguageContext'
-import MatchKort, { normName, getFlag, MATCH_KORT_STYLES, dagOffset } from '../components/MatchKort'
+import MatchKort, { normName, getFlag, MATCH_KORT_STYLES, dagOffset, matchStartMs } from '../components/MatchKort'
 
 function formatDatum(datum, språk) {
   if (!datum) return ''
@@ -22,6 +22,26 @@ function adjustedDatum(match) {
     d.setUTCDate(d.getUTCDate() + offset)
     return d.toISOString().slice(0, 10) // "YYYY-MM-DD"
   } catch { return match.datum }
+}
+
+/** Kronologisk sortering på absolut avsparkstid (UTC). Matcher utan tolkbar tid sist. */
+function efterStarttid(a, b) {
+  const ma = matchStartMs(a.datum, a.tid)
+  const mb = matchStartMs(b.datum, b.tid)
+  if (ma == null && mb == null) return 0
+  if (ma == null) return 1
+  if (mb == null) return -1
+  return ma - mb
+}
+
+/** Returnerar en ny datum→matcher-karta med datumen i kronologisk ordning och
+ *  matcherna inom varje dag sorterade på faktisk avsparkstid. */
+function ordnaDagar(datumMap) {
+  const sorterad = {}
+  Object.keys(datumMap)
+    .sort((a, b) => a.localeCompare(b))
+    .forEach((d) => { sorterad[d] = [...datumMap[d]].sort(efterStarttid) })
+  return sorterad
 }
 
 const SLUTSPELS_ORDNING = [
@@ -197,6 +217,8 @@ export default function Matches() {
     acc[g][d].push(m)
     return acc
   }, {})
+  // Sortera dagar kronologiskt och matcher inom varje dag på faktisk avsparkstid.
+  Object.keys(gruppspelets).forEach((g) => { gruppspelets[g] = ordnaDagar(gruppspelets[g]) })
 
   const slutspelet = slutspelsMatcher.reduce((acc, m) => {
     const omg = m.omgång || 'Slutspel'
@@ -206,6 +228,7 @@ export default function Matches() {
     acc[omg][d].push(m)
     return acc
   }, {})
+  Object.keys(slutspelet).forEach((omg) => { slutspelet[omg] = ordnaDagar(slutspelet[omg]) })
 
   const sorteradSlutspel = Object.entries(slutspelet).sort(([a], [b]) => {
     const ai = SLUTSPELS_ORDNING.indexOf(a)
@@ -246,13 +269,8 @@ export default function Matches() {
   const gruppNycklar = Object.keys(gruppspelets)
   const slutspelNycklar = sorteradSlutspel.map(([omg]) => omg)
 
-  // Datum-sorted view: all matches chronologically grouped by Swedish date
-  const datumSorterade = [...matcher].sort((a, b) => {
-    const da = adjustedDatum(a), db = adjustedDatum(b)
-    if (da !== db) return da.localeCompare(db)
-    // within same day, sort by CEST time (original tid, since offset is same within a day)
-    return (a.tid || '').localeCompare(b.tid || '')
-  })
+  // Datumvy: alla matcher kronologiskt på faktisk avsparkstid (UTC), grupperade per svensk dag.
+  const datumSorterade = [...matcher].sort(efterStarttid)
   const datumGrupperade = datumSorterade.reduce((acc, m) => {
     const d = adjustedDatum(m)
     if (!acc[d]) acc[d] = []

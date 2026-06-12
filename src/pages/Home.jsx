@@ -689,8 +689,9 @@ export default function Home() {
           </div>
         </div>
 
-        {/* ── Yesterday's best (match points 16:00–08:00) ── */}
-        {igårBäst.length > 0 && (
+        {/* ── Yesterday's best (match points 16:00–08:00) ──
+            Döljs medan en match pågår — då är "Pågår nu" det aktuella fokuset. */}
+        {igårBäst.length > 0 && pågående.length === 0 && (
           <div className="dash-section">
             <div className="dash-section-header">
               <span className="dash-section-pill gold">🏅 Bäst igår</span>
