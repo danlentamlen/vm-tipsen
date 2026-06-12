@@ -99,6 +99,36 @@ export function dagOffset(tid) {
   return sweMinRaw >= 1440 ? 1 : sweMinRaw < 0 ? -1 : 0
 }
 
+/**
+ * Beräknad matchminut från avsparkstid, för när ingen källa ger den exakt.
+ * Ren klockmatematik (nu − avspark) → ingen extra pollning eller externt API.
+ *
+ * Modell (ungefärlig, justerbar via konstanterna nedan):
+ *   1:a halvlek : visad minut 1–45, spelas på ca 45–49 verkliga min (stopptid)
+ *   Paus        : PAUS_LÄNGD verkliga minuter (efter PAUS_START)
+ *   2:a halvlek : visad minut 46–90 därefter
+ * Returnerar ett tal (minut), strängen 'Paus', eller null (ej igång).
+ *
+ * OBS: en uppskattning — vi känner inte den faktiska stopptiden, så siffran kan
+ * skilja någon minut mot tv. Den används bara som fallback när källan saknar minut.
+ */
+const PAUS_START = 49                          // visa Paus efter så här många verkliga min
+const PAUS_LÄNGD = 15                          // verkliga minuter i pausen
+const ANDRA_START = PAUS_START + PAUS_LÄNGD    // 2:a halvlek börjar (verklig min)
+
+export function beräknadMatchminut(datum, tid, nu = Date.now()) {
+  const start = matchStartMs(datum, tid)
+  if (start == null) return null
+  const R = Math.floor((nu - start) / 60000)   // verkliga minuter sedan avspark
+  if (R < 0) return null                        // ej startad
+  if (R < 1) return 1                           // precis avspark
+  if (R <= 45) return R                          // 1:a halvlek
+  if (R <= PAUS_START) return 45                 // stopptid 1:a halvlek → visa 45
+  if (R < ANDRA_START) return 'Paus'
+  const andra = 46 + (R - ANDRA_START)           // 2:a halvlek börjar på 46
+  return andra > 90 ? 90 : andra                 // håll på 90 vid övertid (okänd stopptid)
+}
+
 export function beräknaPoäng(tip, stats) {
   if (!stats || stats.resultat_hemma === undefined) return null
   if (Number(tip.hemma_mål) === stats.resultat_hemma && Number(tip.borta_mål) === stats.resultat_borta) return 5
@@ -224,6 +254,21 @@ export default function MatchKort({ match, tip, inloggad, tipsLåst, sparar, onS
   const ärLive      = !!liveScore
   const tid         = formatTid(match.tid)
 
+  // Lokal klocka som tickar var 30:e sekund medan matchen är live, så den
+  // beräknade minuten räknar upp av sig själv utan extra nätverksanrop.
+  const [nu, setNu] = useState(() => Date.now())
+  useEffect(() => {
+    if (!ärLive) return
+    const id = setInterval(() => setNu(Date.now()), 30 * 1000)
+    return () => clearInterval(id)
+  }, [ärLive])
+
+  // Källans minut har företräde; saknas den faller vi tillbaka på beräkningen.
+  const apiMinut   = liveScore?.minut ?? null
+  const beräknad   = ärLive && apiMinut == null ? beräknadMatchminut(match.datum, match.tid, nu) : null
+  const visaPaus   = liveScore?.status === 'PAUSED' || beräknad === 'Paus'
+  const visaMinut  = apiMinut ?? (typeof beräknad === 'number' ? beräknad : null)
+
   const poäng = harResultat && harTips ? beräknaPoäng(tip, stats) : null
   const outcomeClass = poäng === 5 ? 'exact' : poäng === 2 ? 'winner' : poäng === 0 ? 'wrong' : ''
 
@@ -253,9 +298,9 @@ export default function MatchKort({ match, tip, inloggad, tipsLåst, sparar, onS
                 <span className="mc-live-badge">
                   <span className="mc-live-dot" />
                   LIVE
-                  {liveScore.status === 'PAUSED'
-                    ? <span className="mc-live-min">HTP</span>
-                    : liveScore.minut ? <span className="mc-live-min">{liveScore.minut}'</span> : null}
+                  {visaPaus
+                    ? <span className="mc-live-min">PAUS</span>
+                    : visaMinut ? <span className="mc-live-min">{visaMinut}'</span> : null}
                 </span>
               </div>
             ) : inloggad && !tipsLåst ? (
