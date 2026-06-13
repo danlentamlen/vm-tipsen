@@ -5,13 +5,17 @@
  * Samma mönster används för alla andra sidor.
  */
 import { useState, useEffect, useCallback } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
 
 const STYLES = `
-  .lb-rad { display:flex; align-items:center; gap:12px; background:#fff; border:1px solid rgba(0,0,0,.06); border-radius:10px; padding:.75rem 1rem; margin-bottom:.5rem; transition:box-shadow .15s; }
+  .lb-rad { display:flex; align-items:center; gap:12px; background:#fff; border:1px solid rgba(0,0,0,.06); border-radius:10px; padding:.75rem 1rem; margin-bottom:.5rem; transition:box-shadow .15s,transform .15s; }
   .lb-rad:hover { box-shadow:0 2px 8px rgba(0,0,0,.07); }
   .lb-rad.mig   { border-color:rgba(200,16,46,.3); background:rgba(200,16,46,.03); }
+  .lb-rad-link  { text-decoration:none; color:inherit; cursor:pointer; }
+  .lb-rad-link:hover { transform:translateY(-1px); border-color:rgba(197,160,40,.4); }
+  .lb-chevron   { font-family:var(--font-bred); font-size:1.2rem; font-weight:700; color:var(--c-text-4); margin-left:2px; flex-shrink:0; }
   .lb-plats  { font-family:var(--font-bred); font-size:1rem; font-weight:700; color:var(--c-text-4); min-width:28px; text-align:center; }
   .lb-medalj { font-size:1.1rem; min-width:28px; text-align:center; }
   .lb-namn   { font-family:var(--font-text); font-size:.92rem; font-weight:500; color:var(--c-text); flex:1; }
@@ -82,14 +86,29 @@ export default function Leaderboard() {
 
       {topplista.map((rad, i) => {
         const ärJag = användare?.user_id === rad.user_id
-        return (
-          <div key={rad.user_id ?? i} className={`lb-rad${ärJag ? ' mig' : ''}`}>
+        const innehåll = (
+          <>
             {i < 3 ? <span className="lb-medalj">{MEDALJER[i]}</span> : <span className="lb-plats">{i + 1}</span>}
             <span className={`lb-namn${ärJag ? ' mig' : ''}`}>
               {rad.namn}{ärJag && ` ${t('leaderboard.du')}`}
             </span>
             <span className="lb-poäng">{rad.poäng ?? 0}<span className="lb-poäng-lbl">p</span></span>
-          </div>
+          </>
+        )
+        // Klickbar rad → deltagarens sida med tipsen. Faller tillbaka till en
+        // ren rad om user_id mot förmodan saknas (inget trasigt klick).
+        return rad.user_id ? (
+          <Link
+            key={rad.user_id}
+            to={`/participant/${rad.user_id}`}
+            className={`lb-rad lb-rad-link${ärJag ? ' mig' : ''}`}
+            aria-label={`Visa ${rad.namn}s tips`}
+          >
+            {innehåll}
+            <span className="lb-chevron" aria-hidden="true">›</span>
+          </Link>
+        ) : (
+          <div key={i} className={`lb-rad${ärJag ? ' mig' : ''}`}>{innehåll}</div>
         )
       })}
 

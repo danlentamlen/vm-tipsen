@@ -174,9 +174,12 @@ const DASHBOARD_STYLES = `
 
   /* ── Leaderboard ── */
   .lb-card { background:#fff; border:1px solid rgba(0,0,0,.07); border-radius:12px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,.04); }
-  .lb-row { display:flex; align-items:center; gap:10px; padding:.7rem 1rem; border-bottom:.5px solid rgba(0,0,0,.05); }
+  .lb-row { display:flex; align-items:center; gap:10px; padding:.7rem 1rem; border-bottom:.5px solid rgba(0,0,0,.05); text-decoration:none; color:inherit; transition:background .15s; }
   .lb-row:last-child { border-bottom:none; }
   .lb-row.me { background:rgba(197,160,40,.05); }
+  a.lb-row { cursor:pointer; }
+  a.lb-row:hover { background:rgba(197,160,40,.08); }
+  .lb-chevron { font-family:'Barlow Condensed',sans-serif; font-size:1.1rem; font-weight:700; color:#ccc; flex-shrink:0; }
   .lb-rank { width:22px; font-family:'Barlow Condensed',sans-serif; font-size:.88rem; font-weight:700; color:#aaa; text-align:center; flex-shrink:0; }
   .lb-rank.top3 { color:#C5A028; }
   .lb-avatar { width:30px; height:30px; border-radius:50%; background:rgba(10,22,40,.08); display:flex; align-items:center; justify-content:center; font-family:'Barlow Condensed',sans-serif; font-size:.72rem; font-weight:700; color:#0a1628; flex-shrink:0; }
@@ -688,11 +691,11 @@ export default function Home() {
                   <span className="hb-lbl">Matcher spelat</span>
                 </div>
               )}
-              {målData?.snitMålPerMatch > 0 && (
+              {topScorers.length > 0 && (
                 <div className="hb-stat">
-                  <span className="hb-icon">📊</span>
-                  <span className="hb-num">{målData.snitMålPerMatch}</span>
-                  <span className="hb-lbl">Mål / match</span>
+                  <span className="hb-icon">{getFlag(topScorers[0].land)}</span>
+                  <span className="hb-num">{topScorers[0].mål}</span>
+                  <span className="hb-lbl">⚽ {topScorers[0].spelare}</span>
                 </div>
               )}
               {ticker?.antalBetalda > 0 && (
@@ -711,9 +714,35 @@ export default function Home() {
           </div>
         </div>
 
+        {/* ── Live / ongoing matches ──
+            Visas ALLTID överst när en match pågår, ovanför "Bäst igår". */}
+        {pågående.length > 0 && (
+          <div className="dash-section">
+            <div className="dash-section-header">
+              <span className="dash-section-pill live">🔴 Pågår nu</span>
+              <div className="dash-section-line" />
+              <Link to="/matches" className="dash-see-all">Alla matcher →</Link>
+            </div>
+            {pågående.map(match => (
+              <MatchKort
+                key={match.match_id}
+                match={match}
+                tip={minaTips[match.match_id]}
+                inloggad={!!användare}
+                tipsLåst={true}
+                sparar={false}
+                onSpara={() => {}}
+                odds={oddsForMatch(match)}
+                stats={matchStats[match.match_id] || null}
+                liveScore={liveScoreForMatch(match)}
+              />
+            ))}
+          </div>
+        )}
+
         {/* ── Yesterday's best (match points 16:00–08:00) ──
-            Döljs medan en match pågår — då är "Pågår nu" det aktuella fokuset. */}
-        {igårBäst.length > 0 && pågående.length === 0 && (
+            Visas alltid när det finns data; en ev. pågående match ligger ovanför. */}
+        {igårBäst.length > 0 && (
           <div className="dash-section">
             <div className="dash-section-header">
               <span className="dash-section-pill gold">🏅 Bäst igår</span>
@@ -739,31 +768,6 @@ export default function Home() {
                 </div>
               ))}
             </div>
-          </div>
-        )}
-
-        {/* ── Live / ongoing matches ── */}
-        {pågående.length > 0 && (
-          <div className="dash-section">
-            <div className="dash-section-header">
-              <span className="dash-section-pill live">🔴 Pågår nu</span>
-              <div className="dash-section-line" />
-              <Link to="/matches" className="dash-see-all">Alla matcher →</Link>
-            </div>
-            {pågående.map(match => (
-              <MatchKort
-                key={match.match_id}
-                match={match}
-                tip={minaTips[match.match_id]}
-                inloggad={!!användare}
-                tipsLåst={true}
-                sparar={false}
-                onSpara={() => {}}
-                odds={oddsForMatch(match)}
-                stats={matchStats[match.match_id] || null}
-                liveScore={liveScoreForMatch(match)}
-              />
-            ))}
           </div>
         )}
 
@@ -840,23 +844,30 @@ export default function Home() {
               {topplista.slice(0, 7).map((rad, i) => {
                 const ärJag = användare && rad.user_id === användare.user_id
                 return (
-                  <div key={rad.user_id} className={`lb-row${ärJag ? ' me' : ''}`}>
+                  <Link
+                    key={rad.user_id}
+                    to={`/participant/${rad.user_id}`}
+                    className={`lb-row${ärJag ? ' me' : ''}`}
+                    aria-label={`Visa ${rad.namn}s tips`}
+                  >
                     <span className={`lb-rank${i < 3 ? ' top3' : ''}`}>{i + 1}</span>
                     <div className={`lb-avatar${ärJag ? ' me' : ''}`}>{initials(rad.namn)}</div>
                     <span className="lb-name">{rad.namn}{ärJag ? ' (du)' : ''}</span>
                     <span className="lb-pts">{rad.poäng}<span className="lb-pts-lbl"> p</span></span>
-                  </div>
+                    <span className="lb-chevron" aria-hidden="true">›</span>
+                  </Link>
                 )
               })}
               {användare && minRank >= 7 && (
                 <>
                   <div className="lb-row" style={{ justifyContent:'center', padding:'.4rem', color:'#ccc', fontSize:'.75rem' }}>· · ·</div>
-                  <div className="lb-row me">
+                  <Link to={`/participant/${användare.user_id}`} className="lb-row me" aria-label="Visa dina tips">
                     <span className="lb-rank">{minRank + 1}</span>
                     <div className="lb-avatar me">{initials(användare.namn)}</div>
                     <span className="lb-name">{användare.namn} (du)</span>
                     <span className="lb-pts">{topplista[minRank]?.poäng ?? '—'}<span className="lb-pts-lbl"> p</span></span>
-                  </div>
+                    <span className="lb-chevron" aria-hidden="true">›</span>
+                  </Link>
                 </>
               )}
             </div>

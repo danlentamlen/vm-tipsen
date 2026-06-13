@@ -137,6 +137,17 @@ export function beräknaPoäng(tip, stats) {
   return tipOutcome === resOutcome ? 2 : 0
 }
 
+/**
+ * Bygger en extern länk till FIFA:s officiella material om matchen. FIFA:s
+ * match-sidor kräver interna match-ID som vi inte har på korten, så vi söker i
+ * stället låst till fifa.com på de två lagen + turneringen. Det landar på FIFA:s
+ * officiella matchsida och blir aldrig en död länk (jämfört med att gissa ett ID).
+ */
+export function fifaMatchUrl(match) {
+  const q = `${match?.hemmalag || ''} ${match?.bortalag || ''} FIFA World Cup 2026 site:fifa.com`.trim()
+  return `https://www.google.com/search?q=${encodeURIComponent(q)}`
+}
+
 export const MATCH_KORT_STYLES = `
   .mc { background:#fff; border:1px solid rgba(0,0,0,.07); border-radius:12px; margin-bottom:.5rem; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,.04); transition:box-shadow .15s; }
   .mc.has-tip { border-left:3px solid #C5A028; }
@@ -238,6 +249,8 @@ export const MATCH_KORT_STYLES = `
   .mc-sc-cnt { font-family:'Barlow',sans-serif; font-size:.62rem; color:#aaa; text-align:right; min-width:38px; white-space:nowrap; }
   .mc-footer { display:flex; align-items:center; gap:6px; padding:.4rem 1rem .5rem; border-top:1px solid rgba(0,0,0,.05); font-family:'Barlow',sans-serif; font-size:.75rem; color:#bbb; }
   .mc-footer-dot { width:3px; height:3px; border-radius:50%; background:#ddd; }
+  .mc-detail-link { margin-left:auto; display:inline-flex; align-items:center; gap:3px; font-family:'Barlow Condensed',sans-serif; font-size:.7rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:#C5A028; text-decoration:none; white-space:nowrap; }
+  .mc-detail-link:hover { color:#8a6800; text-decoration:underline; }
 `
 
 export default function MatchKort({ match, tip, inloggad, tipsLåst, sparar, onSpara, odds, stats, liveScore, t }) {
@@ -462,11 +475,22 @@ export default function MatchKort({ match, tip, inloggad, tipsLåst, sparar, onS
         )
       })()}
 
-      {(tid || match.arena) && (
+      {(tid || match.arena || (harResultat && !ärLive)) && (
         <div className="mc-footer">
           {tid && <span>{tid}</span>}
           {tid && match.arena && <span className="mc-footer-dot" />}
           {match.arena && <span>{match.arena}</span>}
+          {harResultat && !ärLive && (
+            <a
+              className="mc-detail-link"
+              href={fifaMatchUrl(match)}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {t?.('matches.matchfakta') || 'Matchfakta'} ↗
+            </a>
+          )}
         </div>
       )}
     </div>
