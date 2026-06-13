@@ -138,14 +138,22 @@ export function beräknaPoäng(tip, stats) {
 }
 
 /**
- * Bygger en extern länk till FIFA:s officiella material om matchen. FIFA:s
- * match-sidor kräver interna match-ID som vi inte har på korten, så vi söker i
- * stället låst till fifa.com på de två lagen + turneringen. Det landar på FIFA:s
- * officiella matchsida och blir aldrig en död länk (jämfört med att gissa ett ID).
+ * Bygger en extern länk till FIFA:s officiella match-center för matchens dag.
+ *
+ * FIFA:s exakta matchsida kräver interna ID:n (idCompetition/idSeason/idStage/
+ * idMatch, t.ex. .../match/17/285023/289273/400021458) som vår matchdata inte
+ * bär — match_id är bara ett löpnummer. Däremot använder FIFA:s match-center en
+ * global ?date=YYYY-MM-DD-parameter (syns även i deras egna matchadresser). Vi
+ * länkar därför till match-centret scopat till matchens dag: en riktig FIFA-sida,
+ * rätt datum, ett klick från matchen — och aldrig en död länk (inget gissat ID).
+ *
+ * match.datum är venue-lokalt (YYYY-MM-DD från openfootball), samma datum FIFA
+ * listar matchen under, så vi skickar det rått utan tidszonsjustering.
  */
 export function fifaMatchUrl(match) {
-  const q = `${match?.hemmalag || ''} ${match?.bortalag || ''} FIFA World Cup 2026 site:fifa.com`.trim()
-  return `https://www.google.com/search?q=${encodeURIComponent(q)}`
+  const datum = String(match?.datum || '').match(/\d{4}-\d{2}-\d{2}/)?.[0]
+  const bas = 'https://www.fifa.com/en/match-centre'
+  return datum ? `${bas}?date=${datum}` : bas
 }
 
 export const MATCH_KORT_STYLES = `
