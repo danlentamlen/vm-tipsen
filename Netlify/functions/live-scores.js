@@ -9,7 +9,8 @@
  * Output (oförändrad form): [{ hemmalag, bortalag, hemma, borta, minut, status }]
  */
 import { getCached } from './_persistentCache.js'
-import { getLiveScores } from './_resultsSource.js'
+import { getLiveScores, filtreraEjLive } from './_resultsSource.js'
+import { getMatcher } from './_lockedData.js'
 
 const CACHE_TTL = 30 * 1000 // 30 s — live ska vara färskt men inte spamma API:t
 
@@ -27,8 +28,13 @@ export default async (req) => {
 
   try {
     const live = await getCached('live-scores:v1', CACHE_TTL, async () => {
-      const matcher = await getLiveScores()
-      return matcher.map((m) => ({
+      const [pågående, matcherRader] = await Promise.all([
+        getLiveScores(),
+        getMatcher().catch(() => []), // Matcher endast för tidsspärr → tål att fela
+      ])
+      // Tidsspärr: släng matcher som varit "live" orimligt länge efter avspark
+      // (zombie-live när alla källor släpar efter slutsignal). Se filtreraEjLive.
+      return filtreraEjLive(pågående, matcherRader).map((m) => ({
         hemmalag: m.hemmalag,
         bortalag: m.bortalag,
         hemma:    m.hemma,

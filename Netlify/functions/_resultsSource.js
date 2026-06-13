@@ -16,6 +16,7 @@
  *     tidigare låg dubblerad i sync-results.js och live-scores.js.
  *   - Allt är inkapslat i try/catch; en trasig källa får aldrig välta den andra.
  */
+import { parseMatchStart } from './_scoring.js'
 
 const FD_BASE = 'https://api.football-data.org/v4'
 const FD_COMPETITION = 'WC'
@@ -295,7 +296,28 @@ export async function getLiveScores() {
   const tsdb = resultat[1].status === 'fulfilled' ? resultat[1].value : []
   const bdl  = resultat[2].status === 'fulfilled' ? resultat[2].value : []
 
-  const pågående = [...fd, ...tsdb, ...bdl].filter((m) => m.status === 'IN_PLAY' || m.status === 'PAUSED')
+  return väljLive([...fd, ...tsdb, ...bdl])
+}
+
+/**
+ * Väljer pågående matcher ur en sammanslagen lista från alla källor.
+ *
+ * En match räknas som AVSLUTAD så fort NÅGON källa säger FINISHED — då får den
+ * aldrig visas som live, även om en långsammare källa (t.ex. football-datas
+ * gratisnivå) fortfarande släpar efter och rapporterar IN_PLAY. Tidigare
+ * filtrerades FINISHED bort per källa FÖRE sammanslagningen, så en eftersläpande
+ * IN_PLAY kunde hålla en sedan länge avslutad match kvar i "Pågår nu".
+ *
+ * Bland kvarvarande IN_PLAY/PAUSED väljs den FÄRSKASTE posten per match.
+ */
+export function väljLive(alla = []) {
+  const avslutadeNycklar = new Set(
+    alla.filter((m) => m.status === 'FINISHED').map((m) => matchKey(m.hemmalag, m.bortalag)),
+  )
+  const pågående = alla.filter(
+    (m) => (m.status === 'IN_PLAY' || m.status === 'PAUSED') &&
+           !avslutadeNycklar.has(matchKey(m.hemmalag, m.bortalag)),
+  )
   const map = new Map()
   for (const m of pågående) {
     const key = matchKey(m.hemmalag, m.bortalag)
@@ -303,4 +325,34 @@ export async function getLiveScores() {
     if (!befintlig || liveFräschhet(m) > liveFräschhet(befintlig)) map.set(key, m)
   }
   return [...map.values()]
+}
+
+/**
+ * Tidsspärr för "Pågår nu": en match kan inte rimligen vara live längre än
+ * `maxTimmar` efter avspark (90 min + paus + tillägg + ev. förlängning/straffar
+ * ryms väl inom ~3,5 h). Skyddar mot "zombie-live" när ALLA källor släpar och
+ * fortsätter rapportera IN_PLAY långt efter slutsignal.
+ *
+ * Matchar live-poster mot Matcher-arkets avsparkstid via normaliserade lagnamn.
+ * Poster vars avspark är okänd behålls (bryter inte nuvarande beteende).
+ *
+ * @param {Array}   live          live-poster: { hemmalag, bortalag, ... }
+ * @param {Array[]} matcherRader  Matcher-arket: A=match_id, B=datum, C=tid, D=team1, E=team2
+ * @param {Date}    now
+ * @param {number}  maxTimmar
+ */
+export function filtreraEjLive(live = [], matcherRader = [], now = new Date(), maxTimmar = 3.5) {
+  const kickoff = new Map()
+  for (const rad of matcherRader || []) {
+    if (rad && rad[3] && rad[4]) {
+      const start = parseMatchStart(rad[1], rad[2])
+      if (start) kickoff.set(matchKey(rad[3], rad[4]), start)
+    }
+  }
+  const gräns = maxTimmar * 3600000
+  return live.filter((m) => {
+    const start = kickoff.get(matchKey(m.hemmalag, m.bortalag))
+    if (!start) return true // okänd avspark → behåll
+    return now.getTime() - start.getTime() < gräns
+  })
 }

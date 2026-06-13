@@ -6,7 +6,7 @@
  * här (de är inkapslade i try/catch och opt-in).
  */
 import { describe, it, expect } from 'vitest'
-import { norm, matchKey, mergeResults, mappaAvslutadeTillMatchId } from '../../Netlify/functions/_resultsSource.js'
+import { norm, matchKey, mergeResults, mappaAvslutadeTillMatchId, väljLive, filtreraEjLive } from '../../Netlify/functions/_resultsSource.js'
 
 describe('norm', () => {
   it('mappar avvikande lagnamn och normaliserar till gemener', () => {
@@ -91,5 +91,44 @@ describe('mappaAvslutadeTillMatchId', () => {
       matcher,
     )
     expect(rader).toHaveLength(0)
+  })
+})
+
+describe('väljLive', () => {
+  it('utesluter match som NÅGON källa markerat FINISHED (eftersläpande IN_PLAY vinner ej)', () => {
+    const live = väljLive([
+      { hemmalag: 'USA', bortalag: 'Paraguay', hemma: 2, borta: 1, status: 'IN_PLAY', minut: 89, källa: 'football-data' },
+      { hemmalag: 'USA', bortalag: 'Paraguay', hemma: 2, borta: 1, status: 'FINISHED', källa: 'balldontlie' },
+    ])
+    expect(live).toHaveLength(0) // matchen är slut → inte live
+  })
+
+  it('behåller match som faktiskt pågår och väljer färskaste posten', () => {
+    const live = väljLive([
+      { hemmalag: 'Brazil', bortalag: 'Morocco', hemma: 0, borta: 0, status: 'IN_PLAY', minut: 5 },
+      { hemmalag: 'Brazil', bortalag: 'Morocco', hemma: 0, borta: 1, status: 'IN_PLAY', minut: 40 },
+    ])
+    expect(live).toHaveLength(1)
+    expect(live[0].borta).toBe(1) // färskaste (flest mål/minut)
+  })
+})
+
+describe('filtreraEjLive', () => {
+  const matcher = [['match_019', '2026-06-12', '18:00 UTC-7', 'USA', 'Paraguay']] // avspark 2026-06-13 01:00 UTC
+  const live = [{ hemmalag: 'USA', bortalag: 'Paraguay', hemma: 2, borta: 1, status: 'IN_PLAY' }]
+
+  it('släng match som varit "live" längre än maxgränsen efter avspark', () => {
+    const now = new Date('2026-06-13T06:00:00Z') // 5 h efter avspark
+    expect(filtreraEjLive(live, matcher, now, 3.5)).toHaveLength(0)
+  })
+
+  it('behåller match som ligger inom rimligt tidsfönster', () => {
+    const now = new Date('2026-06-13T02:30:00Z') // 1,5 h efter avspark
+    expect(filtreraEjLive(live, matcher, now, 3.5)).toHaveLength(1)
+  })
+
+  it('behåller match med okänd avspark (bryter ej nuvarande beteende)', () => {
+    const now = new Date('2026-06-13T06:00:00Z')
+    expect(filtreraEjLive(live, [], now, 3.5)).toHaveLength(1)
   })
 })
