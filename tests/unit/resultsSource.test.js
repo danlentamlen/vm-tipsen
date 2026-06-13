@@ -6,7 +6,7 @@
  * här (de är inkapslade i try/catch och opt-in).
  */
 import { describe, it, expect } from 'vitest'
-import { norm, matchKey, mergeResults } from '../../Netlify/functions/_resultsSource.js'
+import { norm, matchKey, mergeResults, mappaAvslutadeTillMatchId } from '../../Netlify/functions/_resultsSource.js'
 
 describe('norm', () => {
   it('mappar avvikande lagnamn och normaliserar till gemener', () => {
@@ -47,5 +47,49 @@ describe('mergeResults', () => {
       [{ hemmalag: '', bortalag: 'X', status: 'FINISHED' }],
     )
     expect(merged).toHaveLength(2)
+  })
+})
+
+describe('mappaAvslutadeTillMatchId', () => {
+  // Matcher-arket: A=match_id, B=datum, C=tid, D=team1, E=team2
+  const matcher = [
+    ['match_019', '2026-06-12', '18:00 UTC-7', 'USA', 'Paraguay'],
+    ['match_007', '2026-06-12', '15:00 UTC-4', 'Canada', 'UEFA Path A winner'], // platshållare
+  ]
+
+  it('matchar i exakt ordning och behåller målen', () => {
+    const { rader, omatchade } = mappaAvslutadeTillMatchId(
+      [{ hemmalag: 'United States', bortalag: 'Paraguay', hemma: 2, borta: 1, status: 'FINISHED' }],
+      matcher,
+    )
+    expect(rader).toEqual([['match_019', '2', '1']]) // United States → USA via LAGNAMN_MAP
+    expect(omatchade).toHaveLength(0)
+  })
+
+  it('matchar i omvänd ordning och BYTER målen till arkets hemma/borta', () => {
+    // Källan listar Paraguay hemma, men arket har USA hemma → mål måste byta plats
+    const { rader } = mappaAvslutadeTillMatchId(
+      [{ hemmalag: 'Paraguay', bortalag: 'USA', hemma: 1, borta: 2, status: 'FINISHED' }],
+      matcher,
+    )
+    expect(rader).toEqual([['match_019', '2', '1']]) // 2 = USA:s mål i hemmakolumnen
+  })
+
+  it('lägger platshållarmatch i omatchade (skrivs ej)', () => {
+    const { rader, omatchade } = mappaAvslutadeTillMatchId(
+      [{ hemmalag: 'Canada', bortalag: 'Italy', hemma: 0, borta: 1, status: 'FINISHED', källa: 'football-data' }],
+      matcher,
+    )
+    expect(rader).toHaveLength(0)
+    expect(omatchade).toHaveLength(1)
+    expect(omatchade[0].bortalag).toBe('Italy')
+  })
+
+  it('ignorerar resultat utan kända mål', () => {
+    const { rader } = mappaAvslutadeTillMatchId(
+      [{ hemmalag: 'USA', bortalag: 'Paraguay', hemma: null, borta: null, status: 'FINISHED' }],
+      matcher,
+    )
+    expect(rader).toHaveLength(0)
   })
 })

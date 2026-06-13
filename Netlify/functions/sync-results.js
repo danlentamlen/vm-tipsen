@@ -20,7 +20,7 @@
  */
 import { getSheets, getRows, ensureSheet, overwriteRange, writeColumn } from './_sheets.js'
 import { getMatcher, getLockedSnapshot } from './_lockedData.js'
-import { getFinishedResults, matchKey, getTopScorers } from './_resultsSource.js'
+import { getFinishedResults, mappaAvslutadeTillMatchId, getTopScorers } from './_resultsSource.js'
 import {
   beräknaTopplista, beräknaIgår, beräknaTipsPoäng,
   byggResultatMap, byggIgårMatchIds,
@@ -48,16 +48,13 @@ export default async () => {
       console.log('[sync-results] Inga matcher ännu')
       return
     }
-    const matchLookup = {}
-    matcherRader.forEach((rad) => {
-      if (rad[0] && rad[3] && rad[4]) matchLookup[matchKey(rad[3], rad[4])] = rad[0]
-    })
-
     // ── 2. Befintliga resultat ──────────────────────────────────────────────
     const befintligaRader = await getRows(sheets, 'Resultat!A2:C1000')
     const sparade = new Set(befintligaRader.map((r) => r[0]).filter(Boolean))
 
     // ── 3. Hämta avslutade matcher (sammanslaget från alla källor) ──────────
+    // OBS: getFinishedResults() returnerar BARA status===FINISHED med kända mål,
+    // så vi skriver aldrig resultat för en match som inte är slutspelad.
     let avslutade = []
     try {
       avslutade = await getFinishedResults()
@@ -67,17 +64,22 @@ export default async () => {
     }
     console.log(`[sync-results] ${avslutade.length} avslutade matcher från källor`)
 
-    // ── 4. Mappa till våra match_id och hitta nya ───────────────────────────
-    const nya = []
-    for (const m of avslutade) {
-      const match_id = matchLookup[matchKey(m.hemmalag, m.bortalag)]
-      if (!match_id) {
-        console.warn(`[sync-results] Ingen matchning: ${m.hemmalag} vs ${m.bortalag}`)
-        continue
+    // ── 4. Mappa till våra match_id (exakt + omvänd ordning) ─────────────────
+    const { rader: mappade, omatchade } = mappaAvslutadeTillMatchId(avslutade, matcherRader)
+
+    // Avslutade resultat utan matchning i Matcher-arket loggas högljutt i stället
+    // för att tyst försvinna — oftast platshållarnamn (t.ex. "UEFA Path A winner")
+    // som inte uppdaterats med det riktiga laget. Då skrivs inget resultat och
+    // inga poäng delas ut förrän namnet i Matcher-arket rättas.
+    if (omatchade.length > 0) {
+      console.warn(`[sync-results] ⚠️ ${omatchade.length} avslutade matcher MATCHAR INTE Matcher-arket — kontrollera lagnamnen:`)
+      for (const m of omatchade) {
+        console.warn(`   • ${m.hemmalag} ${m.hemma}–${m.borta} ${m.bortalag} (källa: ${m.källa})`)
       }
-      if (sparade.has(match_id)) continue
-      nya.push([match_id, String(m.hemma), String(m.borta)])
     }
+
+    // Bara match_id som inte redan är sparade blir nya rader att lägga till
+    const nya = mappade.filter((r) => !sparade.has(r[0]))
 
     // ── 5. Spara nya resultat ───────────────────────────────────────────────
     if (nya.length > 0) {

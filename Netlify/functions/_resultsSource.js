@@ -177,6 +177,47 @@ export function mergeResults(...listor) {
 }
 
 /**
+ * Mappar AVSLUTADE (FINISHED) resultat → våra match_id via Matcher-arket.
+ *
+ * Matchningen sker på normaliserade lagnamn. Två fallnivåer:
+ *   1. Exakt ordning  (källans hemma/borta = arkets team1/team2)
+ *   2. Omvänd ordning (källan listar lagen tvärtom) → DÅ byts även målen så att
+ *      de hamnar i rätt kolumn (annars sparas fel ställning).
+ *
+ * Resultat som inte kan matchas returneras i `omatchade` i stället för att tyst
+ * försvinna. Det inträffar t.ex. när Matcher-arket fortfarande har openfootballs
+ * platshållarnamn ("UEFA Path A winner", "IC Path 1 winner") för lag som hunnit
+ * kvalificera sig — då returnerar football-data det riktiga lagnamnet och nyckeln
+ * matchar aldrig. Anroparen kan logga `omatchade` så felet syns.
+ *
+ * @param {Array}   avslutade     normaliserade FINISHED-resultat: { hemmalag, bortalag, hemma, borta }
+ * @param {Array[]} matcherRader  Matcher-arket: A=match_id, B=datum, C=tid, D=team1, E=team2
+ * @returns {{ rader: Array[], omatchade: Array }} rader = [[match_id, hemma, borta]]
+ */
+export function mappaAvslutadeTillMatchId(avslutade = [], matcherRader = []) {
+  const lookup = new Map()
+  for (const rad of matcherRader || []) {
+    if (rad && rad[0] && rad[3] && rad[4]) lookup.set(matchKey(rad[3], rad[4]), rad[0])
+  }
+
+  const rader = []
+  const omatchade = []
+  for (const m of avslutade || []) {
+    if (!m || !m.hemmalag || !m.bortalag || m.hemma == null || m.borta == null) continue
+
+    const direkt = lookup.get(matchKey(m.hemmalag, m.bortalag))
+    if (direkt) { rader.push([direkt, String(m.hemma), String(m.borta)]); continue }
+
+    // Omvänd ordning → byt målen så de matchar arkets hemma/borta-kolumner
+    const omvänd = lookup.get(matchKey(m.bortalag, m.hemmalag))
+    if (omvänd) { rader.push([omvänd, String(m.borta), String(m.hemma)]); continue }
+
+    omatchade.push(m)
+  }
+  return { rader, omatchade }
+}
+
+/**
  * Avslutade matcher (FINISHED) från alla tillgängliga källor, sammanslagna.
  * Sekundärkällan körs först om den hinner före football-data.
  */
