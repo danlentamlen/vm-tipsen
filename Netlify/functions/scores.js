@@ -13,7 +13,13 @@ import { getCached } from './_persistentCache.js'
 import { getLockedSnapshot } from './_lockedData.js'
 import { beräknaTopplista } from './_scoring.js'
 
-const CACHE_TTL = 10 * 60 * 1000 // 10 min — ändras bara när matcher avgörs
+// Writern (sync-results) är "klockan": den skriver standings:v1 till Blobs var
+// 5:e minut. Läsvägen ska bara spegla det senaste writern skrev, inte ha en egen
+// längre timer som får sidan att släpa efter. Därför kort TTL (60 s) — räcker för
+// att dämpa burst-trafik mot Blobs men gör att sidan följer writern tätt.
+// Billigt: standings läses från Blobs, inte Sheets (Sheets-fallback bara om
+// snapshoten saknas helt, t.ex. före första synken efter en deploy).
+const CACHE_TTL = 60 * 1000 // 60 s
 
 // Läs förberäknad topplista från Topplista-arket (A2:H)
 async function läsSnapshotSheet(sheets) {
@@ -64,7 +70,7 @@ export default async () => {
       status: 200,
       headers: {
         'Content-Type': 'application/json',
-        'Cache-Control': 'public, max-age=120',
+        'Cache-Control': 'public, max-age=60',
       },
     })
   } catch (err) {
