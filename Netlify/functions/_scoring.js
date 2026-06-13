@@ -275,3 +275,110 @@ export function beräknaTipsPoäng(tipsRader = [], resultatMap = {}) {
     return räknaMatchPoäng(rad[3], rad[4], res.hemma, res.borta)
   })
 }
+
+// ── Bettingöversikt ──────────────────────────────────────────────────────────
+/**
+ * Bygger den publika bettingöversikten:
+ *   - per GRUPPSPELS-match: full fördelning av alla tippade resultat (med %),
+ *     och facit (ev. resultat) när det finns — då markeras rätt resultat.
+ *   - per TILLÄGGSFRÅGA: full fördelning av alla svar (med %), och rätt svar
+ *     när det finns — då markeras rätt svar.
+ *
+ * Ren funktion utan sidoeffekter → enhetstestbar (se tests/unit/betOverview.test.js).
+ *
+ * SÄKERHET: facit avslöjas BARA när det faktiskt är ifyllt i arket (admin har
+ * matat in det = utgången är känd). Tom cell → rätt_svar/resultat = null och
+ * inget markeras. Vi läcker alltså aldrig ett facit i förväg.
+ *
+ * Tips dedupliceras per (user_id, match_id) och svar per (user_id, fråga_id) så
+ * att en användares redigerade tips bara räknas en gång (annars uppblåst %).
+ *
+ * @param {Object}  args
+ * @param {Array[]} args.matcherRader    A=match_id,B=datum,C=tid,D=hemma,E=borta,F=grupp
+ * @param {Array[]} args.tipsRader       A=tip_id,B=user_id,C=match_id,D=hemma,E=borta
+ * @param {Array[]} args.resultatRader   A=match_id,B=hemma,C=borta
+ * @param {Array[]} args.frågorRader     A=id,B=fråga,C=poäng,D=typ,E=rätt_svar,F=fråga_en
+ * @param {Array[]} args.frågorSvarRader A=id,B=user_id,C=fråga_id,D=svar
+ * @returns {{matcher:Array,frågor:Array}}
+ */
+export function byggBettingöversikt({
+  matcherRader = [], tipsRader = [], resultatRader = [],
+  frågorRader = [], frågorSvarRader = [],
+} = {}) {
+  const resultat = byggResultatMap(resultatRader)
+
+  // Tippade resultat per match (deduplicerat → senaste tipset per användare).
+  const tipsPerMatch = {}
+  dedupliceraTips(tipsRader).forEach((rad) => {
+    const mid = rad[2]
+    if (!tipsPerMatch[mid]) tipsPerMatch[mid] = []
+    tipsPerMatch[mid].push(`${Number(rad[3])}-${Number(rad[4])}`)
+  })
+
+  // Bara gruppspel (knockout sparas med grupp === 'Slutspel').
+  const matcher = matcherRader
+    .filter((rad) => rad && rad[0] && rad[5] && rad[5] !== 'Slutspel')
+    .map((rad) => {
+      const match_id   = rad[0]
+      const tips        = tipsPerMatch[match_id] || []
+      const totalt      = tips.length
+      const res          = resultat[match_id]
+      const resultatStr = res ? `${res.hemma}-${res.borta}` : null
+
+      const räknare = {}
+      tips.forEach((k) => { räknare[k] = (räknare[k] || 0) + 1 })
+      const fördelning = Object.entries(räknare)
+        .map(([nyckel, antal]) => ({
+          resultat: nyckel,
+          antal,
+          procent: totalt ? Math.round((antal / totalt) * 100) : 0,
+          rätt: resultatStr != null && nyckel === resultatStr,
+        }))
+        .sort((a, b) => b.antal - a.antal || (a.resultat < b.resultat ? -1 : 1))
+
+      return {
+        match_id, datum: rad[1], tid: rad[2],
+        hemmalag: rad[3], bortalag: rad[4], grupp: rad[5],
+        totalt, resultat: resultatStr, fördelning,
+      }
+    })
+
+  // Svar per fråga (deduplicerat → senaste svaret per användare).
+  const svarPerFråga = {}
+  dedupliceraSvar(frågorSvarRader).forEach((rad) => {
+    const fid = rad[2]
+    if (!svarPerFråga[fid]) svarPerFråga[fid] = []
+    svarPerFråga[fid].push((String(rad[3] ?? '').trim()) || '–')
+  })
+
+  const frågor = frågorRader
+    .filter((rad) => rad && rad[0])
+    .map((rad) => {
+      const fråga_id = rad[0]
+      const facit     = (rad[4] || '').trim() || null   // null tills admin fyllt i
+      const svar       = svarPerFråga[fråga_id] || []
+      const totalt     = svar.length
+
+      const räknare = {}
+      svar.forEach((s) => { räknare[s] = (räknare[s] || 0) + 1 })
+      const fördelning = Object.entries(räknare)
+        .map(([svarText, antal]) => ({
+          svar: svarText,
+          antal,
+          procent: totalt ? Math.round((antal / totalt) * 100) : 0,
+          rätt: facit != null && svarText.toLowerCase() === facit.toLowerCase(),
+        }))
+        .sort((a, b) => b.antal - a.antal || (a.svar < b.svar ? -1 : 1))
+
+      return {
+        fråga_id,
+        fråga:    rad[1] || '',
+        fråga_en: (rad[5] || '').trim() || null,
+        poäng:    parseInt(rad[2]) || 0,
+        rätt_svar: facit,
+        totalt, fördelning,
+      }
+    })
+
+  return { matcher, frågor }
+}

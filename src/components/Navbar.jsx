@@ -76,6 +76,7 @@ export default function Navbar() {
     { to: '/questions',    label: t('navbar.links.questions'),    icon: '🎯', inloggadKrävs: false },
     { to: '/skytteliga',   label: t('navbar.links.skytteliga'),   icon: '👟', inloggadKrävs: false },
     { to: '/leaderboard',  label: t('navbar.links.leaderboard'),  icon: '🏆', inloggadKrävs: false },
+    { to: '/oversikt',     label: t('navbar.links.oversikt'),     icon: '📊', inloggadKrävs: false },
     { to: '/vinpotten',    label: t('navbar.links.vinpotten'),    icon: '🍷', inloggadKrävs: false },
     { to: '/participants', label: t('navbar.links.participants'), icon: '👥', inloggadKrävs: true  },
     { to: '/forum',        label: t('navbar.links.forum'),        icon: '💬', inloggadKrävs: true  },
