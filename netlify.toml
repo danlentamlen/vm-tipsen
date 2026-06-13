@@ -33,17 +33,20 @@
   to   = "/index.html"
   status = 200
 
+# Schemalagda funktioner.
+# OBS: Netlify stödjer ENDAST [functions."namn"]-syntaxen nedan (eller inline
+# `export const config = { schedule }`). Den gamla [[scheduled-functions]]-
+# syntaxen ignoreras tyst → funktionen registreras aldrig och körs aldrig.
+# Källa: https://docs.netlify.com/build/functions/scheduled-functions/
+
 # Kör var 5:e minut under VM (11 jun – 19 jul 2026) — snabbare resultat & snapshot
-[[scheduled-functions]]
-  name = "sync-results"
+[functions."sync-results"]
   schedule = "*/5 * * * *"
 
 # Hämtar odds från The Odds API en gång per dag kl 15:00 CEST (13:00 UTC)
-[[scheduled-functions]]
-  name = "odds-fetch"
+[functions."odds-fetch"]
   schedule = "0 13 * * *"
 
 # Tar bort användare utan vinflaska vid deadline: 11 juni 2026 kl 16:00 CEST (14:00 UTC)
-[[scheduled-functions]]
-  name = "admin-remove-no-wine"
+[functions."admin-remove-no-wine"]
   schedule = "0 14 11 6 *"
