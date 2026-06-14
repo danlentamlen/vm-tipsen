@@ -160,6 +160,7 @@ const en = {
     tips:          'predictions',
     odds:          'Bookmaker odds',
     oavgjort:      'Draw',
+    vilkaTippade:  'Who predicted',
     slutspelsNamn: {
      'Round of 32':           'Round of 32',
      'Round of 16':           'Round of 16',
