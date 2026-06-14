@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useSettings } from '../hooks/useSettings'
+import { matchStartMs } from '../components/MatchKort'
 
 const STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500&display=swap');
@@ -363,12 +364,24 @@ export default function ParticipantProfile() {
   const exakta = profil.tips.filter((t) => t.poäng === 5).length
   const rätta  = profil.tips.filter((t) => t.poäng === 2).length
 
+  // Stabil, kronologisk ordning (samma för alla deltagare): matcher sorteras på
+  // avsparkstid, grupperna på när deras första match spelas. Annars visas tipsen
+  // i den ordning personen råkade lämna dem → olika ordning per deltagare.
+  const kickoff = (tip) => matchStartMs(tip.datum, tip.tid) ?? Number.MAX_SAFE_INTEGER
   const grupperande = profil.tips.reduce((acc, tip) => {
     const g = tip.grupp || 'Övrigt'
     if (!acc[g]) acc[g] = []
     acc[g].push(tip)
     return acc
   }, {})
+  Object.values(grupperande).forEach((tips) =>
+    tips.sort((a, b) => kickoff(a) - kickoff(b) || String(a.match_id).localeCompare(String(b.match_id)))
+  )
+  const sorteradeGrupper = Object.entries(grupperande).sort(
+    (a, b) =>
+      Math.min(...a[1].map(kickoff)) - Math.min(...b[1].map(kickoff)) ||
+      a[0].localeCompare(b[0], 'sv')
+  )
 
   return (
     <>
@@ -467,7 +480,7 @@ export default function ParticipantProfile() {
                   <div className="pp-empty">Inga tips lämnade.</div>
                 ) : (
                   <>
-                    {Object.entries(grupperande).map(([grupp, tips]) => {
+                    {sorteradeGrupper.map(([grupp, tips]) => {
                       const gruppPoäng = tips.reduce((s, t) => s + (t.poäng || 0), 0)
                       const gruppExakta = tips.filter(t => t.poäng === 5).length
                       const harPoäng = tips.some(t => t.poäng !== null)
