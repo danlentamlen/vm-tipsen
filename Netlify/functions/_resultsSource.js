@@ -17,6 +17,7 @@
  *   - Allt är inkapslat i try/catch; en trasig källa får aldrig välta den andra.
  */
 import { parseMatchStart } from './_scoring.js'
+import { getCached } from './_persistentCache.js'
 
 const FD_BASE = 'https://api.football-data.org/v4'
 const FD_COMPETITION = 'WC'
@@ -141,20 +142,55 @@ function bdlNormalize(ev) {
 
 // Hämtar säsongens matcher med cursor-paginering (VM = 104 matcher, sida = 100).
 // Max 3 sidor som säkerhetsspärr så en trasig cursor aldrig blir oändlig loop.
+//
+// Tålig paginering: ett fel mitt i (t.ex. 429 på sida 2) kastar INTE bort det
+// vi redan hämtat — vi returnerar det partiella resultatet. Bara om FÖRSTA
+// sidan failar (inget hämtat) kastas felet vidare så anroparen kan falla
+// tillbaka på last-good (se getBdlSeason).
 async function bdlFetchSeason() {
   if (!BDL_KEY) return [] // källan avstängd
   const alla = []
   let cursor = null
   for (let i = 0; i < 3; i++) {
     const url = `${BDL_BASE}/matches?seasons[]=${BDL_SEASON}&per_page=100${cursor ? `&cursor=${cursor}` : ''}`
-    const res = await fetch(url, { headers: { Authorization: BDL_KEY } })
-    if (!res.ok) throw new Error(`balldontlie ${res.status}`)
+    let res
+    try {
+      res = await fetch(url, { headers: { Authorization: BDL_KEY } })
+      if (!res.ok) throw new Error(`balldontlie ${res.status}`)
+    } catch (err) {
+      if (alla.length) { console.warn(`[resultsSource] bdl sida ${i + 1}: ${err.message} — behåller ${alla.length} hämtade`); break }
+      throw err
+    }
     const data = await res.json()
     alla.push(...(data.data || []).map(bdlNormalize))
     cursor = data.meta?.next_cursor
     if (!cursor) break
   }
   return alla
+}
+
+// Last-good per instans: håller senaste lyckade BDL-listan så ett tillfälligt
+// 429 inte tappar live-minuten (BDL är enda gratiskällan som ger den).
+let _bdlLastGood = []
+
+/**
+ * Cachad BDL-säsong, DELAD mellan live- och finished-flödet. Utan detta hämtas
+ * hela säsongen i båda → dubbla anrop → spränger gratisgränsen (5 req/min) →
+ * 429 → källan tappas → ingen minut/snabb FINISHED. Med 30s-cache + last-good
+ * finns BDL-datan i praktiken alltid tillgänglig.
+ */
+export async function getBdlSeason() {
+  if (!BDL_KEY) return []
+  return getCached('bdl-season:v1', 30 * 1000, async () => {
+    try {
+      const lista = await bdlFetchSeason()
+      if (lista.length) _bdlLastGood = lista
+      return lista
+    } catch (err) {
+      console.warn(`[resultsSource] bdl-säsong miss (${err.message}) — använder last-good (${_bdlLastGood.length})`)
+      return _bdlLastGood
+    }
+  })
 }
 
 // ── Sammanslagning ──────────────────────────────────────────────────────────
@@ -226,7 +262,7 @@ export async function getFinishedResults() {
   const resultat = await Promise.allSettled([
     process.env.FOOTBALL_DATA_KEY ? fdFetch('status=FINISHED').then((d) => (d.matches || []).map(fdNormalize)) : Promise.resolve([]),
     tsdbFetchSeason(),
-    bdlFetchSeason(),
+    getBdlSeason(),
   ])
   const fd   = resultat[0].status === 'fulfilled' ? resultat[0].value : []
   const tsdb = resultat[1].status === 'fulfilled' ? resultat[1].value : []
@@ -290,7 +326,7 @@ export async function getLiveScores() {
       ? fdFetch(`dateFrom=${today}&dateTo=${today}`).then((d) => (d.matches || []).map(fdNormalize))
       : Promise.resolve([]),
     tsdbFetchSeason(),
-    bdlFetchSeason(),
+    getBdlSeason(),
   ])
   const fd   = resultat[0].status === 'fulfilled' ? resultat[0].value : []
   const tsdb = resultat[1].status === 'fulfilled' ? resultat[1].value : []
