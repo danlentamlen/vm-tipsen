@@ -16,6 +16,7 @@ import {
   beräknaTopplista,
   beräknaIgår,
   beräknaTipsPoäng,
+  parseVinPris,
 } from '../../Netlify/functions/_scoring.js'
 
 describe('räknaMatchPoäng', () => {
@@ -142,6 +143,44 @@ describe('beräknaTopplista', () => {
   it('namnger okända användare "Okänd"', () => {
     const lista = beräknaTopplista({ resultatRader: RESULTAT, tipsRader: TIPS, användareRader: [] })
     expect(lista.every((r) => r.namn === 'Okänd')).toBe(true)
+  })
+  it('tiebreak: vid lika poäng OCH lika exakta vinner dyrast vinflaska', () => {
+    const R = [['m1', '2', '1']]
+    const T = [['t1', 'u1', 'm1', '2', '1'], ['t2', 'u2', 'm1', '2', '1']] // båda 5 p, 1 exakt
+    const ANV = [['u1', 'Anna'], ['u2', 'Bertil']]
+    const lista = beräknaTopplista({
+      resultatRader: R, tipsRader: T, användareRader: ANV,
+      vinerRader: [['u1', 'Anna', 'v', '', '149 kr'], ['u2', 'Bertil', 'v', '', '1 299 kr']],
+    })
+    expect(lista[0]).toMatchObject({ user_id: 'u2', plats: 1 }) // dyrare vin
+    expect(lista[1]).toMatchObject({ user_id: 'u1', plats: 2 })
+  })
+  it('tiebreak: lika poäng, exakta OCH pris → namn avgör', () => {
+    const R = [['m1', '2', '1']]
+    const T = [['t1', 'u1', 'm1', '2', '1'], ['t2', 'u2', 'm1', '2', '1']]
+    const lista = beräknaTopplista({
+      resultatRader: R, tipsRader: T, användareRader: [['u1', 'Anna'], ['u2', 'Bertil']],
+      vinerRader: [['u1', 'Anna', 'v', '', '500 kr'], ['u2', 'Bertil', 'v', '', '500 kr']],
+    })
+    expect(lista[0].user_id).toBe('u1') // Anna < Bertil
+  })
+  it('femmor slår vinpris: högre poäng rankas först oavsett vin', () => {
+    const R = [['m1', '2', '1']]
+    const T = [['t1', 'u1', 'm1', '2', '1'], ['t2', 'u2', 'm1', '0', '0']] // u1 5p, u2 0p
+    const lista = beräknaTopplista({
+      resultatRader: R, tipsRader: T, användareRader: [['u1', 'Anna'], ['u2', 'Bertil']],
+      vinerRader: [['u1', 'Anna', 'v', '', '10 kr'], ['u2', 'Bertil', 'v', '', '9000 kr']],
+    })
+    expect(lista[0].user_id).toBe('u1')
+  })
+})
+
+describe('parseVinPris', () => {
+  it('tolkar pris i textform robust', () => {
+    expect(parseVinPris('149 kr')).toBe(149)
+    expect(parseVinPris('1 299,50 kr')).toBe(1299.5)
+    expect(parseVinPris('')).toBe(0)
+    expect(parseVinPris(undefined)).toBe(0)
   })
   it('dubbelräknar varken match- eller frågepoäng vid dubblettrader (regression)', () => {
     const lista = beräknaTopplista({

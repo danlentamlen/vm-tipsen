@@ -48,13 +48,14 @@ async function räknaLive(sheets) {
     'Resultat!A2:D1000',
     'Tips!A2:E100000',
   ])
-  const { användare, frågor, frågorSvar } = await getLockedSnapshot()
+  const { användare, frågor, frågorSvar, viner } = await getLockedSnapshot()
   return beräknaTopplista({
     resultatRader,
     tipsRader,
     frågorRader: frågor,
     frågorSvarRader: frågorSvar,
     användareRader: användare,
+    vinerRader: viner,
   })
 }
 

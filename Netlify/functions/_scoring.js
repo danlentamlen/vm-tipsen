@@ -149,10 +149,12 @@ export function beräknaTopplista({
   frågorRader = [],
   frågorSvarRader = [],
   användareRader = [],
+  vinerRader = [],
 } = {}) {
   const resultatMap  = byggResultatMap(resultatRader)
   const frågorMap    = byggFrågorMap(frågorRader)
   const användarMap  = byggAnvändarMap(användareRader)
+  const vinprisMap   = byggVinprisMap(vinerRader)
 
   const poängMap = {}
   const init = (id) => {
@@ -190,8 +192,38 @@ export function beräknaTopplista({
       rätta:      stats.rätta,
       frågepoäng: stats.frågepoäng,
     }))
-    .sort((a, b) => b.poäng - a.poäng || b.exakta - a.exakta || a.namn.localeCompare(b.namn))
+    // Rangordning vid lika poäng:
+    //   1. Flest exakta (5-poängare)
+    //   2. Dyrast vinflaska (vin_pris i Viner-arket)
+    //   3. Namn (stabil sista utslagsgivare)
+    .sort((a, b) =>
+      b.poäng - a.poäng ||
+      b.exakta - a.exakta ||
+      (vinprisMap[b.user_id] || 0) - (vinprisMap[a.user_id] || 0) ||
+      a.namn.localeCompare(b.namn))
     .map((rad, index) => ({ ...rad, plats: index + 1 }))
+}
+
+/**
+ * Bygger user_id → vinpris (tal) från Viner-arket. Kolumner: A=user_id,
+ * E(idx 4)=vin_pris. Priset lagras som text ("149 kr", "1 299,00 kr") så vi
+ * plockar ut första talet och tolererar mellanslag som tusentalsavgränsare och
+ * komma som decimaltecken. Saknat/otolkbart pris → 0 (rankas lägst).
+ */
+export function byggVinprisMap(vinerRader = []) {
+  const map = {}
+  for (const rad of vinerRader || []) {
+    const id = rad && rad[0]
+    if (!id) continue
+    map[id] = parseVinPris(rad[4])
+  }
+  return map
+}
+
+/** Tolkar ett vinpris i textform till ett tal. "1 299,50 kr" → 1299.5, "" → 0. */
+export function parseVinPris(text) {
+  const m = String(text ?? '').replace(/\s/g, '').replace(',', '.').match(/\d+(\.\d+)?/)
+  return m ? parseFloat(m[0]) : 0
 }
 
 /**

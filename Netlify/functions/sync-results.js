@@ -137,7 +137,7 @@ export default async () => {
 async function räknaOmSnapshots(sheets, matcherRader, resultatRader) {
   // Tips läses här (i writern), INTE i de användarvända endpoints.
   const tipsRader = await getRows(sheets, 'Tips!A2:E100000')
-  const { användare, frågor, frågorSvar } = await getLockedSnapshot()
+  const { användare, frågor, frågorSvar, viner } = await getLockedSnapshot()
 
   // ── Topplista ──
   const standings = beräknaTopplista({
@@ -146,6 +146,7 @@ async function räknaOmSnapshots(sheets, matcherRader, resultatRader) {
     frågorRader: frågor,
     frågorSvarRader: frågorSvar,
     användareRader: användare,
+    vinerRader: viner,
   })
 
   const uppdaterad = new Date().toISOString()
