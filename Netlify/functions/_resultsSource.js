@@ -324,7 +324,22 @@ export function väljLive(alla = []) {
     const befintlig = map.get(key)
     if (!befintlig || liveFräschhet(m) > liveFräschhet(befintlig)) map.set(key, m)
   }
-  return [...map.values()]
+
+  // Backfilla minut: den färskaste posten väljs på MÅL, så en källa utan minut
+  // (t.ex. football-datas gratisnivå) kan vinna även när en annan källa för
+  // samma match HAR minuten (BALLDONTLIE). Ta högsta kända minut per match så
+  // frontend slipper falla tillbaka på den uppskattade (som ligger före).
+  const bästaMinut = new Map()
+  for (const m of pågående) {
+    const min = Number(m.minut)
+    if (Number.isFinite(min)) {
+      const key = matchKey(m.hemmalag, m.bortalag)
+      bästaMinut.set(key, Math.max(bästaMinut.get(key) ?? 0, min))
+    }
+  }
+  return [...map.entries()].map(([key, m]) =>
+    m.minut == null && bästaMinut.has(key) ? { ...m, minut: bästaMinut.get(key) } : m,
+  )
 }
 
 /**
