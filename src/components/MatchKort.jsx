@@ -279,8 +279,18 @@ export default function MatchKort({ match, tip, inloggad, tipsLåst, sparar, onS
 
   const harTips     = tip !== undefined
   const harResultat = stats && stats.resultat_hemma !== undefined
-  const ärLive      = !!liveScore
+  // Live-källan kan skicka en NYSS avslutad match (status FINISHED) så slut-
+  // ställningen kan visas direkt, innan arket hunnit skrivas. Den räknas som
+  // resultat, inte som live (ingen pulsande live-behandling).
+  const slutFrånLive = !harResultat && liveScore?.status === 'FINISHED' &&
+                       liveScore?.hemma != null && liveScore?.borta != null
+  const ärLive      = !!liveScore && liveScore.status !== 'FINISHED'
   const tid         = formatTid(match.tid)
+  // Effektivt resultat för poäng/markering: arket först, annars live-källan
+  // (pågående ställning eller nyss avslutad final).
+  const liveResultat = (ärLive || slutFrånLive) && liveScore?.hemma != null && liveScore?.borta != null
+    ? { resultat_hemma: Number(liveScore.hemma), resultat_borta: Number(liveScore.borta) }
+    : null
 
   // Lokal klocka som tickar var 30:e sekund medan matchen är live, så den
   // beräknade minuten räknar upp av sig själv utan extra nätverksanrop.
@@ -297,26 +307,23 @@ export default function MatchKort({ match, tip, inloggad, tipsLåst, sparar, onS
   const visaPaus   = liveScore?.status === 'PAUSED' || beräknad === 'Paus'
   const visaMinut  = apiMinut ?? (typeof beräknad === 'number' ? beräknad : null)
 
-  // Under live finns inget slutresultat i `stats` — räkna preliminär poäng från
-  // den pågående ställningen så kortet visar hur många poäng tipset ger just nu.
-  const liveStats = ärLive && liveScore?.hemma != null && liveScore?.borta != null
-    ? { resultat_hemma: Number(liveScore.hemma), resultat_borta: Number(liveScore.borta) }
-    : null
-  const poäng = harTips
-    ? (harResultat ? beräknaPoäng(tip, stats) : liveStats ? beräknaPoäng(tip, liveStats) : null)
-    : null
+  // Poäng räknas från arket när det finns, annars från live-källan (pågående
+  // ställning ger preliminär poäng "nu", nyss avslutad ger slutpoäng).
+  const resForPoäng = harResultat ? stats : liveResultat
+  const poäng = harTips && resForPoäng ? beräknaPoäng(tip, resForPoäng) : null
   const outcomeClass = poäng === 5 ? 'exact' : poäng === 2 ? 'winner' : poäng === 0 ? 'wrong' : ''
 
-  // Resultatet att markera i "vilka tippade"-modalen: live-ställning har företräde,
-  // annars slutresultatet. Strängformat "h-b" matchar nyckeln i fördelningen.
-  const aktuelltResultat = ärLive
-    ? (liveScore?.hemma != null && liveScore?.borta != null ? `${liveScore.hemma}-${liveScore.borta}` : null)
-    : harResultat ? `${stats.resultat_hemma}-${stats.resultat_borta}` : null
-  const visaVilkaKnapp = tipsLåst && (harResultat || ärLive)
+  // Resultatet att markera i "vilka tippade"-modalen. Strängformat "h-b".
+  const aktuelltResultat = harResultat
+    ? `${stats.resultat_hemma}-${stats.resultat_borta}`
+    : liveResultat ? `${liveResultat.resultat_hemma}-${liveResultat.resultat_borta}` : null
+  const visaVilkaKnapp = tipsLåst && (harResultat || ärLive || slutFrånLive)
 
   const cardClass = [
     'mc',
-    ärLive ? 'live' : harResultat && harTips ? outcomeClass : harTips ? 'has-tip' : '',
+    ärLive ? 'live'
+      : (harResultat || slutFrånLive) && harTips ? outcomeClass
+      : harTips ? 'has-tip' : '',
   ].filter(Boolean).join(' ')
 
   return (
@@ -344,6 +351,15 @@ export default function MatchKort({ match, tip, inloggad, tipsLåst, sparar, onS
                     ? <span className="mc-live-min">PAUS</span>
                     : visaMinut ? <span className="mc-live-min">{visaMinut}'</span> : null}
                 </span>
+              </div>
+            ) : slutFrånLive ? (
+              <div className="mc-live-wrap">
+                <div className="mc-result-inline">
+                  <span className="mc-rbox">{liveScore.hemma}</span>
+                  <span className="mc-rsep">–</span>
+                  <span className="mc-rbox">{liveScore.borta}</span>
+                </div>
+                <span className="mc-result-label">{t?.('matches.slut') || 'Slut'}</span>
               </div>
             ) : inloggad && !tipsLåst ? (
               <>
@@ -385,7 +401,7 @@ export default function MatchKort({ match, tip, inloggad, tipsLåst, sparar, onS
       </div>
 
       {/* Played/live match: compact tip strip */}
-      {tipsLåst && (harResultat || ärLive) && inloggad && (
+      {tipsLåst && (harResultat || ärLive || slutFrånLive) && inloggad && (
         <div className="mc-tip-strip">
           <span className="mc-result-label">{t?.('matches.dittTips') || 'Ditt tips'}</span>
           {harTips ? (

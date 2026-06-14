@@ -407,3 +407,32 @@ export function filtreraEjLive(live = [], matcherRader = [], now = new Date(), m
     return now.getTime() - start.getTime() < gräns
   })
 }
+
+/**
+ * NYSS avslutade matcher (FINISHED) — de vars avspark ligger inom de senaste
+ * `fönsterTimmar`. Används för att visa slutställningen på matchkortet DIREKT
+ * från live-källan, utan att vänta på att sync-results skriver till arket (som
+ * kan dröja p.g.a. skrivpaus + 5-minutersschema). Äldre matcher faller bort →
+ * de hämtas ändå korrekt från arket via match-stats.
+ *
+ * @param {Array}   finished      FINISHED-poster: { hemmalag, bortalag, hemma, borta, ... }
+ * @param {Array[]} matcherRader  Matcher-arket: A=match_id, B=datum, C=tid, D=team1, E=team2
+ * @param {Date}    now
+ * @param {number}  fönsterTimmar hur länge en avslutad match räknas som "nyss"
+ */
+export function nyligenAvslutade(finished = [], matcherRader = [], now = new Date(), fönsterTimmar = 5) {
+  const kickoff = new Map()
+  for (const rad of matcherRader || []) {
+    if (rad && rad[3] && rad[4]) {
+      const start = parseMatchStart(rad[1], rad[2])
+      if (start) kickoff.set(matchKey(rad[3], rad[4]), start)
+    }
+  }
+  const gräns = fönsterTimmar * 3600000
+  return finished.filter((m) => {
+    if (m.hemma == null || m.borta == null) return false
+    const start = kickoff.get(matchKey(m.hemmalag, m.bortalag))
+    if (!start) return false // okänd avspark → låt arket sköta den
+    return now.getTime() - start.getTime() < gräns
+  })
+}

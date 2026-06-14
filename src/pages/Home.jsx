@@ -350,7 +350,7 @@ export default function Home() {
       // När uppsättningen pågående matcher ändras (en match startar eller är slut)
       // hämtas dashboarden om direkt — då dyker slutresultat, ny ställning och
       // uppdaterad prognos upp utan att användaren behöver ladda om sidan.
-      const nyckel = lista.map(m => `${m.hemmalag}|${m.bortalag}`).sort().join(';')
+      const nyckel = lista.map(m => `${m.hemmalag}|${m.bortalag}|${m.status}`).sort().join(';')
       if (förraLiveRef.current !== null && nyckel !== förraLiveRef.current) {
         hämtaDashboard()
       }
