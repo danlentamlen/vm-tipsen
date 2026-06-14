@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import DistributionModal from './DistributionModal'
 
 // ── Flaggor ────────────────────────────────────────────────────────────────
 export const FLAGS = {
@@ -259,11 +260,17 @@ export const MATCH_KORT_STYLES = `
   .mc-footer-dot { width:3px; height:3px; border-radius:50%; background:#ddd; }
   .mc-detail-link { margin-left:auto; display:inline-flex; align-items:center; gap:3px; font-family:'Barlow Condensed',sans-serif; font-size:.7rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:#C5A028; text-decoration:none; white-space:nowrap; }
   .mc-detail-link:hover { color:#8a6800; text-decoration:underline; }
+  .mc-vilka-row { display:flex; padding:0 1rem .55rem; }
+  .mc-vilka-btn { display:inline-flex; align-items:center; gap:5px; font-family:'Barlow Condensed',sans-serif; font-size:.72rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:#0a1628; background:#f0ede6; border:none; border-radius:20px; padding:4px 12px; cursor:pointer; transition:background .15s; }
+  .mc-vilka-btn:hover { background:#e8e4dc; }
+  .mc-vilka-btn.live { background:rgba(200,16,46,.08); color:#a01020; }
+  .mc-vilka-btn.live:hover { background:rgba(200,16,46,.14); }
 `
 
 export default function MatchKort({ match, tip, inloggad, tipsLåst, sparar, onSpara, odds, stats, liveScore, t }) {
   const [hemma, setHemma] = useState(tip?.hemma_mål ?? '')
   const [borta, setBorta] = useState(tip?.borta_mål ?? '')
+  const [visaVilka, setVisaVilka] = useState(false)
 
   useEffect(() => {
     setHemma(tip?.hemma_mål ?? '')
@@ -292,6 +299,13 @@ export default function MatchKort({ match, tip, inloggad, tipsLåst, sparar, onS
 
   const poäng = harResultat && harTips ? beräknaPoäng(tip, stats) : null
   const outcomeClass = poäng === 5 ? 'exact' : poäng === 2 ? 'winner' : poäng === 0 ? 'wrong' : ''
+
+  // Resultatet att markera i "vilka tippade"-modalen: live-ställning har företräde,
+  // annars slutresultatet. Strängformat "h-b" matchar nyckeln i fördelningen.
+  const aktuelltResultat = ärLive
+    ? (liveScore?.hemma != null && liveScore?.borta != null ? `${liveScore.hemma}-${liveScore.borta}` : null)
+    : harResultat ? `${stats.resultat_hemma}-${stats.resultat_borta}` : null
+  const visaVilkaKnapp = tipsLåst && (harResultat || ärLive)
 
   const cardClass = [
     'mc',
@@ -382,6 +396,30 @@ export default function MatchKort({ match, tip, inloggad, tipsLåst, sparar, onS
             <span className="mc-tip-box notip">–</span>
           )}
         </div>
+      )}
+
+      {/* "Vilka tippade?" — öppnar modal med namn per resultat, rätt rad markerad */}
+      {visaVilkaKnapp && (
+        <div className="mc-vilka-row">
+          <button
+            className={`mc-vilka-btn${ärLive ? ' live' : ''}`}
+            onClick={(e) => { e.stopPropagation(); setVisaVilka(true) }}
+          >
+            👥 {aktuelltResultat
+              ? `${t?.('matches.vilkaTippade') || 'Vilka tippade'} ${aktuelltResultat}?`
+              : (t?.('matches.vilkaTippade') || 'Vilka tippade') + '?'}
+          </button>
+        </div>
+      )}
+
+      {visaVilka && (
+        <DistributionModal
+          typ="match"
+          id={match.match_id}
+          titel={`${match.hemmalag} – ${match.bortalag}`}
+          markeraResultat={aktuelltResultat}
+          onStäng={() => setVisaVilka(false)}
+        />
       )}
 
       {/* Played match: group accuracy stats */}

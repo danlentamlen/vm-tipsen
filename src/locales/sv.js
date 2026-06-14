@@ -162,6 +162,7 @@ const sv = {
     tips:          'tips',
     odds:          'Spelbolagens odds',
     oavgjort:      'Oavgjort',
+    vilkaTippade:  'Vilka tippade',
     slutspelsNamn: {
      'Round of 32':           'Sextondelsfinal',
      'Round of 16':           'Åttondelsfinal',
