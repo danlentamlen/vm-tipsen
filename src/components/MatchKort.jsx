@@ -297,7 +297,14 @@ export default function MatchKort({ match, tip, inloggad, tipsLåst, sparar, onS
   const visaPaus   = liveScore?.status === 'PAUSED' || beräknad === 'Paus'
   const visaMinut  = apiMinut ?? (typeof beräknad === 'number' ? beräknad : null)
 
-  const poäng = harResultat && harTips ? beräknaPoäng(tip, stats) : null
+  // Under live finns inget slutresultat i `stats` — räkna preliminär poäng från
+  // den pågående ställningen så kortet visar hur många poäng tipset ger just nu.
+  const liveStats = ärLive && liveScore?.hemma != null && liveScore?.borta != null
+    ? { resultat_hemma: Number(liveScore.hemma), resultat_borta: Number(liveScore.borta) }
+    : null
+  const poäng = harTips
+    ? (harResultat ? beräknaPoäng(tip, stats) : liveStats ? beräknaPoäng(tip, liveStats) : null)
+    : null
   const outcomeClass = poäng === 5 ? 'exact' : poäng === 2 ? 'winner' : poäng === 0 ? 'wrong' : ''
 
   // Resultatet att markera i "vilka tippade"-modalen: live-ställning har företräde,
@@ -389,7 +396,7 @@ export default function MatchKort({ match, tip, inloggad, tipsLåst, sparar, onS
                 <span className={`mc-tip-box ${outcomeClass}`}>{tip.borta_mål}</span>
               </div>
               <span className={`mc-pts-badge ${outcomeClass}`}>
-                {poäng === 5 ? '+5 p ⭐' : poäng === 2 ? '+2 p' : '0 p'}
+                {(poäng === 5 ? '+5 p ⭐' : poäng === 2 ? '+2 p' : '0 p') + (ärLive ? ' nu' : '')}
               </span>
             </>
           ) : (
