@@ -1,20 +1,15 @@
 /**
  * _resultsSource.js — Resultatkällor med normalisering, sammanslagning & fallback.
  *
- * Bakgrund: football-data.org (gratisnivån) uppdaterar resultat med fördröjning.
- * Den här modulen abstraherar bort "varifrån kommer resultatet" och slår ihop
- * flera källor så att den snabbaste vinner:
- *
- *   Primär   : football-data.org (befintlig nyckel FOOTBALL_DATA_KEY)
- *   Sekundär : TheSportsDB (gratis) — aktiveras genom att sätta env THESPORTSDB_LEAGUE
+ * Källor:
+ *   Primär (slutresultat) : football-data.org — FOOTBALL_DATA_KEY
+ *   Live + snabba resultat: TheSportsDB Premium V2 — THESPORTSDB_KEY + THESPORTSDB_LEAGUE
+ *   Säsongsresultat (V1)  : TheSportsDB Premium V1 — för getFinishedResults
  *
  * Designprinciper:
- *   - Den sekundära källan är HELT opt-in. Är THESPORTSDB_LEAGUE inte satt görs
- *     inga anrop dit och beteendet är identiskt med tidigare → kan inte bryta
- *     den nuvarande versionen.
- *   - All matchning sker på NORMALISERADE lagnamn (norm()), samma mappning som
- *     tidigare låg dubblerad i sync-results.js och live-scores.js.
- *   - Allt är inkapslat i try/catch; en trasig källa får aldrig välta den andra.
+ *   - TheSportsDB är opt-in: utan THESPORTSDB_LEAGUE görs inga anrop dit.
+ *   - All matchning sker på normaliserade lagnamn (norm()).
+ *   - Allt är inkapslat i try/catch; en trasig källa välter aldrig den andra.
  */
 import { parseMatchStart } from './_scoring.js'
 import { getCached } from './_persistentCache.js'
@@ -23,17 +18,14 @@ const FD_BASE = 'https://api.football-data.org/v4'
 const FD_COMPETITION = 'WC'
 const FD_SEASON = '2026'
 
-const TSDB_KEY = process.env.THESPORTSDB_KEY || '3' // '3' = publik gratisnyckel
-const TSDB_LEAGUE = process.env.THESPORTSDB_LEAGUE || '' // tom = sekundärkälla av
-const TSDB_SEASON = process.env.THESPORTSDB_SEASON || '2026'
-const TSDB_BASE = 'https://www.thesportsdb.com/api/v1/json'
-
-// BALLDONTLIE (gratis: 5 req/min) — enda gratiskällan som ger LIVE-MINUTEN via
-// clock_display. HELT opt-in: utan BALLDONTLIE_KEY görs inga anrop dit, så
-// beteendet är identiskt med tidigare och kan inte bryta nuvarande version.
-const BDL_KEY = process.env.BALLDONTLIE_KEY || '' // tom = källan av
-const BDL_SEASON = process.env.BALLDONTLIE_SEASON || '2026'
-const BDL_BASE = 'https://api.balldontlie.io/fifa/worldcup/v1'
+const TSDB_KEY    = process.env.THESPORTSDB_KEY    || ''
+const TSDB_LEAGUE = process.env.THESPORTSDB_LEAGUE || '' // tom = källan av
+// V1 vill ha bara startåret ("2026"), V2 vill ha "2026-2027".
+// THESPORTSDB_SEASON sätts till "2026-2027" i Netlify — strippa till år för V1.
+const TSDB_SEASON_FULL = process.env.THESPORTSDB_SEASON || '2026-2027'
+const TSDB_SEASON_V1   = TSDB_SEASON_FULL.split('-')[0]  // "2026"
+const TSDB_V1_BASE = 'https://www.thesportsdb.com/api/v1/json'
+const TSDB_V2_BASE = 'https://www.thesportsdb.com/api/v2/json'
 
 // ── Lagnamn-mappning → vårt format ──────────────────────────────────────────
 export const LAGNAMN_MAP = {
@@ -47,6 +39,7 @@ export const LAGNAMN_MAP = {
   'Türkiye':                'Turkey',
   "Côte d'Ivoire":          'Ivory Coast',
   'China PR':               'China',
+  'Cabo Verde':             'Cape Verde',
 }
 
 /** Normaliserar ett lagnamn till gemener för robust matchning. */
@@ -81,121 +74,89 @@ function fdNormalize(m) {
   }
 }
 
-// ── TheSportsDB (gratis sekundärkälla) ──────────────────────────────────────
-function tsdbStatus(ev) {
+// ── TheSportsDB V1 (säsong, slutresultat) ───────────────────────────────────
+function tsdbV1Status(ev) {
   const s = (ev.strStatus || '').toUpperCase()
   if (['MATCH FINISHED', 'FT', 'AET', 'PEN', 'FINISHED'].includes(s)) return 'FINISHED'
   if (['1H', '2H', 'HT', 'LIVE', 'IN PLAY', 'ET'].includes(s)) return 'IN_PLAY'
-  // intHomeScore satt + inte uttryckligt live → anta avslutad
   if (ev.intHomeScore != null && ev.intAwayScore != null && s === '') return 'FINISHED'
   return 'SCHEDULED'
 }
 
-function tsdbNormalize(ev) {
+function tsdbV1Normalize(ev) {
   const toNum = (v) => (v === null || v === undefined || v === '' ? null : Number(v))
   return {
     hemmalag: LAGNAMN_MAP[ev.strHomeTeam] || ev.strHomeTeam || '',
     bortalag: LAGNAMN_MAP[ev.strAwayTeam] || ev.strAwayTeam || '',
     hemma:    toNum(ev.intHomeScore),
     borta:    toNum(ev.intAwayScore),
-    status:   tsdbStatus(ev),
+    status:   tsdbV1Status(ev),
     minut:    ev.strProgress ? parseInt(ev.strProgress) || null : null,
-    källa:    'thesportsdb',
+    källa:    'thesportsdb-v1',
   }
 }
 
 async function tsdbFetchSeason() {
-  if (!TSDB_LEAGUE) return [] // sekundärkälla avstängd
-  const res = await fetch(`${TSDB_BASE}/${TSDB_KEY}/eventsseason.php?id=${TSDB_LEAGUE}&s=${TSDB_SEASON}`)
-  if (!res.ok) throw new Error(`thesportsdb ${res.status}`)
+  if (!TSDB_LEAGUE || !TSDB_KEY) return []
+  const res = await fetch(`${TSDB_V1_BASE}/${TSDB_KEY}/eventsseason.php?id=${TSDB_LEAGUE}&s=${TSDB_SEASON_V1}`)
+  if (!res.ok) throw new Error(`thesportsdb-v1 ${res.status}`)
   const data = await res.json()
-  return (data.events || []).map(tsdbNormalize)
+  return (data.events || []).map(tsdbV1Normalize)
 }
 
-// ── BALLDONTLIE (gratis, ger live-minut) ────────────────────────────────────
-function bdlStatus(s) {
-  const v = (s || '').toLowerCase()
-  if (v === 'completed') return 'FINISHED'
-  if (v === 'in_progress') return 'IN_PLAY'
+// ── TheSportsDB V2 (Premium livescores, ~2 min fördröjning) ─────────────────
+// Endpoint: /livescore/soccer eller /livescore/{leagueId}
+// Auth: X-API-KEY header (Premium-nyckel krävs)
+// Fält: strHomeTeam, strAwayTeam, intHomeScore, intAwayScore,
+//       strStatus (1H/HT/2H/FT/...), strProgress ("45+5", "67", ...)
+function tsdbV2Status(ev) {
+  const s = (ev.strStatus || '').toUpperCase()
+  if (['FT', 'AET', 'PEN', 'MATCH FINISHED', 'FINISHED'].includes(s)) return 'FINISHED'
+  if (['1H', '2H', 'HT', 'LIVE', 'IN PLAY', 'ET', 'EXTRA TIME'].includes(s)) return 'IN_PLAY'
+  if (ev.intHomeScore != null && ev.intAwayScore != null) return 'FINISHED'
   return 'SCHEDULED'
 }
 
-// clock_display → minut: "47:15" → 47, "90+02:30" → 92, null → null
-function bdlMinut(clock) {
-  if (!clock) return null
-  const m = String(clock).match(/^(\d+)(?:\+(\d+))?/)
+// "45+5" → 50, "67" → 67, "HT" → 45, null → null
+function tsdbV2Minut(progress, status) {
+  if (!progress && (status || '').toUpperCase() === 'HT') return 45
+  if (!progress) return null
+  const m = String(progress).match(/^(\d+)(?:\+(\d+))?/)
   if (!m) return null
   return parseInt(m[1], 10) + (m[2] ? parseInt(m[2], 10) : 0)
 }
 
-function bdlNormalize(ev) {
+function tsdbV2Normalize(ev) {
+  const toNum = (v) => (v === null || v === undefined || v === '' ? null : Number(v))
+  const status = tsdbV2Status(ev)
   return {
-    hemmalag: LAGNAMN_MAP[ev.home_team?.name] || ev.home_team?.name || '',
-    bortalag: LAGNAMN_MAP[ev.away_team?.name] || ev.away_team?.name || '',
-    hemma:    ev.home_score ?? null,
-    borta:    ev.away_score ?? null,
-    status:   bdlStatus(ev.status),
-    minut:    bdlMinut(ev.clock_display),
-    källa:    'balldontlie',
+    hemmalag: LAGNAMN_MAP[ev.strHomeTeam] || ev.strHomeTeam || '',
+    bortalag: LAGNAMN_MAP[ev.strAwayTeam] || ev.strAwayTeam || '',
+    hemma:    toNum(ev.intHomeScore),
+    borta:    toNum(ev.intAwayScore),
+    status,
+    minut:    tsdbV2Minut(ev.strProgress, ev.strStatus),
+    källa:    'thesportsdb-v2',
   }
 }
 
-// Hämtar säsongens matcher med cursor-paginering (VM = 104 matcher, sida = 100).
-// Max 3 sidor som säkerhetsspärr så en trasig cursor aldrig blir oändlig loop.
-//
-// Tålig paginering: ett fel mitt i (t.ex. 429 på sida 2) kastar INTE bort det
-// vi redan hämtat — vi returnerar det partiella resultatet. Bara om FÖRSTA
-// sidan failar (inget hämtat) kastas felet vidare så anroparen kan falla
-// tillbaka på last-good (se getBdlSeason).
-async function bdlFetchSeason() {
-  if (!BDL_KEY) return [] // källan avstängd
-  const alla = []
-  let cursor = null
-  for (let i = 0; i < 3; i++) {
-    const url = `${BDL_BASE}/matches?seasons[]=${BDL_SEASON}&per_page=100${cursor ? `&cursor=${cursor}` : ''}`
-    let res
-    try {
-      res = await fetch(url, { headers: { Authorization: BDL_KEY } })
-      if (!res.ok) throw new Error(`balldontlie ${res.status}`)
-    } catch (err) {
-      if (alla.length) { console.warn(`[resultsSource] bdl sida ${i + 1}: ${err.message} — behåller ${alla.length} hämtade`); break }
-      throw err
-    }
-    const data = await res.json()
-    alla.push(...(data.data || []).map(bdlNormalize))
-    cursor = data.meta?.next_cursor
-    if (!cursor) break
-  }
-  return alla
-}
-
-// Last-good per instans: håller senaste lyckade BDL-listan så ett tillfälligt
-// 429 inte tappar live-minuten (BDL är enda gratiskällan som ger den).
-let _bdlLastGood = []
-
-/**
- * Cachad BDL-säsong, DELAD mellan live- och finished-flödet. Utan detta hämtas
- * hela säsongen i båda → dubbla anrop → spränger gratisgränsen (5 req/min) →
- * 429 → källan tappas → ingen minut/snabb FINISHED. Med 30s-cache + last-good
- * finns BDL-datan i praktiken alltid tillgänglig.
- */
-export async function getBdlSeason() {
-  if (!BDL_KEY) return []
-  return getCached('bdl-season:v1', 30 * 1000, async () => {
-    try {
-      const lista = await bdlFetchSeason()
-      if (lista.length) _bdlLastGood = lista
-      return lista
-    } catch (err) {
-      console.warn(`[resultsSource] bdl-säsong miss (${err.message}) — använder last-good (${_bdlLastGood.length})`)
-      return _bdlLastGood
-    }
+async function tsdbV2LiveFetch() {
+  if (!TSDB_LEAGUE || !TSDB_KEY) return []
+  // Hämta livescores för specifik liga (snabbare än alla sporter)
+  const url = `${TSDB_V2_BASE}/livescore/${TSDB_LEAGUE}`
+  const res = await fetch(url, {
+    headers: { 'X-API-KEY': TSDB_KEY },
   })
+  if (!res.ok) throw new Error(`thesportsdb-v2 ${res.status}`)
+  const data = await res.json()
+  // API returnerar { livescore: [...] } eller { events: [...] }
+  const events = data.livescore || data.events || []
+  return events.map(tsdbV2Normalize)
 }
 
 // ── Sammanslagning ──────────────────────────────────────────────────────────
-// Slår ihop två normaliserade listor per matchKey. För varje match väljs den
-// "starkaste" posten: ett FINISHED-resultat slår IN_PLAY som slår SCHEDULED.
+// Slår ihop normaliserade listor per matchKey. För varje match väljs den
+// "starkaste" posten: FINISHED slår IN_PLAY som slår SCHEDULED.
 const STATUS_RANK = { FINISHED: 3, IN_PLAY: 2, PAUSED: 2, SCHEDULED: 1, TIMED: 1 }
 
 export function mergeResults(...listor) {
@@ -256,18 +217,16 @@ export function mappaAvslutadeTillMatchId(avslutade = [], matcherRader = []) {
 
 /**
  * Avslutade matcher (FINISHED) från alla tillgängliga källor, sammanslagna.
- * Sekundärkällan körs först om den hinner före football-data.
+ * football-data.org (primär) + TheSportsDB V1 (sekundär).
  */
 export async function getFinishedResults() {
   const resultat = await Promise.allSettled([
     process.env.FOOTBALL_DATA_KEY ? fdFetch('status=FINISHED').then((d) => (d.matches || []).map(fdNormalize)) : Promise.resolve([]),
     tsdbFetchSeason(),
-    getBdlSeason(),
   ])
   const fd   = resultat[0].status === 'fulfilled' ? resultat[0].value : []
   const tsdb = resultat[1].status === 'fulfilled' ? resultat[1].value : []
-  const bdl  = resultat[2].status === 'fulfilled' ? resultat[2].value : []
-  return mergeResults(fd, tsdb, bdl).filter(
+  return mergeResults(fd, tsdb).filter(
     (m) => m.status === 'FINISHED' && m.hemma != null && m.borta != null,
   )
 }
@@ -313,11 +272,8 @@ function liveFräschhet(m) {
 
 /**
  * Pågående matcher (IN_PLAY/PAUSED) från alla källor, sammanslagna.
- * Används av live-scores för startsidans "Live".
- *
- * OBS: till skillnad från mergeResults (som rankar på status) väljs här den
- * FÄRSKASTE posten per match — annars skulle en eftersläpande 0–0 från en källa
- * kunna slå en korrekt 0–1 från en annan bara för att den råkar svara först.
+ * Primär live-källa: TheSportsDB V2 (Premium, ~2 min fördröjning, ger minut).
+ * Fallback: football-data.org (dagsresultat).
  */
 export async function getLiveScores() {
   const today = new Date().toISOString().slice(0, 10)
@@ -325,14 +281,12 @@ export async function getLiveScores() {
     process.env.FOOTBALL_DATA_KEY
       ? fdFetch(`dateFrom=${today}&dateTo=${today}`).then((d) => (d.matches || []).map(fdNormalize))
       : Promise.resolve([]),
-    tsdbFetchSeason(),
-    getBdlSeason(),
+    tsdbV2LiveFetch(),
   ])
   const fd   = resultat[0].status === 'fulfilled' ? resultat[0].value : []
   const tsdb = resultat[1].status === 'fulfilled' ? resultat[1].value : []
-  const bdl  = resultat[2].status === 'fulfilled' ? resultat[2].value : []
 
-  return väljLive([...fd, ...tsdb, ...bdl])
+  return väljLive([...fd, ...tsdb])
 }
 
 /**
@@ -340,11 +294,10 @@ export async function getLiveScores() {
  *
  * En match räknas som AVSLUTAD så fort NÅGON källa säger FINISHED — då får den
  * aldrig visas som live, även om en långsammare källa (t.ex. football-datas
- * gratisnivå) fortfarande släpar efter och rapporterar IN_PLAY. Tidigare
- * filtrerades FINISHED bort per källa FÖRE sammanslagningen, så en eftersläpande
- * IN_PLAY kunde hålla en sedan länge avslutad match kvar i "Pågår nu".
+ * gratisnivå) fortfarande släpar efter och rapporterar IN_PLAY.
  *
- * Bland kvarvarande IN_PLAY/PAUSED väljs den FÄRSKASTE posten per match.
+ * Bland kvarvarande IN_PLAY/PAUSED väljs den FÄRSKASTE posten per match
+ * (flest mål, sedan minut som tiebreak).
  */
 export function väljLive(alla = []) {
   const avslutadeNycklar = new Set(
@@ -360,22 +313,7 @@ export function väljLive(alla = []) {
     const befintlig = map.get(key)
     if (!befintlig || liveFräschhet(m) > liveFräschhet(befintlig)) map.set(key, m)
   }
-
-  // Backfilla minut: den färskaste posten väljs på MÅL, så en källa utan minut
-  // (t.ex. football-datas gratisnivå) kan vinna även när en annan källa för
-  // samma match HAR minuten (BALLDONTLIE). Ta högsta kända minut per match så
-  // frontend slipper falla tillbaka på den uppskattade (som ligger före).
-  const bästaMinut = new Map()
-  for (const m of pågående) {
-    const min = Number(m.minut)
-    if (Number.isFinite(min)) {
-      const key = matchKey(m.hemmalag, m.bortalag)
-      bästaMinut.set(key, Math.max(bästaMinut.get(key) ?? 0, min))
-    }
-  }
-  return [...map.entries()].map(([key, m]) =>
-    m.minut == null && bästaMinut.has(key) ? { ...m, minut: bästaMinut.get(key) } : m,
-  )
+  return [...map.values()]
 }
 
 /**
