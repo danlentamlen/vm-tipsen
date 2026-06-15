@@ -40,6 +40,7 @@ export const LAGNAMN_MAP = {
   "Côte d'Ivoire":          'Ivory Coast',
   'China PR':               'China',
   'Cabo Verde':             'Cape Verde',
+  'Cape Verde Islands':     'Cape Verde',
 }
 
 /** Normaliserar ett lagnamn till gemener för robust matchning. */
