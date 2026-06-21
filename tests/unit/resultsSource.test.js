@@ -96,20 +96,41 @@ describe('mappaAvslutadeTillMatchId', () => {
 
 describe('väljLive', () => {
   it('utesluter match som NÅGON källa markerat FINISHED (eftersläpande IN_PLAY vinner ej)', () => {
-    const live = väljLive([
-      { hemmalag: 'USA', bortalag: 'Paraguay', hemma: 2, borta: 1, status: 'IN_PLAY', minut: 89, källa: 'football-data' },
-      { hemmalag: 'USA', bortalag: 'Paraguay', hemma: 2, borta: 1, status: 'FINISHED', källa: 'balldontlie' },
-    ])
-    expect(live).toHaveLength(0) // matchen är slut → inte live
+    const fd   = [{ hemmalag: 'USA', bortalag: 'Paraguay', hemma: 2, borta: 1, status: 'IN_PLAY', minut: 89, källa: 'football-data' }]
+    const tsdb = [{ hemmalag: 'USA', bortalag: 'Paraguay', hemma: 2, borta: 1, status: 'FINISHED', källa: 'thesportsdb-v2' }]
+    expect(väljLive(fd, tsdb)).toHaveLength(0) // matchen är slut → inte live
   })
 
-  it('behåller match som faktiskt pågår och väljer färskaste posten', () => {
-    const live = väljLive([
-      { hemmalag: 'Brazil', bortalag: 'Morocco', hemma: 0, borta: 0, status: 'IN_PLAY', minut: 5 },
-      { hemmalag: 'Brazil', bortalag: 'Morocco', hemma: 0, borta: 1, status: 'IN_PLAY', minut: 40 },
-    ])
+  it('FD är auktoritativ för ställning — annullerat mål (VAR) fixas korrekt', () => {
+    // FD har uppdaterat till 0-0 men TSDB visar fortfarande 0-1
+    const fd   = [{ hemmalag: 'Belgium', bortalag: 'Iran', hemma: 0, borta: 0, status: 'IN_PLAY', minut: null, källa: 'football-data' }]
+    const tsdb = [{ hemmalag: 'Belgium', bortalag: 'Iran', hemma: 0, borta: 1, status: 'IN_PLAY', minut: 34, källa: 'thesportsdb-v2' }]
+    const live = väljLive(fd, tsdb)
     expect(live).toHaveLength(1)
-    expect(live[0].borta).toBe(1) // färskaste (flest mål/minut)
+    expect(live[0].hemma).toBe(0)
+    expect(live[0].borta).toBe(0)  // FD vinner, inte TSDB:s felaktiga 1
+  })
+
+  it('berikar FD-post med minut från TSDB när FD saknar minut', () => {
+    const fd   = [{ hemmalag: 'Belgium', bortalag: 'Iran', hemma: 1, borta: 0, status: 'IN_PLAY', minut: null, källa: 'football-data' }]
+    const tsdb = [{ hemmalag: 'Belgium', bortalag: 'Iran', hemma: 1, borta: 0, status: 'IN_PLAY', minut: 67, källa: 'thesportsdb-v2' }]
+    const live = väljLive(fd, tsdb)
+    expect(live[0].minut).toBe(67)  // berikat från TSDB
+    expect(live[0].hemma).toBe(1)   // FD:s ställning behålls
+  })
+
+  it('faller tillbaka på TSDB om FD inte rapporterar matchen alls', () => {
+    const fd   = []
+    const tsdb = [{ hemmalag: 'Brazil', bortalag: 'Morocco', hemma: 0, borta: 1, status: 'IN_PLAY', minut: 40, källa: 'thesportsdb-v2' }]
+    const live = väljLive(fd, tsdb)
+    expect(live).toHaveLength(1)
+    expect(live[0].borta).toBe(1)
+  })
+
+  it('FD IN_PLAY + TSDB FINISHED → matchen utesluts', () => {
+    const fd   = [{ hemmalag: 'Spain', bortalag: 'Morocco', hemma: 2, borta: 0, status: 'IN_PLAY', minut: 92, källa: 'football-data' }]
+    const tsdb = [{ hemmalag: 'Spain', bortalag: 'Morocco', hemma: 2, borta: 0, status: 'FINISHED', källa: 'thesportsdb-v2' }]
+    expect(väljLive(fd, tsdb)).toHaveLength(0)
   })
 })
 

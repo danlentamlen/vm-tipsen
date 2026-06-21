@@ -261,17 +261,6 @@ export async function getTopScorers(antal = 15) {
 }
 
 /**
- * Färskhetsmått för en pågående match. Mål kan bara öka under en match, så flest
- * mål = senaste ställningen; minuten är tiebreak. Används för att välja rätt post
- * när flera källor rapporterar samma live-match.
- */
-function liveFräschhet(m) {
-  const mål = (Number(m.hemma) || 0) + (Number(m.borta) || 0)
-  const minut = Number(m.minut) || 0
-  return mål * 1000 + minut
-}
-
-/**
  * Pågående matcher (IN_PLAY/PAUSED) från alla källor, sammanslagna.
  * Primär live-källa: TheSportsDB V2 (Premium, ~2 min fördröjning, ger minut).
  * Fallback: football-data.org (dagsresultat).
@@ -287,33 +276,64 @@ export async function getLiveScores() {
   const fd   = resultat[0].status === 'fulfilled' ? resultat[0].value : []
   const tsdb = resultat[1].status === 'fulfilled' ? resultat[1].value : []
 
-  return väljLive([...fd, ...tsdb])
+  return väljLive(fd, tsdb)
 }
 
 /**
- * Väljer pågående matcher ur en sammanslagen lista från alla källor.
+ * Väljer pågående matcher ur data från football-data.org (fd) och TheSportsDB (tsdb).
  *
- * En match räknas som AVSLUTAD så fort NÅGON källa säger FINISHED — då får den
- * aldrig visas som live, även om en långsammare källa (t.ex. football-datas
- * gratisnivå) fortfarande släpar efter och rapporterar IN_PLAY.
+ * Designprincip: football-data.org är auktoritativ för ställning och status.
+ * TheSportsDB berikar med minuten. Detta undviker att ett annullerat mål (VAR)
+ * som TSDB ännu inte plockat bort "vinner" över den korrekta ställningen från FD.
  *
- * Bland kvarvarande IN_PLAY/PAUSED väljs den FÄRSKASTE posten per match
- * (flest mål, sedan minut som tiebreak).
+ * En match räknas som AVSLUTAD så fort NÅGON källa säger FINISHED — den visas
+ * aldrig som live, även om en långsammare källa fortfarande rapporterar IN_PLAY.
+ *
+ * Prioritet när FD saknar en match: TSDB används som fallback.
  */
-export function väljLive(alla = []) {
+export function väljLive(fd = [], tsdb = []) {
+  const alla = [...fd, ...tsdb]
+
+  // Bygg uppslagstabell för TSDB-poster (för minutberikelse)
+  const tsdbMap = new Map()
+  for (const m of tsdb) {
+    tsdbMap.set(matchKey(m.hemmalag, m.bortalag), m)
+  }
+
+  // Matcher som NÅGON källa anser avslutade → aldrig live
   const avslutadeNycklar = new Set(
     alla.filter((m) => m.status === 'FINISHED').map((m) => matchKey(m.hemmalag, m.bortalag)),
   )
-  const pågående = alla.filter(
+
+  // FD-poster som är IN_PLAY/PAUSED och inte avslutade enligt någon källa
+  const fdLive = fd.filter(
     (m) => (m.status === 'IN_PLAY' || m.status === 'PAUSED') &&
            !avslutadeNycklar.has(matchKey(m.hemmalag, m.bortalag)),
   )
+
+  // Berika FD-poster med minut från TSDB om tillgängligt
+  const fdBerikade = fdLive.map((m) => {
+    const tsdbPost = tsdbMap.get(matchKey(m.hemmalag, m.bortalag))
+    return (tsdbPost?.minut != null && m.minut == null)
+      ? { ...m, minut: tsdbPost.minut }
+      : m
+  })
+
+  // Bygg resultatmap med FD som grund
   const map = new Map()
-  for (const m of pågående) {
-    const key = matchKey(m.hemmalag, m.bortalag)
-    const befintlig = map.get(key)
-    if (!befintlig || liveFräschhet(m) > liveFräschhet(befintlig)) map.set(key, m)
+  for (const m of fdBerikade) {
+    map.set(matchKey(m.hemmalag, m.bortalag), m)
   }
+
+  // Fallback: TSDB-poster för matcher FD inte rapporterar alls
+  for (const m of tsdb) {
+    const key = matchKey(m.hemmalag, m.bortalag)
+    if (!map.has(key) && !avslutadeNycklar.has(key) &&
+        (m.status === 'IN_PLAY' || m.status === 'PAUSED')) {
+      map.set(key, m)
+    }
+  }
+
   return [...map.values()]
 }
 
