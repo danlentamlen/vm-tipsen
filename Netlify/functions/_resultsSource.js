@@ -41,6 +41,28 @@ export const LAGNAMN_MAP = {
   'China PR':               'China',
   'Cabo Verde':             'Cape Verde',
   'Cape Verde Islands':     'Cape Verde',
+  'Congo DR':               'DR Congo',
+  'Democratic Republic of Congo': 'DR Congo',
+}
+
+// ── FIFA-rankning (juni 2026, uppdaterades 2026-06-11) ───────────────────────
+// Används som sista tiebreaker bland tabelltreor (efter P, GD, GF, conduct score).
+// Lägre värde = bättre rankning.
+// Källa: https://www.espn.com/soccer/story/_/id/46664763/fifa-mens-top-50-world-rankings
+const FIFA_RANKNING_2026 = {
+  'Argentina': 1, 'Spain': 2, 'France': 3, 'England': 4, 'Portugal': 5,
+  'Brazil': 6, 'Morocco': 7, 'Netherlands': 8, 'Belgium': 9, 'Germany': 10,
+  'Croatia': 11, 'Italy': 12, 'Colombia': 13, 'Mexico': 14, 'Senegal': 15,
+  'Uruguay': 16, 'USA': 17, 'Japan': 18, 'Switzerland': 19, 'Iran': 20,
+  'Denmark': 21, 'Turkey': 22, 'Ecuador': 23, 'Austria': 24, 'South Korea': 25,
+  'Nigeria': 26, 'Australia': 27, 'Algeria': 28, 'Egypt': 29, 'Canada': 30,
+  'Norway': 31, 'Ukraine': 32, 'Ivory Coast': 33, 'Panama': 34,
+  'Poland': 36, 'Wales': 37, 'Sweden': 38, 'Hungary': 39, 'Czech Republic': 40,
+  'Paraguay': 41, 'Scotland': 42, 'Serbia': 43, 'Cameroon': 44, 'Tunisia': 45,
+  'DR Congo': 46, 'Slovakia': 47, 'Greece': 48, 'Venezuela': 49, 'Uzbekistan': 50,
+  'Qatar': 56, 'Iraq': 57, 'South Africa': 60, 'Saudi Arabia': 61,
+  'Jordan': 63, 'Bosnia & Herzegovina': 64, 'Cape Verde': 67, 'Ghana': 73,
+  'Curaçao': 82, 'Haiti': 83, 'New Zealand': 85,
 }
 
 /** Normaliserar ett lagnamn till gemener för robust matchning. */
@@ -767,6 +789,39 @@ const SLOT_TILL_KOLUMN = {
   'D/E/I/J/L': 6, // 1K (match 87)
 }
 
+/**
+ * Hämtar conduct score per lag (för grupp-matcher) från football-data.org.
+ * Conduct score: gult kort = -1, rött kort = -3, andra gult (YELLOW_RED) = -3.
+ * Returnerar { lagnamn: poäng } — högre = bättre uppförande (färre kort).
+ * Returnerar {} om nyckeln saknas eller anropet misslyckas (graciös nedgradering).
+ */
+async function hämtaKortPoäng() {
+  if (!process.env.FOOTBALL_DATA_KEY) return {}
+  try {
+    const res = await fetch(
+      `${FD_BASE}/competitions/${FD_COMPETITION}/matches?season=${FD_SEASON}&status=FINISHED`,
+      { headers: { 'X-Auth-Token': process.env.FOOTBALL_DATA_KEY } },
+    )
+    if (!res.ok) return {}
+    const data = await res.json()
+    const poäng = {}
+    for (const m of (data.matches || [])) {
+      if (!m.group) continue   // bara gruppspelets matcher
+      for (const b of (m.bookings || [])) {
+        const namn = LAGNAMN_MAP[b.team?.name] || b.team?.name
+        if (!namn) continue
+        if (!poäng[namn]) poäng[namn] = 0
+        if (b.type === 'YELLOW_CARD')      poäng[namn] -= 1
+        else if (b.type === 'RED_CARD')    poäng[namn] -= 3
+        else if (b.type === 'YELLOW_RED_CARD') poäng[namn] -= 3  // 2:a gult → rött
+      }
+    }
+    return poäng
+  } catch {
+    return {}
+  }
+}
+
 export async function getAllKnockoutFixtures({ matcherRader = null, resultatRader = null } = {}) {
   const OPENFOOTBALL_URL =
     'https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json'
@@ -937,7 +992,19 @@ export async function getAllKnockoutFixtures({ matcherRader = null, resultatRade
       tredjeLag.push({ grp, ...ställning[2] })
     }
   }
-  tredjeLag.sort((a, b) => b.P - a.P || b.GD - a.GD || b.GF - a.GF || a.namn.localeCompare(b.namn))
+  // Conduct score (kortdata) — hämtas från football-data.org för korrekt FIFA-rankning
+  const kortPoäng = await hämtaKortPoäng()
+
+  // FIFAs officiella rankingordning bland tabelltreor:
+  // 1. Poäng  2. Målskillnad  3. Gjorda mål  4. Conduct score  5. FIFA-rankning
+  tredjeLag.sort((a, b) =>
+    b.P  - a.P  ||                                                       // 1. Poäng
+    b.GD - a.GD ||                                                       // 2. Målskillnad
+    b.GF - a.GF ||                                                       // 3. Gjorda mål
+    (kortPoäng[b.namn] || 0) - (kortPoäng[a.namn] || 0)         ||      // 4. Conduct score (högre = bättre)
+    (FIFA_RANKNING_2026[a.namn] || 999) - (FIFA_RANKNING_2026[b.namn] || 999) || // 5. FIFA-rankning (lägre = bättre)
+    a.namn.localeCompare(b.namn)                                         // 6. Lottning (sista utväg)
+  )
   const kvalificerade3orGrupper = new Set(tredjeLag.slice(0, 8).map((t) => t.grp))
 
   // ── Steg 4: Lös lagkoder → riktiga lagnamn ─────────────────────────────────
