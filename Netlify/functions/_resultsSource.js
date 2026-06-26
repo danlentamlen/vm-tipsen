@@ -851,6 +851,10 @@ export async function getAllKnockoutFixtures({ matcherRader = null, resultatRade
       if (spelatPerLag[m.team2] !== undefined) spelatPerLag[m.team2]++
     }
 
+    // Om alla matcher är spelade är stälningen definitiv — H2H/GD/GF är redan
+    // inbakade i `ständning` av beräknaStällning(). Inget kan ändras.
+    if (ställning.every((t) => (spelatPerLag[t.namn] || 0) >= totalPerLag)) return true
+
     // Kan någon utmanare (plats+1 och nedåt) nå lika eller fler poäng?
     for (let i = plats + 1; i < ställning.length; i++) {
       const utmanare = ställning[i]
