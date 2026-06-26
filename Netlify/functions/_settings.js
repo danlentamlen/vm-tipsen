@@ -36,7 +36,7 @@ export function gruppspelLåst() {
 }
 
 // Slutspelsomgångar som låses per omgång (inte individuellt)
-const SLUTSPELS_OMGÅNGAR = [
+export const SLUTSPELS_OMGÅNGAR = [
   'Round of 32',
   'Round of 16',
   'Quarter-final',
@@ -45,16 +45,29 @@ const SLUTSPELS_OMGÅNGAR = [
   'Final',
 ]
 
+// Vilken omgång som "låser upp" nästa — dvs tippning för omgång N öppnas
+// så snart FÖRSTA matchen i föregående omgång har ett känt resultat.
+const FÖREGÅENDE_OMGÅNG = {
+  'Round of 16':        'Round of 32',
+  'Quarter-final':      'Round of 16',
+  'Semi-final':         'Quarter-final',
+  'Final':              'Semi-final',
+  'Match for third place': 'Semi-final',
+}
+
 /**
- * Räknar ut om en match är låst baserat på klockan:
- * - Gruppspel: låst om nu >= GRUPPSPEL_DEADLINE
- * - Slutspel:  låst om nu >= (första matchens starttid i omgången) - 4 timmar
+ * Räknar ut om en match är låst baserat på klockan och kända resultat:
+ * - Gruppspel:   låst om nu >= GRUPPSPEL_DEADLINE
+ * - Round of 32: öppnar direkt när gruppspelet låsts, låser 4h innan start
+ * - R16 och senare: öppnar så snart FÖRSTA matchen från föregående omgång
+ *                   har ett resultat i Resultat-arket, låser 4h innan start
  *
- * @param {object} match - { match_id, datum, tid, omgång, grupp }
- * @param {object[]} allaMatcher - alla matcher (för att hitta första i omgången)
+ * @param {object}   match        - { match_id, datum, tid, omgång, grupp }
+ * @param {object[]} allaMatcher  - alla matcher (för tidsberäkningar)
+ * @param {Array[]}  resultatRader - rader från Resultat-arket (A=match_id, ...)
  * @returns {boolean}
  */
-export function ärMatchLåst(match, allaMatcher) {
+export function ärMatchLåst(match, allaMatcher, resultatRader = []) {
   const nu = new Date()
 
   // Tilläggsfrågor och gruppspel: enbart tidsbaserat
@@ -62,24 +75,33 @@ export function ärMatchLåst(match, allaMatcher) {
     return nu >= GRUPPSPEL_DEADLINE
   }
 
-  // Slutspelsmatch — låst tills gruppspelet är låst
+  // Slutspelsmatch — alltid låst tills gruppspelet är låst
   if (!gruppspelLåst()) return true
 
-  // Hitta första matchen i omgången och lås 4h innan
+  // Lås 4h innan omgångens första match (gäller alla slutspelsomgångar)
   const omgångsMatcher = allaMatcher.filter((m) => m.omgång === match.omgång)
-  if (omgångsMatcher.length === 0) return false
-
   const sorterade = omgångsMatcher
     .map((m) => ({ ...m, startTid: parseMatchTid(m.datum, m.tid) }))
     .filter((m) => m.startTid !== null)
     .sort((a, b) => a.startTid - b.startTid)
 
-  if (sorterade.length === 0) return false
+  if (sorterade.length > 0) {
+    const lockDeadline = new Date(sorterade[0].startTid.getTime() - 4 * 60 * 60 * 1000)
+    if (nu >= lockDeadline) return true
+  }
 
-  const förstaMatch = sorterade[0].startTid
-  const deadline = new Date(förstaMatch.getTime() - 4 * 60 * 60 * 1000) // -4 timmar
+  // Round of 32 öppnar direkt när gruppspelet låsts (ingen föregående omgång)
+  if (match.omgång === 'Round of 32') return false
 
-  return nu >= deadline
+  // Övriga omgångar: öppna så snart minst ETT resultat från föregående omgång finns
+  const föregående = FÖREGÅENDE_OMGÅNG[match.omgång]
+  if (!föregående) return false
+
+  const föregåendeIds = new Set(
+    allaMatcher.filter((m) => m.omgång === föregående).map((m) => m.match_id),
+  )
+  const harResultat = resultatRader.some((r) => r[0] && föregåendeIds.has(r[0]))
+  return !harResultat
 }
 
 /**
@@ -113,12 +135,15 @@ export function parseMatchTid(datum, tid) {
 
 /**
  * Returnerar en map: match_id -> boolean (låst eller ej)
- * Används av settings.js endpoint för att skicka till frontend
+ * Används av settings.js endpoint för att skicka till frontend.
+ *
+ * @param {object[]} allaMatcher  - alla matcher
+ * @param {Array[]}  resultatRader - rader från Resultat-arket (A=match_id)
  */
-export function byggLåsMap(allaMatcher) {
+export function byggLåsMap(allaMatcher, resultatRader = []) {
   const map = {}
   allaMatcher.forEach((m) => {
-    map[m.match_id] = ärMatchLåst(m, allaMatcher)
+    map[m.match_id] = ärMatchLåst(m, allaMatcher, resultatRader)
   })
   return map
 }

@@ -11,6 +11,7 @@
  *
  * Skriver:
  *   - Resultat-arket      : nya slutresultat (A=match_id, B=hemma, C=borta)
+ *   - Matcher-arket D:E   : lagnamn i knockout-matcher (uppdateras när lag kvalificerar sig)
  *   - Topplista-arket     : förberäknad topplista (synlig/auditbar i Sheets)
  *   - Tips-arket kolumn F : matchpoäng per tips
  *   - Persistent cache    : 'standings:v1', 'yesterday:v1' (snabb läsning)
@@ -19,13 +20,14 @@
  * Valfritt (sekundärkälla): THESPORTSDB_LEAGUE
  */
 import { getSheets, getRows, ensureSheet, overwriteRange, writeColumn } from './_sheets.js'
-import { getMatcher, getLockedSnapshot } from './_lockedData.js'
-import { getFinishedResults, mappaAvslutadeTillMatchId, getTopScorers } from './_resultsSource.js'
+import { getMatcher, getLockedSnapshot, refreshLockedSnapshot } from './_lockedData.js'
+import { getFinishedResults, mappaAvslutadeTillMatchId, getTopScorers, getAllKnockoutFixtures } from './_resultsSource.js'
 import {
   beräknaTopplista, beräknaIgår, beräknaTipsPoäng,
   byggResultatMap, byggIgårMatchIds,
 } from './_scoring.js'
 import { setCached } from './_persistentCache.js'
+import { SLUTSPELS_OMGÅNGAR } from './_settings.js'
 
 const TOPPLISTA_SHEET = 'Topplista'
 const TOPPLISTA_HEADER = ['user_id', 'namn', 'poäng', 'exakta', 'rätta', 'frågepoäng', 'plats', 'uppdaterad']
@@ -116,11 +118,22 @@ export default async () => {
     // Sammanlagd resultatuppsättning efter append (slipper läsa om Resultat)
     const allaResultatRader = [...befintligaRader, ...nya]
 
-    // ── 6. Räkna om snapshots ───────────────────────────────────────────────
-    // Körs av den schemalagda writern (ej användarvänd) → ok att den är tyngre.
-    await räknaOmSnapshots(sheets, matcherRader, allaResultatRader)
+    // ── 6. Uppdatera lagnamn i knockout-matcher ─────────────────────────────
+    // När lag kvalificerar sig från gruppspelet/tidigare omgångar uppdaterar
+    // football-data.org sina fixtures med riktiga lagnamn. Vi speglar det till
+    // Matcher-arket så att resultatmatchning och låslogik fungerar korrekt.
+    // Vid uppdatering invalideras locked-snapshot-cachen för att matcherRader
+    // ska spegla de nya namnen vid nästa anrop.
+    const knackoutUppdaterat = await uppdateraKnockoutLagnamn(sheets, matcherRader)
+    const aktuellaMatcherRader = knackoutUppdaterat
+      ? (await refreshLockedSnapshot()).matcher
+      : matcherRader
 
-    // ── 7. Uppdatera skytteligan (live → Skytteliga-arket) ──────────────────
+    // ── 7. Räkna om snapshots ───────────────────────────────────────────────
+    // Körs av den schemalagda writern (ej användarvänd) → ok att den är tyngre.
+    await räknaOmSnapshots(sheets, aktuellaMatcherRader, allaResultatRader)
+
+    // ── 8. Uppdatera skytteligan (live → Skytteliga-arket) ──────────────────
     // Widgeten på startsidan (top-scorers) läser detta ark; writern håller det
     // färskt så att läsvägen förblir billig (ett litet ark, inget API per anrop).
     await uppdateraSkytteliga(sheets)
@@ -180,6 +193,98 @@ async function räknaOmSnapshots(sheets, matcherRader, resultatRader) {
   }
 
   console.log(`[sync-results] Snapshot klar: ${standings.length} deltagare, ${igår.length} i "bäst igår"`)
+}
+
+/**
+ * Uppdaterar lagnamn i knockout-matcher i Matcher-arket när lag kvalificerar sig.
+ *
+ * Flöde:
+ *   1. Hämta knockout-fixtures från openfootball (beräknat ur gruppstälningar)
+ *      → returnerar [{ match_id, hemmalag, bortalag }]
+ *   2. Slå upp match_id direkt i Matcher-arket (ingen tidsstämpelmatchning)
+ *   3. Om lagnamnen skiljer sig → uppdatera kolumn D:E
+ *   4. Invalidera locked-snapshot-cachen om något uppdaterades
+ *
+ * Returnerar true om minst en uppdatering gjordes (cache behöver laddas om).
+ */
+async function uppdateraKnockoutLagnamn(sheets, matcherRader) {
+  // Hämta Resultat-arket för aktuella poäng (openfootball kan lagga)
+  const resultatRaderMedScores = await getRows(sheets, 'Resultat!A2:C1000')
+
+  let fixtures = []
+  try {
+    fixtures = await getAllKnockoutFixtures({ matcherRader, resultatRader: resultatRaderMedScores })
+  } catch (err) {
+    console.warn('[sync-results] uppdateraKnockoutLagnamn: kunde inte hämta fixtures:', err.message)
+    return false
+  }
+
+  if (fixtures.length === 0) return false
+
+  // Bygg uppslagstabell: match_id → { idx, hemmalag, bortalag }
+  const matcherMap = {}
+  for (let i = 0; i < matcherRader.length; i++) {
+    const rad = matcherRader[i]
+    if (rad[0]) matcherMap[rad[0]] = { idx: i, hemmalag: rad[3] || '', bortalag: rad[4] || '' }
+  }
+
+  // Platshållare = bracketkoder som "1B", "2H", "3E/F/G/I/J", "W73" — aldrig riktiga lagnamn
+  const ärPlaceholder = (namn) =>
+    !namn || /^[12][A-L]$/.test(namn) || /^3[A-L]/.test(namn) || /^[WL]\d+$/.test(namn)
+
+  let antalUppdaterade = 0
+
+  for (const fix of fixtures) {
+    const befintlig = matcherMap[fix.match_id]
+    if (!befintlig) {
+      console.warn(`[sync-results] uppdateraKnockoutLagnamn: ${fix.match_id} saknas i Matcher-arket`)
+      continue
+    }
+
+    const rowNum = befintlig.idx + 2
+
+    // Hemmalag: uppdatera om ny info finns och befintligt värde är platshållare
+    const uppdateraH = fix.hemmalag && ärPlaceholder(befintlig.hemmalag) && befintlig.hemmalag !== fix.hemmalag
+    // Bortalag: uppdatera om ny info finns och befintligt värde är platshållare
+    const uppdateraB = fix.bortalag && ärPlaceholder(befintlig.bortalag) && befintlig.bortalag !== fix.bortalag
+
+    if (!uppdateraH && !uppdateraB) continue
+
+    if (uppdateraH && uppdateraB) {
+      // Båda lagen: en enda skrivning
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: process.env.GOOGLE_SHEET_ID,
+        range: `Matcher!D${rowNum}:E${rowNum}`,
+        valueInputOption: 'RAW',
+        requestBody: { values: [[fix.hemmalag, fix.bortalag]] },
+      })
+      console.log(`[sync-results] ✅ ${fix.match_id}: D="${fix.hemmalag}" E="${fix.bortalag}"`)
+    } else if (uppdateraH) {
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: process.env.GOOGLE_SHEET_ID,
+        range: `Matcher!D${rowNum}`,
+        valueInputOption: 'RAW',
+        requestBody: { values: [[fix.hemmalag]] },
+      })
+      console.log(`[sync-results] ✅ ${fix.match_id}: D="${befintlig.hemmalag}" → "${fix.hemmalag}" (bortalag väntar)`)
+    } else {
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: process.env.GOOGLE_SHEET_ID,
+        range: `Matcher!E${rowNum}`,
+        valueInputOption: 'RAW',
+        requestBody: { values: [[fix.bortalag]] },
+      })
+      console.log(`[sync-results] ✅ ${fix.match_id}: E="${befintlig.bortalag}" → "${fix.bortalag}" (hemmalag väntar)`)
+    }
+    antalUppdaterade++
+  }
+
+  if (antalUppdaterade > 0) {
+    console.log(`[sync-results] ${antalUppdaterade} knockout-lagnamn uppdaterade — invaliderar locked-snapshot-cache`)
+    await refreshLockedSnapshot()
+    return true
+  }
+  return false
 }
 
 /**

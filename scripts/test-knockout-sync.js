@@ -1,261 +1,51 @@
 /**
- * _resultsSource.js — Resultatkällor med normalisering, sammanslagning & fallback.
+ * scripts/test-knockout-sync.js
  *
- * Källor:
- *   Primär (slutresultat) : football-data.org — FOOTBALL_DATA_KEY
- *   Live + snabba resultat: TheSportsDB Premium V2 — THESPORTSDB_KEY + THESPORTSDB_LEAGUE
- *   Säsongsresultat (V1)  : TheSportsDB Premium V1 — för getFinishedResults
+ * Testar knockout-lagnamnssynken.
+ * Bracketstruktur från openfootball (num → match_id), poäng från Resultat-arket.
+ * Stöder matematisk bestämning: laget är klart för en plats om det inte KAN
+ * bli omsprungen även om alla kvarvarande matcher spelar mot dem.
  *
- * Designprinciper:
- *   - TheSportsDB är opt-in: utan THESPORTSDB_LEAGUE görs inga anrop dit.
- *   - All matchning sker på normaliserade lagnamn (norm()).
- *   - Allt är inkapslat i try/catch; en trasig källa välter aldrig den andra.
+ * Kör:
+ *   node scripts/test-knockout-sync.js          # dry-run
+ *   node scripts/test-knockout-sync.js --apply  # skriv till Sheets
  */
-import { parseMatchStart } from './_scoring.js'
-import { getCached } from './_persistentCache.js'
 
-const FD_BASE = 'https://api.football-data.org/v4'
-const FD_COMPETITION = 'WC'
-const FD_SEASON = '2026'
+import dotenv from 'dotenv'
+import { google } from 'googleapis'
 
-const TSDB_KEY    = process.env.THESPORTSDB_KEY    || ''
-const TSDB_LEAGUE = process.env.THESPORTSDB_LEAGUE || '' // tom = källan av
-// V1 vill ha bara startåret ("2026"), V2 vill ha "2026-2027".
-// THESPORTSDB_SEASON sätts till "2026-2027" i Netlify — strippa till år för V1.
-const TSDB_SEASON_FULL = process.env.THESPORTSDB_SEASON || '2026-2027'
-const TSDB_SEASON_V1   = TSDB_SEASON_FULL.split('-')[0]  // "2026"
-const TSDB_V1_BASE = 'https://www.thesportsdb.com/api/v1/json'
-const TSDB_V2_BASE = 'https://www.thesportsdb.com/api/v2/json'
+dotenv.config()
 
-// ── Lagnamn-mappning → vårt format ──────────────────────────────────────────
-export const LAGNAMN_MAP = {
+const SHEET_ID = process.env.GOOGLE_SHEET_ID
+const APPLY    = process.argv.includes('--apply')
+
+const OPENFOOTBALL_URL =
+  'https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json'
+
+const SLUTSPELS_OMGÅNGAR = [
+  'Round of 32', 'Round of 16', 'Quarter-final', 'Semi-final',
+  'Match for third place', 'Final',
+]
+const FÖREGÅENDE_OMGÅNG = {
+  'Round of 16':           'Round of 32',
+  'Quarter-final':         'Round of 16',
+  'Semi-final':            'Quarter-final',
+  'Final':                 'Semi-final',
+  'Match for third place': 'Semi-final',
+}
+const LAGNAMN_MAP = {
   'Bosnia and Herzegovina': 'Bosnia & Herzegovina',
-  'Bosnia-Herzegovina':     'Bosnia & Herzegovina',
-  'United States':          'USA',
-  'Korea Republic':         'South Korea',
-  'Korea DPR':              'North Korea',
-  'IR Iran':                'Iran',
-  'Czechia':                'Czech Republic',
-  'Türkiye':                'Turkey',
-  "Côte d'Ivoire":          'Ivory Coast',
-  'China PR':               'China',
-  'Cabo Verde':             'Cape Verde',
-  'Cape Verde Islands':     'Cape Verde',
+  'United States': 'USA',
+  'Korea Republic': 'South Korea',
+  'IR Iran': 'Iran',
+  'Czechia': 'Czech Republic',
+  'Türkiye': 'Turkey',
+  "Côte d'Ivoire": 'Ivory Coast',
+  'China PR': 'China',
+  'Cabo Verde': 'Cape Verde',
+  'Cape Verde Islands': 'Cape Verde',
 }
 
-/** Normaliserar ett lagnamn till gemener för robust matchning. */
-export function norm(name) {
-  return (LAGNAMN_MAP[name] || name || '').trim().toLowerCase()
-}
-
-/** Nyckel för en match oberoende av källa. */
-export function matchKey(hemma, borta) {
-  return `${norm(hemma)}_${norm(borta)}`
-}
-
-// ── Football-data.org ───────────────────────────────────────────────────────
-async function fdFetch(query) {
-  const res = await fetch(`${FD_BASE}/competitions/${FD_COMPETITION}/matches?season=${FD_SEASON}&${query}`, {
-    headers: { 'X-Auth-Token': process.env.FOOTBALL_DATA_KEY },
-  })
-  if (!res.ok) throw new Error(`football-data ${res.status}`)
-  return res.json()
-}
-
-function fdNormalize(m) {
-  const score = m.score?.fullTime ?? m.score?.halfTime ?? {}
-  return {
-    hemmalag: LAGNAMN_MAP[m.homeTeam?.name] || m.homeTeam?.name || '',
-    bortalag: LAGNAMN_MAP[m.awayTeam?.name] || m.awayTeam?.name || '',
-    hemma:    score.home ?? null,
-    borta:    score.away ?? null,
-    status:   m.status,                 // FINISHED | IN_PLAY | PAUSED | TIMED | SCHEDULED
-    minut:    m.minute ?? null,
-    källa:    'football-data',
-  }
-}
-
-// ── TheSportsDB V1 (säsong, slutresultat) ───────────────────────────────────
-function tsdbV1Status(ev) {
-  const s = (ev.strStatus || '').toUpperCase()
-  if (['MATCH FINISHED', 'FT', 'AET', 'PEN', 'FINISHED'].includes(s)) return 'FINISHED'
-  if (['1H', '2H', 'HT', 'LIVE', 'IN PLAY', 'ET'].includes(s)) return 'IN_PLAY'
-  if (ev.intHomeScore != null && ev.intAwayScore != null && s === '') return 'FINISHED'
-  return 'SCHEDULED'
-}
-
-function tsdbV1Normalize(ev) {
-  const toNum = (v) => (v === null || v === undefined || v === '' ? null : Number(v))
-  return {
-    hemmalag: LAGNAMN_MAP[ev.strHomeTeam] || ev.strHomeTeam || '',
-    bortalag: LAGNAMN_MAP[ev.strAwayTeam] || ev.strAwayTeam || '',
-    hemma:    toNum(ev.intHomeScore),
-    borta:    toNum(ev.intAwayScore),
-    status:   tsdbV1Status(ev),
-    minut:    ev.strProgress ? parseInt(ev.strProgress) || null : null,
-    källa:    'thesportsdb-v1',
-  }
-}
-
-async function tsdbFetchSeason() {
-  if (!TSDB_LEAGUE || !TSDB_KEY) return []
-  const res = await fetch(`${TSDB_V1_BASE}/${TSDB_KEY}/eventsseason.php?id=${TSDB_LEAGUE}&s=${TSDB_SEASON_V1}`)
-  if (!res.ok) throw new Error(`thesportsdb-v1 ${res.status}`)
-  const data = await res.json()
-  return (data.events || []).map(tsdbV1Normalize)
-}
-
-// ── TheSportsDB V2 (Premium livescores, ~2 min fördröjning) ─────────────────
-// Endpoint: /livescore/soccer eller /livescore/{leagueId}
-// Auth: X-API-KEY header (Premium-nyckel krävs)
-// Fält: strHomeTeam, strAwayTeam, intHomeScore, intAwayScore,
-//       strStatus (1H/HT/2H/FT/...), strProgress ("45+5", "67", ...)
-function tsdbV2Status(ev) {
-  const s = (ev.strStatus || '').toUpperCase()
-  if (['FT', 'AET', 'PEN', 'MATCH FINISHED', 'FINISHED'].includes(s)) return 'FINISHED'
-  if (['1H', '2H', 'HT', 'LIVE', 'IN PLAY', 'ET', 'EXTRA TIME'].includes(s)) return 'IN_PLAY'
-  if (ev.intHomeScore != null && ev.intAwayScore != null) return 'FINISHED'
-  return 'SCHEDULED'
-}
-
-// "45+5" → 50, "67" → 67, "HT" → 45, null → null
-function tsdbV2Minut(progress, status) {
-  if (!progress && (status || '').toUpperCase() === 'HT') return 45
-  if (!progress) return null
-  const m = String(progress).match(/^(\d+)(?:\+(\d+))?/)
-  if (!m) return null
-  return parseInt(m[1], 10) + (m[2] ? parseInt(m[2], 10) : 0)
-}
-
-function tsdbV2Normalize(ev) {
-  const toNum = (v) => (v === null || v === undefined || v === '' ? null : Number(v))
-  const status = tsdbV2Status(ev)
-  return {
-    hemmalag: LAGNAMN_MAP[ev.strHomeTeam] || ev.strHomeTeam || '',
-    bortalag: LAGNAMN_MAP[ev.strAwayTeam] || ev.strAwayTeam || '',
-    hemma:    toNum(ev.intHomeScore),
-    borta:    toNum(ev.intAwayScore),
-    status,
-    minut:    tsdbV2Minut(ev.strProgress, ev.strStatus),
-    källa:    'thesportsdb-v2',
-  }
-}
-
-async function tsdbV2LiveFetch() {
-  if (!TSDB_LEAGUE || !TSDB_KEY) return []
-  // Hämta livescores för specifik liga (snabbare än alla sporter)
-  const url = `${TSDB_V2_BASE}/livescore/${TSDB_LEAGUE}`
-  const res = await fetch(url, {
-    headers: { 'X-API-KEY': TSDB_KEY },
-  })
-  if (!res.ok) throw new Error(`thesportsdb-v2 ${res.status}`)
-  const data = await res.json()
-  // API returnerar { livescore: [...] } eller { events: [...] }
-  const events = data.livescore || data.events || []
-  return events.map(tsdbV2Normalize)
-}
-
-// ── Sammanslagning ──────────────────────────────────────────────────────────
-// Slår ihop normaliserade listor per matchKey. För varje match väljs den
-// "starkaste" posten: FINISHED slår IN_PLAY som slår SCHEDULED.
-const STATUS_RANK = { FINISHED: 3, IN_PLAY: 2, PAUSED: 2, SCHEDULED: 1, TIMED: 1 }
-
-export function mergeResults(...listor) {
-  const map = new Map()
-  for (const lista of listor) {
-    for (const m of lista || []) {
-      if (!m.hemmalag || !m.bortalag) continue
-      const key = matchKey(m.hemmalag, m.bortalag)
-      const befintlig = map.get(key)
-      if (!befintlig || (STATUS_RANK[m.status] || 0) > (STATUS_RANK[befintlig.status] || 0)) {
-        map.set(key, m)
-      }
-    }
-  }
-  return [...map.values()]
-}
-
-/**
- * Mappar AVSLUTADE (FINISHED) resultat → våra match_id via Matcher-arket.
- *
- * Matchningen sker på normaliserade lagnamn. Två fallnivåer:
- *   1. Exakt ordning  (källans hemma/borta = arkets team1/team2)
- *   2. Omvänd ordning (källan listar lagen tvärtom) → DÅ byts även målen så att
- *      de hamnar i rätt kolumn (annars sparas fel ställning).
- *
- * Resultat som inte kan matchas returneras i `omatchade` i stället för att tyst
- * försvinna. Det inträffar t.ex. när Matcher-arket fortfarande har openfootballs
- * platshållarnamn ("UEFA Path A winner", "IC Path 1 winner") för lag som hunnit
- * kvalificera sig — då returnerar football-data det riktiga lagnamnet och nyckeln
- * matchar aldrig. Anroparen kan logga `omatchade` så felet syns.
- *
- * @param {Array}   avslutade     normaliserade FINISHED-resultat: { hemmalag, bortalag, hemma, borta }
- * @param {Array[]} matcherRader  Matcher-arket: A=match_id, B=datum, C=tid, D=team1, E=team2
- * @returns {{ rader: Array[], omatchade: Array }} rader = [[match_id, hemma, borta]]
- */
-export function mappaAvslutadeTillMatchId(avslutade = [], matcherRader = []) {
-  const lookup = new Map()
-  for (const rad of matcherRader || []) {
-    if (rad && rad[0] && rad[3] && rad[4]) lookup.set(matchKey(rad[3], rad[4]), rad[0])
-  }
-
-  const rader = []
-  const omatchade = []
-  for (const m of avslutade || []) {
-    if (!m || !m.hemmalag || !m.bortalag || m.hemma == null || m.borta == null) continue
-
-    const direkt = lookup.get(matchKey(m.hemmalag, m.bortalag))
-    if (direkt) { rader.push([direkt, String(m.hemma), String(m.borta)]); continue }
-
-    // Omvänd ordning → byt målen så de matchar arkets hemma/borta-kolumner
-    const omvänd = lookup.get(matchKey(m.bortalag, m.hemmalag))
-    if (omvänd) { rader.push([omvänd, String(m.borta), String(m.hemma)]); continue }
-
-    omatchade.push(m)
-  }
-  return { rader, omatchade }
-}
-
-/**
- * Avslutade matcher (FINISHED) från alla tillgängliga källor, sammanslagna.
- * football-data.org (primär) + TheSportsDB V1 (sekundär).
- */
-export async function getFinishedResults() {
-  const resultat = await Promise.allSettled([
-    process.env.FOOTBALL_DATA_KEY ? fdFetch('status=FINISHED').then((d) => (d.matches || []).map(fdNormalize)) : Promise.resolve([]),
-    tsdbFetchSeason(),
-  ])
-  const fd   = resultat[0].status === 'fulfilled' ? resultat[0].value : []
-  const tsdb = resultat[1].status === 'fulfilled' ? resultat[1].value : []
-  return mergeResults(fd, tsdb).filter(
-    (m) => m.status === 'FINISHED' && m.hemma != null && m.borta != null,
-  )
-}
-
-/**
- * Knockout-fixtures med riktiga lagnamn — bracketstruktur från openfootball,
- * gruppstälningar från vårt eget Resultat-ark (uppdateras var 5:e minut).
- *
- * Openfootball är källan som seedade Matcher-arket, så match `num` i JSON:en
- * matchar direkt vårt match_id: num=73 → "match_073". Vi behöver aldrig göra
- * tidsstämpelmatchning — num → match_id är en enkel konvertering.
- *
- * Flöde:
- *   1. Hämta openfootball JSON för bracketstruktur (lagkoder + match-nummer)
- *   2. Beräkna gruppstälningar:
- *        a) Primärt: från matcherRader + resultatRader (Sheets-data, alltid aktuell)
- *        b) Fallback: från openfootball-scores (om Sheets-data saknas)
- *   3. Markera position som KLAR om den är matematiskt bestämd, d.v.s.
- *      kandidatens nuvarande poäng > utmanarstyrkas maximalt möjliga poäng
- *      (detta fångar fall där vinnaren är klar INNAN sista omgången spelats)
- *   4. Lös lagkoder: "1C" → etta i Grupp C, "2B" → tvåa, "3A/B/C/D/F" → bästa 3:an
- *   5. Returnera [{ match_id, hemmalag, bortalag }] — bara när BÅDA är kända
- *
- * @param {{ matcherRader?: Array[], resultatRader?: Array[] }} [opts]
- *   Sheets-rader att använda för poängberäkning.
- *   matcherRader: Matcher!A2:H (match_id, datum, tid, hemmalag, bortalag, grupp, omgång, ...)
- *   resultatRader: Resultat!A2:C  (match_id, hemma_mål, borta_mål)
- */
 const TREDJEPLACERING_TABELL = {
   'EFGHIJKL': ['3E', '3J', '3I', '3F', '3H', '3G', '3L', '3K'],
   'DFGHIJKL': ['3H', '3G', '3I', '3D', '3J', '3F', '3L', '3K'],
@@ -767,399 +557,324 @@ const SLOT_TILL_KOLUMN = {
   'D/E/I/J/L': 6, // 1K (match 87)
 }
 
-export async function getAllKnockoutFixtures({ matcherRader = null, resultatRader = null } = {}) {
-  const OPENFOOTBALL_URL =
-    'https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json'
 
-  let data
-  try {
-    const res = await fetch(OPENFOOTBALL_URL)
-    if (!res.ok) throw new Error(`openfootball HTTP ${res.status}`)
-    data = await res.json()
-  } catch (err) {
-    console.warn('[resultsSource] getAllKnockoutFixtures — openfootball-hämtning misslyckades:', err.message)
-    return []
+// ── Google Sheets ─────────────────────────────────────────────────────────────
+async function getSheets() {
+  const credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS)
+  const auth = new google.auth.GoogleAuth({ credentials, scopes: ['https://www.googleapis.com/auth/spreadsheets'] })
+  return google.sheets({ version: 'v4', auth: await auth.getClient() })
+}
+async function getRows(sheets, range) {
+  return (await sheets.spreadsheets.values.get({ spreadsheetId: SHEET_ID, range })).data.values || []
+}
+
+// ── Beräkna stälning från en lista av {team1, team2, score:{ft:[g1,g2]}} ──────
+function beräknaStällning(matcher) {
+  const teams = {}
+  // Steg 1: totala poäng/statistik
+  for (const m of matcher) {
+    const [g1, g2] = m.score.ft
+    for (const [lag, egna, mot] of [[m.team1, g1, g2], [m.team2, g2, g1]]) {
+      if (!teams[lag]) teams[lag] = { P: 0, GD: 0, GF: 0 }
+      teams[lag].GF += egna; teams[lag].GD += egna - mot
+      teams[lag].P += egna > mot ? 3 : egna === mot ? 1 : 0
+    }
   }
+  let ställning = Object.entries(teams).map(([namn, s]) => ({ namn, ...s }))
 
-  const allaMatcher = data.matches || []
+  // Steg 2: sortera på totala poäng
+  ställning.sort((a, b) => b.P - a.P)
 
-  // ── Hjälp: beräkna stälning från en lista {team1, team2, score.ft} ─────────
-  const beräknaStällning = (matcher) => {
-    const teams = {}
-    // Steg 1: beräkna totala poäng/statistik
-    for (const m of matcher) {
-      const [g1, g2] = m.score.ft
-      for (const [lag, egna, mot] of [[m.team1, g1, g2], [m.team2, g2, g1]]) {
-        if (!teams[lag]) teams[lag] = { P: 0, GD: 0, GF: 0 }
-        teams[lag].GF += egna
-        teams[lag].GD += egna - mot
-        teams[lag].P  += egna > mot ? 3 : egna === mot ? 1 : 0
+  // Steg 3: inbördes möten som tiebreaker för poänglika lag
+  let i = 0
+  while (i < ställning.length) {
+    let j = i
+    while (j < ställning.length && ställning[j].P === ställning[i].P) j++
+    if (j - i > 1) {
+      const bundna     = ställning.slice(i, j)
+      const bundnaNamn = new Set(bundna.map(t => t.namn))
+      const h2hMatcher = matcher.filter(m => bundnaNamn.has(m.team1) && bundnaNamn.has(m.team2))
+      const h2h = Object.fromEntries(bundna.map(t => [t.namn, { P: 0, GD: 0, GF: 0 }]))
+      for (const m of h2hMatcher) {
+        const [g1, g2] = m.score.ft
+        h2h[m.team1].GF += g1; h2h[m.team1].GD += g1 - g2
+        h2h[m.team2].GF += g2; h2h[m.team2].GD += g2 - g1
+        if (g1 > g2)      { h2h[m.team1].P += 3 }
+        else if (g1 < g2) { h2h[m.team2].P += 3 }
+        else              { h2h[m.team1].P++; h2h[m.team2].P++ }
       }
-    }
-    let ställning = Object.entries(teams).map(([namn, s]) => ({ namn, ...s }))
-
-    // Steg 2: sortera på totala poäng
-    ställning.sort((a, b) => b.P - a.P)
-
-    // Steg 3: för poänglika grupper → inbördes möten som tiebreaker
-    let i = 0
-    while (i < ställning.length) {
-      let j = i
-      while (j < ställning.length && ställning[j].P === ställning[i].P) j++
-      if (j - i > 1) {
-        const bundna    = ställning.slice(i, j)
-        const bundnaNamn = new Set(bundna.map((t) => t.namn))
-        const h2hMatcher = matcher.filter(
-          (m) => bundnaNamn.has(m.team1) && bundnaNamn.has(m.team2),
-        )
-        // Mini-liga bland de bundna lagen
-        const h2h = Object.fromEntries(bundna.map((t) => [t.namn, { P: 0, GD: 0, GF: 0 }]))
-        for (const m of h2hMatcher) {
-          const [g1, g2] = m.score.ft
-          h2h[m.team1].GF += g1; h2h[m.team1].GD += g1 - g2
-          h2h[m.team2].GF += g2; h2h[m.team2].GD += g2 - g1
-          if (g1 > g2)       { h2h[m.team1].P += 3 }
-          else if (g1 < g2)  { h2h[m.team2].P += 3 }
-          else               { h2h[m.team1].P++; h2h[m.team2].P++ }
-        }
-        bundna.sort((a, b) =>
-          (h2h[b.namn].P  - h2h[a.namn].P)  ||   // inbördes poäng
-          (h2h[b.namn].GD - h2h[a.namn].GD) ||   // inbördes målskillnad
-          (h2h[b.namn].GF - h2h[a.namn].GF) ||   // inbördes gjorda mål
-          (b.GD - a.GD) || (b.GF - a.GF) ||      // totala GD / GF
-          a.namn.localeCompare(b.namn),            // bokstavsordning (sista utväg)
-        )
-        for (let k = 0; k < bundna.length; k++) ställning[i + k] = bundna[k]
-      }
-      i = j
-    }
-    return ställning
-  }
-
-  // ── Hjälp: är platsen matematiskt bestämd? ────────────────────────────────
-  // Returnerar true om kandidaten vid `plats` (0=etta, 1=tvåa) inte KAN
-  // bli omsprungen av någon annan — oavsett hur kvarvarande matcher slutar.
-  const erPositionKlar = (ställning, speladeMatcher, plats) => {
-    if (plats >= ställning.length) return false
-    const kandidat = ställning[plats]
-    const totalPerLag = ställning.length - 1   // 4-lagsgrupp: 3 matcher per lag
-
-    // Räkna spelade matcher per lag
-    const spelatPerLag = Object.fromEntries(ställning.map((t) => [t.namn, 0]))
-    for (const m of speladeMatcher) {
-      if (spelatPerLag[m.team1] !== undefined) spelatPerLag[m.team1]++
-      if (spelatPerLag[m.team2] !== undefined) spelatPerLag[m.team2]++
-    }
-
-    // Kan någon utmanare (plats+1 och nedåt) nå lika eller fler poäng?
-    for (let i = plats + 1; i < ställning.length; i++) {
-      const utmanare = ställning[i]
-      const kvar    = totalPerLag - (spelatPerLag[utmanare.namn] || 0)
-      const maxPoäng = utmanare.P + 3 * kvar
-      if (kandidat.P > maxPoäng) continue   // kan inte nå upp — ingen fara
-
-      // Utmanaren KAN nå lika poäng → kolla det inbördes mötet
-      // Om kandidaten redan VUNNIT det mötet kan utmanaren aldrig gå om via tiebreakern
-      const h2h = speladeMatcher.find((m) =>
-        (m.team1 === kandidat.namn && m.team2 === utmanare.namn) ||
-        (m.team1 === utmanare.namn && m.team2 === kandidat.namn),
+      bundna.sort((a, b) =>
+        (h2h[b.namn].P  - h2h[a.namn].P)  ||
+        (h2h[b.namn].GD - h2h[a.namn].GD) ||
+        (h2h[b.namn].GF - h2h[a.namn].GF) ||
+        (b.GD - a.GD) || (b.GF - a.GF) || a.namn.localeCompare(b.namn)
       )
-      if (!h2h) return false   // mötet inte spelat ännu → oklart
-
-      const [g1, g2] = h2h.score.ft
-      const kandidatVann = (h2h.team1 === kandidat.namn && g1 > g2) ||
-                           (h2h.team2 === kandidat.namn && g2 > g1)
-      if (!kandidatVann) return false   // oavgjort eller förlust → oklart
-      // kandidaten vann det inbördes mötet → utmanaren neutraliserad
+      for (let k = 0; k < bundna.length; k++) ställning[i + k] = bundna[k]
     }
-    return true
+    i = j
+  }
+  return ställning
+}
+
+// ── Är positionen matematiskt bestämd? ───────────────────────────────────────
+// Kandidaten vid `plats` är klar om ingen utmanare KAN komma upp i samma poäng
+// (konservativt: vid lika poäng räknas det som oklart — GD-bedömning är komplex)
+function erPositionKlar(ställning, speladeMatcher, plats) {
+  if (plats >= ställning.length) return false
+  const kandidat    = ställning[plats]
+  const totalPerLag = ställning.length - 1          // 4-lagsgrupp → 3 matcher/lag
+  const spelatPerLag = Object.fromEntries(ställning.map(t => [t.namn, 0]))
+  for (const m of speladeMatcher) {
+    if (spelatPerLag[m.team1] !== undefined) spelatPerLag[m.team1]++
+    if (spelatPerLag[m.team2] !== undefined) spelatPerLag[m.team2]++
+  }
+  for (let i = plats + 1; i < ställning.length; i++) {
+    const utmanare = ställning[i]
+    const kvar     = totalPerLag - (spelatPerLag[utmanare.namn] || 0)
+    if (kandidat.P > utmanare.P + 3 * kvar) continue   // kan inte nå upp
+
+    // Utmanaren KAN nå lika poäng → kolla inbördes mötet
+    const h2h = speladeMatcher.find((m) =>
+      (m.team1 === kandidat.namn && m.team2 === utmanare.namn) ||
+      (m.team1 === utmanare.namn && m.team2 === kandidat.namn),
+    )
+    if (!h2h) return false   // mötet inte spelat → oklart
+
+    const [g1, g2] = h2h.score.ft
+    const kandidatVann = (h2h.team1 === kandidat.namn && g1 > g2) ||
+                         (h2h.team2 === kandidat.namn && g2 > g1)
+    if (!kandidatVann) return false   // oavgjort eller förlust → oklart
+    // kandidaten vann inbördes → utmanaren neutraliserad
+  }
+  return true
+}
+
+// ── Huvud ────────────────────────────────────────────────────────────────────
+async function main() {
+  console.log(`\n${'='.repeat(65)}`)
+  console.log(`  VM-Tipsen — knockout sync test  ${APPLY ? '⚠️  --apply: SKRIVER till Sheets' : '(dry-run)'}`)
+  console.log(`${'='.repeat(65)}\n`)
+
+  // ── 1. Hämta openfootball (bracketstruktur) ───────────────────────────────
+  console.log('📡  Hämtar openfootball JSON...')
+  const res = await fetch(OPENFOOTBALL_URL)
+  if (!res.ok) { console.error(`❌  HTTP ${res.status}`); process.exit(1) }
+  const data    = await res.json()
+  const allaMatcher = data.matches || []
+  console.log(`✅  ${allaMatcher.length} matcher i openfootball JSON\n`)
+
+  // ── 2. Hämta Sheets-data ──────────────────────────────────────────────────
+  console.log('📄  Läser Sheets-data...')
+  const sheets = await getSheets()
+  const [matcherRader, resultatRaderMedScores] = await Promise.all([
+    getRows(sheets, 'Matcher!A2:H1000'),
+    getRows(sheets, 'Resultat!A2:C1000'),   // A=match_id, B=hem, C=borta
+  ])
+  console.log(`✅  ${matcherRader.length} Matcher-rader, ${resultatRaderMedScores.length} Resultat-rader\n`)
+
+  // ── 3. Beräkna gruppstälningar från Sheets-data ───────────────────────────
+  const matchInfo = {}
+  for (const rad of matcherRader) {
+    const [match_id, , , hemmalag, bortalag, grupp] = rad
+    if (!match_id || !grupp || !hemmalag || !bortalag) continue
+    if (!grupp.startsWith('Group ') || grupp.length !== 7) continue
+    matchInfo[match_id] = { hemmalag, bortalag, grp: grupp[6] }   // "Group A"[6] = "A"
   }
 
-  // ── Steg 1: Bygg grupperMatcher ───────────────────────────────────────────
-  let grupperMatcher = {}   // { 'A': [{team1,team2,score:{ft:[g1,g2]}},...], ... }
-
-  if (matcherRader && resultatRader) {
-    // ── Primär: Sheets-data (alltid aktuell) ─────────────────────────────────
-    const matchInfo = {}
-    for (const rad of matcherRader) {
-      const [match_id, , , hemmalag, bortalag, grupp] = rad
-      if (!match_id || !grupp || !hemmalag || !bortalag) continue
-      // Gruppspelets rader har grupp="Group A" (7 tecken), knockout har 'Slutspel' eller liknande
-      if (!grupp.startsWith('Group ') || grupp.length !== 7) continue
-      matchInfo[match_id] = { hemmalag, bortalag, grp: grupp[6] }   // "Group A"[6] = "A"
-    }
-    for (const res of resultatRader) {
-      const [match_id, g1Str, g2Str] = res
-      if (!match_id) continue
-      const g1 = parseInt(g1Str)
-      const g2 = parseInt(g2Str)
-      if (isNaN(g1) || isNaN(g2)) continue
-      const info = matchInfo[match_id]
-      if (!info) continue
-      if (!grupperMatcher[info.grp]) grupperMatcher[info.grp] = []
-      grupperMatcher[info.grp].push({ team1: info.hemmalag, team2: info.bortalag, score: { ft: [g1, g2] } })
-    }
-    console.log(`[resultsSource] getAllKnockoutFixtures: använder Sheets-data (${Object.keys(grupperMatcher).length} grupper med resultat)`)
-  } else {
-    // ── Fallback: openfootball-scores ─────────────────────────────────────────
-    for (const m of allaMatcher) {
-      if (!m.group || !m.score?.ft) continue
-      const grp = m.group.replace('Group ', '')
-      if (!grupperMatcher[grp]) grupperMatcher[grp] = []
-      grupperMatcher[grp].push(m)
-    }
-    console.log(`[resultsSource] getAllKnockoutFixtures: använder openfootball-scores (Sheets-data saknas)`)
+  const grupperMatcher = {}    // { 'A': [{team1,team2,score},...], ... }
+  for (const res of resultatRaderMedScores) {
+    const [match_id, g1Str, g2Str] = res
+    if (!match_id) continue
+    const g1 = parseInt(g1Str); const g2 = parseInt(g2Str)
+    if (isNaN(g1) || isNaN(g2)) continue
+    const info = matchInfo[match_id]
+    if (!info) continue
+    if (!grupperMatcher[info.grp]) grupperMatcher[info.grp] = []
+    grupperMatcher[info.grp].push({ team1: info.hemmalag, team2: info.bortalag, score: { ft: [g1, g2] } })
   }
 
-  // ── Steg 2: Beräkna stälningar ────────────────────────────────────────────
-  const grupperStällning = {}   // { 'A': [{namn,P,GD,GF}, ...], ... }
-
+  const grupperStällning = {}
+  const grupperHeltKlara = new Set()
   for (const [grp, matcher] of Object.entries(grupperMatcher)) {
-    grupperStällning[grp] = beräknaStällning(matcher)
+    const ställning = beräknaStällning(matcher)
+    grupperStällning[grp] = ställning
+    const antalLag = ställning.length
+    if (matcher.length >= antalLag * (antalLag - 1) / 2) grupperHeltKlara.add(grp)
   }
 
-  // ── Steg 3: Rangordna bästa 3:or (de bästa 8 av 12 grupper går vidare) ────
-  // En 3:a räknas in bara om dess position matematiskt är bestämd (gruppen klar)
-  const grupperHeltKlara = new Set()   // alla matcher spelade → säkert för 3:or
-  for (const [grp, matcher] of Object.entries(grupperMatcher)) {
-    const antalLag  = grupperStällning[grp]?.length || 0
-    const förväntade = antalLag === 4 ? 6 : antalLag === 3 ? 3 : antalLag * (antalLag - 1) / 2
-    if (matcher.length >= förväntade) grupperHeltKlara.add(grp)
+  // ── 4. Visa gruppstälningar ────────────────────────────────────────────────
+  console.log('📊  Gruppstälningar (Sheets-data):')
+  for (const grp of Object.keys(grupperStällning).sort()) {
+    const s      = grupperStällning[grp]
+    const spelade = grupperMatcher[grp] || []
+    const klar   = grupperHeltKlara.has(grp)
+    const e1     = erPositionKlar(s, spelade, 0)
+    const e2     = erPositionKlar(s, spelade, 1)
+    console.log(
+      `  Grupp ${grp} ${klar ? '✅klar' : '⏳'  }:  ` +
+      `1=${(s[0]?.namn || '?').padEnd(22)}${e1 ? '🔒' : '  '}  ` +
+      `2=${(s[1]?.namn || '?').padEnd(22)}${e2 ? '🔒' : '  '}  ` +
+      `3=${s[2]?.namn || '?'}`
+    )
   }
 
-  const tredjeLag = []   // { grp, namn, P, GD, GF }
+  // ── 5. Rangordna bästa 3:or (topp 8 av 12 klara grupper) ─────────────────
+  const tredjeLag = []
   for (const [grp, ställning] of Object.entries(grupperStällning)) {
     if (grupperHeltKlara.has(grp) && ställning.length >= 3) {
       tredjeLag.push({ grp, ...ställning[2] })
     }
   }
   tredjeLag.sort((a, b) => b.P - a.P || b.GD - a.GD || b.GF - a.GF || a.namn.localeCompare(b.namn))
-  const kvalificerade3orGrupper = new Set(tredjeLag.slice(0, 8).map((t) => t.grp))
+  const kvalificerade3orGrupper = new Set(tredjeLag.slice(0, 8).map(t => t.grp))
 
-  // ── Steg 4: Lös lagkoder → riktiga lagnamn ─────────────────────────────────
+  if (tredjeLag.length > 0) {
+    console.log('\n🥉  Bästa 3:or (' + tredjeLag.length + ' klara grupper):')
+    tredjeLag.forEach((t, i) => {
+      const q = kvalificerade3orGrupper.has(t.grp)
+      console.log(`  ${i + 1}. Grupp ${t.grp}: ${t.namn} (${t.P}p, GD ${t.GD >= 0 ? '+' : ''}${t.GD}) ${q ? '✅ vidare' : '❌ ute'}`)
+    })
+  }
+
+  // ── 6. Lös lagkoder → riktiga lagnamn ─────────────────────────────────────
   const lös = (kod) => {
     if (!kod) return null
-
-    // "1C" eller "2B" — etta/tvåa i gruppen
     const exakt = kod.match(/^([12])([A-L])$/)
     if (exakt) {
-      const plats = parseInt(exakt[1]) - 1
-      const grp   = exakt[2]
-      const ställning = grupperStällning[grp]
+      const plats      = parseInt(exakt[1]) - 1
+      const grp        = exakt[2]
+      const ställning  = grupperStällning[grp]
       if (!ställning) return null
-      const speladeMatcher = grupperMatcher[grp] || []
-      if (!erPositionKlar(ställning, speladeMatcher, plats)) return null
-      return ställning[plats]?.namn ?? null
+      const spelade    = grupperMatcher[grp] || []
+      if (!erPositionKlar(ställning, spelade, plats)) return null
+      const namn = ställning[plats]?.namn
+      return namn ? (LAGNAMN_MAP[namn] || namn) : null
     }
-
-    // "3A/B/C/D/F" — 3:e plats-slot, löses via FIFAs 495-kombinationstabell.
-    // Kräver att ALLA 12 grupper är klara — annars kan okända grupper producera
-    // bättre 3:or som ändrar rankningen och välter tilldelningen.
     const tredjeMatch = kod.match(/^3([A-L](?:\/[A-L])*)$/)
     if (tredjeMatch) {
-      const TOTALT_GRUPPER = 12
-      if (grupperHeltKlara.size < TOTALT_GRUPPER) return null
-      const slotMönster = tredjeMatch[1]                          // "E/F/G/I/J"
+      // Kräver att ALLA 12 grupper är klara — annars kan okända grupper
+      // producera bättre 3:or som ändrar vilka 8 som kvalificerar sig
+      if (grupperHeltKlara.size < 12) return null
+      const slotMönster = tredjeMatch[1]
       const kolIndex = SLOT_TILL_KOLUMN[slotMönster]
       if (kolIndex === undefined) return null
-      const kvalNyckel = [...kvalificerade3orGrupper].sort().join('')  // "BCDEFGHJ"
+      const kvalNyckel = [...kvalificerade3orGrupper].sort().join('')
       const rad = TREDJEPLACERING_TABELL[kvalNyckel]
       if (!rad) return null
-      const tredjeGruppKod = rad[kolIndex]                        // "3E"
-      const grp = tredjeGruppKod[1]                               // "E"
-      return grupperStällning[grp]?.[2]?.namn ?? null
+      const grp = rad[kolIndex][1]  // "3E" → "E"
+      const namn = grupperStällning[grp]?.[2]?.namn
+      return namn ? (LAGNAMN_MAP[namn] || namn) : null
     }
-
-    // "W73", "L101" etc. (vidare omgångar — inte kända ännu)
     return null
   }
 
-  // ── Steg 5: Bygg resultatformat ────────────────────────────────────────────
-  // Partiella fixtures tillåts: om bara ett lag är känt inkluderas ändå posten.
-  // uppdateraKnockoutLagnamn() hanterar kolumnvis skrivning och skyddar befintliga
-  // riktiga lagnamn från att skrivas över med null/platshållare.
-  const SLUTSPELS_OMGÅNGAR_OF = new Set([
-    'Round of 32', 'Round of 16', 'Quarter-final', 'Semi-final',
-    'Match for third place', 'Final',
-  ])
-  const resultat = []
+  // ── 7. Beräknade fixtures ─────────────────────────────────────────────────
+  console.log('\n' + '─'.repeat(65))
+  console.log('🔀  Beräknade knockout-fixtures:')
+
+  const SLUTSPELS_OF = new Set(SLUTSPELS_OMGÅNGAR)
+  const fixtures = []
   for (const m of allaMatcher) {
-    if (!SLUTSPELS_OMGÅNGAR_OF.has(m.round) || !m.num) continue
-    const rå1 = lös(m.team1)
-    const rå2 = lös(m.team2)
-    const hemmalag = rå1 ? (LAGNAMN_MAP[rå1] || rå1) : null
-    const bortalag = rå2 ? (LAGNAMN_MAP[rå2] || rå2) : null
-    if (!hemmalag && !bortalag) continue   // båda okända — inget att uppdatera
+    if (!SLUTSPELS_OF.has(m.round) || !m.num) continue
+    const hemmalag = lös(m.team1)
+    const bortalag = lös(m.team2)
     const match_id = `match_${String(m.num).padStart(3, '0')}`
-    resultat.push({ match_id, hemmalag, bortalag, källa: 'openfootball' })
+    const status   = hemmalag && bortalag ? '✅' : hemmalag || bortalag ? '⚡' : '❓'
+    console.log(`  ${status}  ${match_id}  ${m.round.padEnd(15)} ${(hemmalag || m.team1).padEnd(24)} vs ${bortalag || m.team2}`)
+    if (hemmalag || bortalag) fixtures.push({ match_id, hemmalag, bortalag })
+  }
+  console.log(`\n  ${fixtures.length} fixtures med BÅDA lagen kända\n`)
+
+  // ── 8. Jämförelse mot Matcher-arket ──────────────────────────────────────
+  const matcherMap = {}
+  for (let i = 0; i < matcherRader.length; i++) {
+    const r = matcherRader[i]
+    if (r[0]) matcherMap[r[0]] = { idx: i, hemmalag: r[3] || '', bortalag: r[4] || '' }
   }
 
-  const båda  = resultat.filter((r) => r.hemmalag && r.bortalag).length
-  const delar = resultat.filter((r) => !r.hemmalag || !r.bortalag).length
-  console.log(`[resultsSource] getAllKnockoutFixtures: ${båda} kompletta + ${delar} partiella fixtures`)
-  return resultat
-}
+  // Platshållare = bracketkoder — aldrig riktiga lagnamn
+  const ärPlaceholder = (n) => !n || /^[12][A-L]$/.test(n) || /^3[A-L]/.test(n) || /^[WL]\d+$/.test(n)
 
-/**
- * Topp-N målskyttar (skytteligan) från football-data.org, normaliserade till
- * Skytteliga-arkets format: { spelare, land, mål }.
- *
- * Returnerar [] om FOOTBALL_DATA_KEY saknas eller API svarar fel (t.ex. innan VM
- * startat) — kastar bara vid nätverksfel, så att anroparen kan välja att behålla
- * befintlig data i stället för att skriva över med tomt.
- */
-export async function getTopScorers(antal = 15) {
-  if (!process.env.FOOTBALL_DATA_KEY) return []
-  const res = await fetch(
-    `${FD_BASE}/competitions/${FD_COMPETITION}/scorers?season=${FD_SEASON}&limit=${antal}`,
-    { headers: { 'X-Auth-Token': process.env.FOOTBALL_DATA_KEY } },
-  )
-  if (!res.ok) {
-    console.warn(`[resultsSource] scorers ${res.status}`)
-    return []
-  }
-  const data = await res.json()
-  return (data.scorers || [])
-    .map((s) => ({
-      spelare: s.player?.name || '',
-      land:    LAGNAMN_MAP[s.team?.name] || s.team?.name || '',
-      mål:     s.goals ?? 0,
-    }))
-    .filter((s) => s.spelare && s.mål > 0)
-}
+  const uppdateringar = []
+  for (const fix of fixtures) {
+    const befintlig = matcherMap[fix.match_id]
+    if (!befintlig) { console.log(`  ⚠️  ${fix.match_id} saknas i Matcher-arket`); continue }
 
-/**
- * Pågående matcher (IN_PLAY/PAUSED) från alla källor, sammanslagna.
- * Primär live-källa: TheSportsDB V2 (Premium, ~2 min fördröjning, ger minut).
- * Fallback: football-data.org (dagsresultat).
- */
-export async function getLiveScores() {
-  const today = new Date().toISOString().slice(0, 10)
-  const resultat = await Promise.allSettled([
-    process.env.FOOTBALL_DATA_KEY
-      ? fdFetch(`dateFrom=${today}&dateTo=${today}`).then((d) => (d.matches || []).map(fdNormalize))
-      : Promise.resolve([]),
-    tsdbV2LiveFetch(),
-  ])
-  const fd   = resultat[0].status === 'fulfilled' ? resultat[0].value : []
-  const tsdb = resultat[1].status === 'fulfilled' ? resultat[1].value : []
+    const uppdateraH = fix.hemmalag && ärPlaceholder(befintlig.hemmalag) && befintlig.hemmalag !== fix.hemmalag
+    const uppdateraB = fix.bortalag && ärPlaceholder(befintlig.bortalag) && befintlig.bortalag !== fix.bortalag
 
-  return väljLive(fd, tsdb)
-}
-
-/**
- * Väljer pågående matcher ur data från football-data.org (fd) och TheSportsDB (tsdb).
- *
- * Designprincip: football-data.org är auktoritativ för ställning och status.
- * TheSportsDB berikar med minuten. Detta undviker att ett annullerat mål (VAR)
- * som TSDB ännu inte plockat bort "vinner" över den korrekta ställningen från FD.
- *
- * En match räknas som AVSLUTAD så fort NÅGON källa säger FINISHED — den visas
- * aldrig som live, även om en långsammare källa fortfarande rapporterar IN_PLAY.
- *
- * Prioritet när FD saknar en match: TSDB används som fallback.
- */
-export function väljLive(fd = [], tsdb = []) {
-  const alla = [...fd, ...tsdb]
-
-  // Bygg uppslagstabell för TSDB-poster (för minutberikelse)
-  const tsdbMap = new Map()
-  for (const m of tsdb) {
-    tsdbMap.set(matchKey(m.hemmalag, m.bortalag), m)
-  }
-
-  // Matcher som NÅGON källa anser avslutade → aldrig live
-  const avslutadeNycklar = new Set(
-    alla.filter((m) => m.status === 'FINISHED').map((m) => matchKey(m.hemmalag, m.bortalag)),
-  )
-
-  // FD-poster som är IN_PLAY/PAUSED och inte avslutade enligt någon källa
-  const fdLive = fd.filter(
-    (m) => (m.status === 'IN_PLAY' || m.status === 'PAUSED') &&
-           !avslutadeNycklar.has(matchKey(m.hemmalag, m.bortalag)),
-  )
-
-  // Berika FD-poster med minut från TSDB om tillgängligt
-  const fdBerikade = fdLive.map((m) => {
-    const tsdbPost = tsdbMap.get(matchKey(m.hemmalag, m.bortalag))
-    return (tsdbPost?.minut != null && m.minut == null)
-      ? { ...m, minut: tsdbPost.minut }
-      : m
-  })
-
-  // Bygg resultatmap med FD som grund
-  const map = new Map()
-  for (const m of fdBerikade) {
-    map.set(matchKey(m.hemmalag, m.bortalag), m)
-  }
-
-  // Fallback: TSDB-poster för matcher FD inte rapporterar alls
-  for (const m of tsdb) {
-    const key = matchKey(m.hemmalag, m.bortalag)
-    if (!map.has(key) && !avslutadeNycklar.has(key) &&
-        (m.status === 'IN_PLAY' || m.status === 'PAUSED')) {
-      map.set(key, m)
+    if (!uppdateraH && !uppdateraB) {
+      const visaH = fix.hemmalag || befintlig.hemmalag
+      const visaB = fix.bortalag || befintlig.bortalag
+      console.log(`  ✅  ${fix.match_id.padEnd(12)} redan korrekt: ${visaH} vs ${visaB}`)
+    } else {
+      const nyH = uppdateraH ? fix.hemmalag : (befintlig.hemmalag || '?')
+      const nyB = uppdateraB ? fix.bortalag : (befintlig.bortalag || '?')
+      console.log(`  🔄  ${fix.match_id.padEnd(12)} ÄNDRAS:`)
+      console.log(`        nu  : "${befintlig.hemmalag}" vs "${befintlig.bortalag}"`)
+      console.log(`        →   : "${nyH}" vs "${nyB}"`)
+      uppdateringar.push({ rowNum: befintlig.idx + 2, match_id: fix.match_id, uppdateraH, uppdateraB, hemmalag: fix.hemmalag, bortalag: fix.bortalag })
     }
   }
 
-  return [...map.values()]
+  if (uppdateringar.length === 0) {
+    console.log('\n  ✅  Inga uppdateringar behövs.')
+  } else if (APPLY) {
+    console.log(`\n  ✍️  Skriver ${uppdateringar.length} uppdateringar...`)
+    for (const u of uppdateringar) {
+      if (u.uppdateraH && u.uppdateraB) {
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: SHEET_ID,
+          range: `Matcher!D${u.rowNum}:E${u.rowNum}`,
+          valueInputOption: 'RAW',
+          requestBody: { values: [[u.hemmalag, u.bortalag]] },
+        })
+        console.log(`  ✅  ${u.match_id}: "${u.hemmalag}" vs "${u.bortalag}"`)
+      } else if (u.uppdateraH) {
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: SHEET_ID,
+          range: `Matcher!D${u.rowNum}`,
+          valueInputOption: 'RAW',
+          requestBody: { values: [[u.hemmalag]] },
+        })
+        console.log(`  ✅  ${u.match_id}: hemmalag → "${u.hemmalag}" (bortalag väntar)`)
+      } else {
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: SHEET_ID,
+          range: `Matcher!E${u.rowNum}`,
+          valueInputOption: 'RAW',
+          requestBody: { values: [[u.bortalag]] },
+        })
+        console.log(`  ✅  ${u.match_id}: bortalag → "${u.bortalag}" (hemmalag väntar)`)
+      }
+    }
+  } else {
+    console.log(`\n  👆  Kör med --apply för att skriva ${uppdateringar.length} uppdateringar till Sheets.`)
+  }
+
+  // ── 9. Låsstatus per omgång ────────────────────────────────────────────────
+  console.log('\n' + '─'.repeat(65))
+  console.log('🔐  Omgångslåsstatus:')
+  const sparadeIds = new Set(resultatRaderMedScores.map(r => r[0]).filter(Boolean))
+  console.log(`    ${sparadeIds.size} resultat i Resultat-arket\n`)
+
+  for (const omgång of SLUTSPELS_OMGÅNGAR) {
+    const omgångsMatcher = matcherRader.filter(r => r[6] === omgång)
+    if (omgångsMatcher.length === 0) {
+      console.log(`    ${omgång.padEnd(24)} — saknas i Matcher-arket`)
+      continue
+    }
+    if (omgång === 'Round of 32') {
+      console.log(`    ${omgång.padEnd(24)} ✅ öppnar när gruppspelet låsts  [${omgångsMatcher.length} matcher]`)
+      continue
+    }
+    const föregående     = FÖREGÅENDE_OMGÅNG[omgång]
+    const föregåendeIds  = new Set(matcherRader.filter(r => r[6] === föregående).map(r => r[0]))
+    const harResultat    = [...sparadeIds].some(id => föregåendeIds.has(id))
+    console.log(`    ${omgång.padEnd(24)} ${harResultat ? '✅ öppen' : '🔒 låst '}  (föregående: ${föregående})  [${omgångsMatcher.length} matcher]`)
+  }
+
+  console.log('\n' + '='.repeat(65) + '\n')
 }
 
-/**
- * Tidsspärr för "Pågår nu": en match kan inte rimligen vara live längre än
- * `maxTimmar` efter avspark (90 min + paus + tillägg + ev. förlängning/straffar
- * ryms väl inom ~3,5 h). Skyddar mot "zombie-live" när ALLA källor släpar och
- * fortsätter rapportera IN_PLAY långt efter slutsignal.
- *
- * Matchar live-poster mot Matcher-arkets avsparkstid via normaliserade lagnamn.
- * Poster vars avspark är okänd behålls (bryter inte nuvarande beteende).
- *
- * @param {Array}   live          live-poster: { hemmalag, bortalag, ... }
- * @param {Array[]} matcherRader  Matcher-arket: A=match_id, B=datum, C=tid, D=team1, E=team2
- * @param {Date}    now
- * @param {number}  maxTimmar
- */
-export function filtreraEjLive(live = [], matcherRader = [], now = new Date(), maxTimmar = 3.5) {
-  const kickoff = new Map()
-  for (const rad of matcherRader || []) {
-    if (rad && rad[3] && rad[4]) {
-      const start = parseMatchStart(rad[1], rad[2])
-      if (start) kickoff.set(matchKey(rad[3], rad[4]), start)
-    }
-  }
-  const gräns = maxTimmar * 3600000
-  return live.filter((m) => {
-    const start = kickoff.get(matchKey(m.hemmalag, m.bortalag))
-    if (!start) return true // okänd avspark → behåll
-    return now.getTime() - start.getTime() < gräns
-  })
-}
-
-/**
- * NYSS avslutade matcher (FINISHED) — de vars avspark ligger inom de senaste
- * `fönsterTimmar`. Används för att visa slutställningen på matchkortet DIREKT
- * från live-källan, utan att vänta på att sync-results skriver till arket (som
- * kan dröja p.g.a. skrivpaus + 5-minutersschema). Äldre matcher faller bort →
- * de hämtas ändå korrekt från arket via match-stats.
- *
- * @param {Array}   finished      FINISHED-poster: { hemmalag, bortalag, hemma, borta, ... }
- * @param {Array[]} matcherRader  Matcher-arket: A=match_id, B=datum, C=tid, D=team1, E=team2
- * @param {Date}    now
- * @param {number}  fönsterTimmar hur länge en avslutad match räknas som "nyss"
- */
-export function nyligenAvslutade(finished = [], matcherRader = [], now = new Date(), fönsterTimmar = 5) {
-  const kickoff = new Map()
-  for (const rad of matcherRader || []) {
-    if (rad && rad[3] && rad[4]) {
-      const start = parseMatchStart(rad[1], rad[2])
-      if (start) kickoff.set(matchKey(rad[3], rad[4]), start)
-    }
-  }
-  const gräns = fönsterTimmar * 3600000
-  return finished.filter((m) => {
-    if (m.hemma == null || m.borta == null) return false
-    const start = kickoff.get(matchKey(m.hemmalag, m.bortalag))
-    if (!start) return false // okänd avspark → låt arket sköta den
-    return now.getTime() - start.getTime() < gräns
-  })
-}
+main().catch(err => { console.error(err); process.exit(1) })

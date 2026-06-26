@@ -5,8 +5,9 @@ export default async (req) => {
   try {
     const sheets = await getSheets()
 
-    const [matcherRader, inställningar] = await Promise.all([
+    const [matcherRader, resultatRader, inställningar] = await Promise.all([
       getRows(sheets, 'Matcher!A2:H1000'),
+      getRows(sheets, 'Resultat!A2:A1000'),  // bara match_id (kolumn A) behövs för låslogiken
       getSettings().catch(() => ({})),
     ])
 
@@ -24,7 +25,7 @@ export default async (req) => {
     const låst = gruppspelLåst()
 
     // Bygg map: match_id -> låst (true/false)
-    const matchLås = byggLåsMap(allaMatcher)
+    const matchLås = byggLåsMap(allaMatcher, resultatRader)
 
     return new Response(
       JSON.stringify({

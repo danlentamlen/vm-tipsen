@@ -68,7 +68,10 @@ export default async (req) => {
     }
 
     // ── Låskontroll per match ──────────────────────────────
-    const matcherRader = await getRows(sheets, 'Matcher!A2:H100000')
+    const [matcherRader, resultatRader] = await Promise.all([
+      getRows(sheets, 'Matcher!A2:H100000'),
+      getRows(sheets, 'Resultat!A2:A1000'),  // bara match_id behövs för låslogiken
+    ])
 
     const allaMatcher = matcherRader.map((rad) => ({
       match_id: rad[0],
@@ -90,7 +93,7 @@ export default async (req) => {
       })
     }
 
-    if (ärMatchLåst(dennaMatch, allaMatcher)) {
+    if (ärMatchLåst(dennaMatch, allaMatcher, resultatRader)) {
       return new Response(
         JSON.stringify({ error: 'Tips för denna match är låsta' }),
         { status: 403, headers: { 'Content-Type': 'application/json' } }
