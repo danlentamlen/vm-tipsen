@@ -19,7 +19,7 @@ export default async () => {
       status: 200,
       headers: {
         'Content-Type': 'application/json',
-        'Cache-Control': 'public, max-age=14400', // 4 hours
+        'Cache-Control': 'public, max-age=300, must-revalidate', // 5 min — knockout-namn uppdateras löpande
       },
     })
   } catch (err) {
