@@ -54,11 +54,6 @@ export default async () => {
     return
   }
 
-  if (ärSkrivpaus()) {
-    console.log('[sync-results] Skrivpaus 09–18 CEST — hoppar över (inga matcher i fönstret)')
-    return
-  }
-
   try {
     const sheets = await getSheets()
 
@@ -68,40 +63,49 @@ export default async () => {
       console.log('[sync-results] Inga matcher ännu')
       return
     }
-    // ── 2. Befintliga resultat ──────────────────────────────────────────────
+
+    // ── 2. Uppdatera lagnamn i knockout-matcher (alltid, även under skrivpaus)
+    // Lag kan kvalificera sig när som helst — vi vill inte vänta till kvällen.
+    // Läser Resultat-arket internt för att beräkna gruppstälningar.
+    const knockoutUppdaterat = await uppdateraKnockoutLagnamn(sheets, matcherRader)
+    const aktuellaMatcherRader = knockoutUppdaterat
+      ? (await refreshLockedSnapshot()).matcher
+      : matcherRader
+
+    // ── Skrivpaus 09:00–18:00 CEST (07:00–16:00 UTC) ────────────────────────
+    // Inga matcher avgörs i nordamerika förrän ~18:00 CEST. De tunga snapshot-
+    // skrivningarna (topplista, poäng, skytteliga) körs bara utanför detta fönster.
+    if (ärSkrivpaus()) {
+      console.log('[sync-results] Skrivpaus 09–18 CEST — knockout-namn uppdaterade, snapshots hoppas över')
+      return
+    }
+
+    // ── 3. Befintliga resultat ──────────────────────────────────────────────
     const befintligaRader = await getRows(sheets, 'Resultat!A2:C1000')
     const sparade = new Set(befintligaRader.map((r) => r[0]).filter(Boolean))
 
-    // ── 3. Hämta avslutade matcher (sammanslaget från alla källor) ──────────
-    // OBS: getFinishedResults() returnerar BARA status===FINISHED med kända mål,
-    // så vi skriver aldrig resultat för en match som inte är slutspelad.
+    // ── 4. Hämta avslutade matcher (sammanslaget från alla källor) ──────────
     let avslutade = []
     try {
       avslutade = await getFinishedResults()
     } catch (err) {
       console.error('[sync-results] Kunde inte hämta resultat:', err.message)
-      // fortsätt ändå — vi kan fortfarande räkna om snapshot på befintliga data
     }
     console.log(`[sync-results] ${avslutade.length} avslutade matcher från källor`)
 
-    // ── 4. Mappa till våra match_id (exakt + omvänd ordning) ─────────────────
-    const { rader: mappade, omatchade } = mappaAvslutadeTillMatchId(avslutade, matcherRader)
+    // ── 5. Mappa till våra match_id ──────────────────────────────────────────
+    const { rader: mappade, omatchade } = mappaAvslutadeTillMatchId(avslutade, aktuellaMatcherRader)
 
-    // Avslutade resultat utan matchning i Matcher-arket loggas högljutt i stället
-    // för att tyst försvinna — oftast platshållarnamn (t.ex. "UEFA Path A winner")
-    // som inte uppdaterats med det riktiga laget. Då skrivs inget resultat och
-    // inga poäng delas ut förrän namnet i Matcher-arket rättas.
     if (omatchade.length > 0) {
-      console.warn(`[sync-results] ⚠️ ${omatchade.length} avslutade matcher MATCHAR INTE Matcher-arket — kontrollera lagnamnen:`)
+      console.warn(`[sync-results] ⚠️ ${omatchade.length} avslutade matcher MATCHAR INTE Matcher-arket:`)
       for (const m of omatchade) {
         console.warn(`   • ${m.hemmalag} ${m.hemma}–${m.borta} ${m.bortalag} (källa: ${m.källa})`)
       }
     }
 
-    // Bara match_id som inte redan är sparade blir nya rader att lägga till
     const nya = mappade.filter((r) => !sparade.has(r[0]))
 
-    // ── 5. Spara nya resultat ───────────────────────────────────────────────
+    // ── 6. Spara nya resultat ───────────────────────────────────────────────
     if (nya.length > 0) {
       await sheets.spreadsheets.values.append({
         spreadsheetId: process.env.GOOGLE_SHEET_ID,
@@ -115,27 +119,12 @@ export default async () => {
       console.log('[sync-results] Inga nya resultat')
     }
 
-    // Sammanlagd resultatuppsättning efter append (slipper läsa om Resultat)
     const allaResultatRader = [...befintligaRader, ...nya]
 
-    // ── 6. Uppdatera lagnamn i knockout-matcher ─────────────────────────────
-    // När lag kvalificerar sig från gruppspelet/tidigare omgångar uppdaterar
-    // football-data.org sina fixtures med riktiga lagnamn. Vi speglar det till
-    // Matcher-arket så att resultatmatchning och låslogik fungerar korrekt.
-    // Vid uppdatering invalideras locked-snapshot-cachen för att matcherRader
-    // ska spegla de nya namnen vid nästa anrop.
-    const knackoutUppdaterat = await uppdateraKnockoutLagnamn(sheets, matcherRader)
-    const aktuellaMatcherRader = knackoutUppdaterat
-      ? (await refreshLockedSnapshot()).matcher
-      : matcherRader
-
     // ── 7. Räkna om snapshots ───────────────────────────────────────────────
-    // Körs av den schemalagda writern (ej användarvänd) → ok att den är tyngre.
     await räknaOmSnapshots(sheets, aktuellaMatcherRader, allaResultatRader)
 
-    // ── 8. Uppdatera skytteligan (live → Skytteliga-arket) ──────────────────
-    // Widgeten på startsidan (top-scorers) läser detta ark; writern håller det
-    // färskt så att läsvägen förblir billig (ett litet ark, inget API per anrop).
+    // ── 8. Uppdatera skytteligan ────────────────────────────────────────────
     await uppdateraSkytteliga(sheets)
 
   } catch (err) {
