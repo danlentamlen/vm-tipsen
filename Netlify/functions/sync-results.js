@@ -35,17 +35,17 @@ const TOPPLISTA_HEADER = ['user_id', 'namn', 'poäng', 'exakta', 'rätta', 'frå
 const SKYTTELIGA_SHEET = 'Skytteliga'
 const SKYTTELIGA_HEADER = ['Spelare', 'Land', 'Mål']
 
-// ── Skrivpaus 09:00–18:00 svensk tid (CEST = UTC+2) ─────────────────────────
+// ── Skrivpaus 10:00–18:00 svensk tid (CEST = UTC+2) ─────────────────────────
 // VM 2026 spelas i nordamerikanska tidszoner → ingen match pågår eller avgörs
-// förrän tidigast ~18:00 CEST. I fönstret 09–18 CEST gör varje 5-minutersrun
+// förrän tidigast ~18:00 CEST. I fönstret 10–18 CEST gör varje 5-minutersrun
 // bara redundanta skrivningar till Sheets (Topplista/Tips-F/Skytteliga skrivs
 // om även när inget ändrats). Vi pausar därför skrivningarna då för att spara
 // Sheets-kvot och hålla loggen ren. Ren funktion → enkel att enhetstesta.
 // OBS: gäller BARA sync-results; odds-fetch har eget schema (15:00 CEST).
-// 09:00 CEST = 07:00 UTC, 18:00 CEST = 16:00 UTC.
+// 10:00 CEST = 08:00 UTC, 18:00 CEST = 16:00 UTC.
 export function ärSkrivpaus(now = new Date()) {
   const h = now.getUTCHours()
-  return h >= 7 && h < 16
+  return h >= 8 && h < 16
 }
 
 export default async () => {
