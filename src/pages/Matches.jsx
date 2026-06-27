@@ -129,6 +129,10 @@ export default function Matches() {
     hämtaOdds()
     if (gruppspelLåst) hämtaMatchStats()
     if (användare) hämtaMinaTips()
+
+    // Polling var 5:e minut — hämtar uppdaterade lagnamn i knockout-matcher
+    const id = setInterval(hämtaMatcher, 5 * 60 * 1000)
+    return () => clearInterval(id)
   }, [användare])
 
   async function hämtaMatcher() {
