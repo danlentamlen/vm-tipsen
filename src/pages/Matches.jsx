@@ -195,12 +195,18 @@ export default function Matches() {
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
         console.error('[sparaTips] fel:', res.status, err)
+      } else {
+        // Optimistisk uppdatering: undviker race condition där en långsam
+        // hämtaMinaTips()-respons kan skriva över ett nyare tips i UI:t.
+        setMinaTips(prev => ({
+          ...prev,
+          [match_id]: { match_id, hemma_mål: Number(hemma), borta_mål: Number(borta) },
+        }))
       }
     } catch (e) {
       console.error('[sparaTips] nätverksfel:', e)
     } finally {
       setSparar(null)
-      hämtaMinaTips()
     }
   }
 

@@ -1,4 +1,5 @@
 import { getSettings, setSetting } from './_settings.js'
+import { refreshMatcher } from './_lockedData.js'
 
 function verifyAdmin(req) {
   const auth = req.headers.get('authorization')
@@ -24,9 +25,20 @@ export default async (req) => {
     })
   }
 
-  // Uppdatera inställning
+  // Uppdatera inställning eller tvinga cache-invalidering
   if (req.method === 'POST') {
-    const { nyckel, värde } = await req.json()
+    const body = await req.json()
+
+    // Specialåtgärd: töm Matcher-cachen så sheetet läses om direkt
+    if (body.åtgärd === 'refresh-matcher') {
+      await refreshMatcher()
+      return new Response(
+        JSON.stringify({ message: 'Matcher-cache tömd och omladdad' }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      )
+    }
+
+    const { nyckel, värde } = body
     await setSetting(nyckel, värde)
     return new Response(
       JSON.stringify({ message: 'Inställning sparad' }),
