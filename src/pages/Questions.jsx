@@ -25,6 +25,10 @@ const STYLES = `
 
   .q-answered-badge { display:inline-flex; align-items:center; gap:4px; font-family:'Barlow Condensed',sans-serif; font-size:0.68rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; background:rgba(40,160,85,0.12); color:#1a7a40; border:1px solid rgba(40,160,85,0.25); padding:3px 8px; border-radius:20px; white-space:nowrap; flex-shrink:0; }
   .q-unanswered-badge { display:inline-flex; align-items:center; gap:4px; font-family:'Barlow Condensed',sans-serif; font-size:0.68rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; background:rgba(200,16,46,0.06); color:#C8102E; border:1px solid rgba(200,16,46,0.15); padding:3px 8px; border-radius:20px; white-space:nowrap; flex-shrink:0; }
+  .q-rätt-badge  { display:inline-flex; align-items:center; gap:4px; font-family:'Barlow Condensed',sans-serif; font-size:0.68rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; background:rgba(26,122,53,0.12); color:#1a7a35; border:1px solid rgba(26,122,53,0.3); padding:3px 8px; border-radius:20px; white-space:nowrap; flex-shrink:0; }
+  .q-fel-badge   { display:inline-flex; align-items:center; gap:4px; font-family:'Barlow Condensed',sans-serif; font-size:0.68rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; background:rgba(200,16,46,0.08); color:#C8102E; border:1px solid rgba(200,16,46,0.2); padding:3px 8px; border-radius:20px; white-space:nowrap; flex-shrink:0; }
+  .q-card.rätt { border-left-color: #1a7a35; background: linear-gradient(to right, rgba(26,122,53,0.04), #fff 60px); }
+  .q-card.fel   { border-left-color: #C8102E; background: linear-gradient(to right, rgba(200,16,46,0.04), #fff 60px); }
 
   .q-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 1rem; }
   .q-question { font-family: 'Barlow', sans-serif; font-size: 0.98rem; font-weight: 500; color: #0a1628; line-height: 1.5; flex: 1; }
@@ -220,6 +224,7 @@ function FrågeKort({ fråga, lag, inloggad, tipsLåst, sparar, nySparad, onSpar
 
   const harSvarat     = !!fråga.mitt_svar
   const rättSvarVisat = fråga.har_rätt_svar
+  const ärRätt        = fråga.är_rätt  // true | false | null
 
   // Frågetext — visa på rätt språk
   const frågetext = (språk === 'en' && fråga.fråga_en) ? fråga.fråga_en : fråga.fråga
@@ -356,16 +361,25 @@ function FrågeKort({ fråga, lag, inloggad, tipsLåst, sparar, nySparad, onSpar
     )
   }
 
+  // Kortets kantfärg — rätt/fel slår igenom om känt, annars grön om besvarat
+  const kortKlass = ärRätt === true
+    ? 'answered rätt'
+    : ärRätt === false
+      ? 'answered fel'
+      : harSvarat ? 'answered' : ''
+
   return (
     <div
-      className={`q-card ${onKlick ? 'clickable' : ''} ${harSvarat ? 'answered' : ''}`}
+      className={`q-card ${onKlick ? 'clickable' : ''} ${kortKlass}`}
       onClick={onKlick || undefined}
     >
       <div className="q-card-top">
         <p className="q-question">{frågetext}</p>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
           <span className="q-points-badge">{fråga.poäng}p</span>
-          {inloggad && (
+          {inloggad && ärRätt === true  && <span className="q-rätt-badge">✅ Rätt! +{fråga.poäng}p</span>}
+          {inloggad && ärRätt === false && <span className="q-fel-badge">❌ Fel</span>}
+          {inloggad && ärRätt === null && (
             harSvarat
               ? <span className="q-answered-badge">✓ {t('questions.sparat') || 'Sparat'}</span>
               : !tipsLåst && <span className="q-unanswered-badge">! {t('questions.ej_besvarat') || 'Ej besvarat'}</span>

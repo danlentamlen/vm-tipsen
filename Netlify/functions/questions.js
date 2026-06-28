@@ -41,17 +41,32 @@ export default async (req) => {
         })
     }
 
-    const resultat = frågor.map((rad) => ({
-      fråga_id:     rad[0],
-      fråga:        rad[1],
-      poäng:        parseInt(rad[2]) || 0,
-      typ:          (rad[3] || '').split('|')[0] || 'text',
-      har_rätt_svar: false,
-      mitt_svar:    minaSvar[rad[0]] || null,
-      // Engelska fält — null om de inte är ifyllda i sheetet
-      fråga_en:     (rad[5] || '').trim() || null,
-      typ_en:       (rad[6] || '').trim() || null,
-    }))
+    const resultat = frågor.map((rad) => {
+      const rättSvarRaw = (rad[4] || '').trim()
+      const rättaSvar   = rättSvarRaw
+        ? rättSvarRaw.split(';').map((s) => s.trim().toLowerCase()).filter(Boolean)
+        : []
+      const mittSvar    = minaSvar[rad[0]] || null
+      const harRättSvar = rättaSvar.length > 0
+
+      // är_rätt: true/false om facit finns + användaren har svarat, annars null
+      let ärRätt = null
+      if (harRättSvar && mittSvar) {
+        ärRätt = rättaSvar.includes(mittSvar.trim().toLowerCase())
+      }
+
+      return {
+        fråga_id:      rad[0],
+        fråga:         rad[1],
+        poäng:         parseInt(rad[2]) || 0,
+        typ:           (rad[3] || '').split('|')[0] || 'text',
+        har_rätt_svar: harRättSvar,
+        mitt_svar:     mittSvar,
+        är_rätt:       ärRätt,   // true | false | null
+        fråga_en:      (rad[5] || '').trim() || null,
+        typ_en:        (rad[6] || '').trim() || null,
+      }
+    })
 
     return new Response(JSON.stringify(resultat), {
       status: 200,
