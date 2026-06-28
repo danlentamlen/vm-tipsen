@@ -61,7 +61,14 @@ describe('byggFrågorMap', () => {
       ['f1', 'Vem vinner?', '10', 'typ', 'Sverige'],
       ['f2', 'Tom fråga', '5', 'typ', ''], // saknar rätt svar → ignoreras
     ])
-    expect(map).toEqual({ f1: { poäng: 10, rätt_svar: 'sverige' } })
+    expect(map).toEqual({ f1: { poäng: 10, rätt_svar: ['sverige'] } })
+  })
+
+  it('stödjer semikolonseparerade rätta svar', () => {
+    const map = byggFrågorMap([
+      ['f1', 'Flest mål?', '5', 'typ', 'Germany; Netherlands'],
+    ])
+    expect(map.f1.rätt_svar).toEqual(['germany', 'netherlands'])
   })
 })
 

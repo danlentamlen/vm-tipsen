@@ -94,6 +94,8 @@ export function byggAnvändarMap(användareRader = []) {
 }
 
 // Frågor-arket: A=id, C(idx 2)=poäng, E(idx 4)=rätt_svar
+// rätt_svar kan vara semikolonseparerat för att stödja flera godkända svar,
+// t.ex. "Germany; Netherlands" om två lag delar förstaplatsen.
 export function byggFrågorMap(frågorRader = []) {
   const map = {}
   frågorRader.forEach((rad) => {
@@ -101,8 +103,8 @@ export function byggFrågorMap(frågorRader = []) {
     const rättSvar = (rad[4] || '').trim()
     if (rättSvar) {
       map[rad[0]] = {
-        poäng:     parseInt(rad[2]) || 0,
-        rätt_svar: rättSvar.toLowerCase(),
+        poäng:      parseInt(rad[2]) || 0,
+        rätt_svar:  rättSvar.split(';').map((s) => s.trim().toLowerCase()).filter(Boolean),
       }
     }
   })
@@ -177,7 +179,7 @@ export function beräknaTopplista({
     const user_id = rad && rad[1]
     const svar    = rad && rad[3]?.trim().toLowerCase()
     const fråga   = frågorMap[rad && rad[2]]
-    if (!fråga || !svar || svar !== fråga.rätt_svar) return
+    if (!fråga || !svar || !fråga.rätt_svar.includes(svar)) return
     init(user_id)
     poängMap[user_id].poäng      += fråga.poäng
     poängMap[user_id].frågepoäng += fråga.poäng
@@ -398,7 +400,7 @@ export function byggBettingöversikt({
           svar: svarText,
           antal,
           procent: totalt ? Math.round((antal / totalt) * 100) : 0,
-          rätt: facit != null && svarText.toLowerCase() === facit.toLowerCase(),
+          rätt: facit != null && facit.split(';').map((s) => s.trim().toLowerCase()).includes(svarText.toLowerCase()),
         }))
         .sort((a, b) => b.antal - a.antal || (a.svar < b.svar ? -1 : 1))
 
