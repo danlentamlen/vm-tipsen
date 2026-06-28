@@ -58,9 +58,9 @@ const FÖREGÅENDE_OMGÅNG = {
 /**
  * Räknar ut om en match är låst baserat på klockan och kända resultat:
  * - Gruppspel:   låst om nu >= GRUPPSPEL_DEADLINE
- * - Round of 32: öppnar direkt när gruppspelet låsts, låser 4h innan start
+ * - Round of 32: öppnar direkt när gruppspelet låsts, låser 2h innan start
  * - R16 och senare: öppnar så snart FÖRSTA matchen från föregående omgång
- *                   har ett resultat i Resultat-arket, låser 4h innan start
+ *                   har ett resultat i Resultat-arket, låser 2h innan start
  *
  * @param {object}   match        - { match_id, datum, tid, omgång, grupp }
  * @param {object[]} allaMatcher  - alla matcher (för tidsberäkningar)
@@ -78,7 +78,7 @@ export function ärMatchLåst(match, allaMatcher, resultatRader = []) {
   // Slutspelsmatch — alltid låst tills gruppspelet är låst
   if (!gruppspelLåst()) return true
 
-  // Lås 4h innan omgångens första match (gäller alla slutspelsomgångar)
+  // Lås 2h innan omgångens första match (gäller alla slutspelsomgångar)
   const omgångsMatcher = allaMatcher.filter((m) => m.omgång === match.omgång)
   const sorterade = omgångsMatcher
     .map((m) => ({ ...m, startTid: parseMatchTid(m.datum, m.tid) }))
@@ -86,7 +86,7 @@ export function ärMatchLåst(match, allaMatcher, resultatRader = []) {
     .sort((a, b) => a.startTid - b.startTid)
 
   if (sorterade.length > 0) {
-    const lockDeadline = new Date(sorterade[0].startTid.getTime() - 4 * 60 * 60 * 1000)
+    const lockDeadline = new Date(sorterade[0].startTid.getTime() - 2 * 60 * 60 * 1000)
     if (nu >= lockDeadline) return true
   }
 

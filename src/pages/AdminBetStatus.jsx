@@ -20,7 +20,7 @@ const KNOCKOUT_ROUNDS = [
 ]
 
 const ROUND_LABELS_SV = {
-  'Round of 32':           'Omg. 32',
+  'Round of 32':           'Sexton',
   'Round of 16':           'Åttondel',
   'Quarter-final':         'Kvart',
   'Semi-final':            'Semi',
@@ -29,12 +29,12 @@ const ROUND_LABELS_SV = {
 }
 
 const ROUND_DEADLINES = {
-  'Round of 32':           '29 jun ~20:00',
-  'Round of 16':           '7 jul ~20:00',
-  'Quarter-final':         '11 jul ~20:00',
-  'Semi-final':            '14 jul ~20:00',
-  'Match for third place': '18 jul ~19:00',
-  'Final':                 '19 jul ~17:00',
+  'Round of 32':           '29 jun ~19:00',
+  'Round of 16':           '7 jul ~18:00',
+  'Quarter-final':         '11 jul ~18:00',
+  'Semi-final':            '14 jul ~18:00',
+  'Match for third place': '18 jul ~17:00',
+  'Final':                 '19 jul ~15:00',
 }
 
 const STYLES = `
@@ -178,6 +178,7 @@ export default function AdminBetStatus() {
   const [harLaddat, setHarLaddat]     = useState(false)
   const [selected, setSelected]       = useState(new Set())
   const [sending, setSending]         = useState(null)
+  const [tömmerCache, setTömmerCache] = useState(false)
   const [toast, setToast]             = useState(null)
 
   function visaToast(text, ms = 3500) {
@@ -273,6 +274,40 @@ export default function AdminBetStatus() {
     }
   }
 
+  async function sendReminderAll(round) {
+    const key = `all:${round}`
+    setSending(key)
+    try {
+      const res = await fetch('/.netlify/functions/admin-reminder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminSecret}` },
+        body: JSON.stringify({ all: true, type: 'knockout', round }),
+      })
+      const d = await res.json()
+      visaToast(res.ok ? `📧 ${d.message}` : `❌ ${d.error || 'Fel'}`)
+    } catch {
+      visaToast('❌ Kunde inte skicka påminnelse')
+    } finally {
+      setSending(null)
+    }
+  }
+
+  async function tömCache() {
+    setTömmerCache(true)
+    try {
+      const res = await fetch('/.netlify/functions/admin-cache', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${adminSecret}` },
+      })
+      const d = await res.json()
+      visaToast(res.ok ? `✅ ${d.message}` : `❌ ${d.error || 'Fel'}`)
+    } catch {
+      visaToast('❌ Kunde inte tömma cache')
+    } finally {
+      setTömmerCache(false)
+    }
+  }
+
   function avgKnockout(round) {
     if (!data) return null
     const vals = filteredStats
@@ -324,6 +359,15 @@ export default function AdminBetStatus() {
         <div className="abs-top">
           <button className="abs-refresh-btn" onClick={hämta} disabled={laddar}>
             {laddar ? '⏳ Laddar...' : (harLaddat ? '↻ Uppdatera' : '▶ Hämta status')}
+          </button>
+          <button
+            className="abs-refresh-btn"
+            onClick={tömCache}
+            disabled={tömmerCache}
+            style={{ background:'linear-gradient(135deg,#5a3e8a,#7a52b5)' }}
+            title="Tvingar omläsning av Frågor, FrågorSvar, Användare och Viner från Google Sheets"
+          >
+            {tömmerCache ? '⏳ Tömmer...' : '🗑️ Töm cache'}
           </button>
           <button className="abs-logout-btn" onClick={logga_ut}>Logga ut</button>
         </div>
@@ -446,15 +490,25 @@ export default function AdminBetStatus() {
                             {avg !== null ? `${avg}%` : '—'}
                           </div>
                           <div className="abs-ko-sub">snitt tippat · {matchCount} matcher</div>
-                          <button
-                            className="abs-ko-remind"
-                            disabled={selected.size === 0 || sending === sendKey}
-                            onClick={() => sendReminder('knockout', rond)}
-                          >
-                            {sending === sendKey
-                              ? '📧 Skickar…'
-                              : `📧 Påminn${selected.size > 0 ? ` (${selected.size})` : ''}`}
-                          </button>
+                          <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginTop:4 }}>
+                            <button
+                              className="abs-ko-remind"
+                              disabled={selected.size === 0 || sending === sendKey}
+                              onClick={() => sendReminder('knockout', rond)}
+                            >
+                              {sending === sendKey
+                                ? '📧 Skickar…'
+                                : `📧 Påminn${selected.size > 0 ? ` (${selected.size})` : ''}`}
+                            </button>
+                            <button
+                              className="abs-ko-remind"
+                              disabled={sending === `all:${rond}`}
+                              onClick={() => sendReminderAll(rond)}
+                              style={{ background:'linear-gradient(135deg,#C8102E,#e01535)' }}
+                            >
+                              {sending === `all:${rond}` ? '📧 Skickar…' : '📧 Påminn alla'}
+                            </button>
+                          </div>
                         </>
                       )}
                     </div>

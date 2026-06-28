@@ -42,7 +42,7 @@ function wrap(content) {
 }
 
 const ROUND_LABELS = {
-  'Round of 32':           'Omgång 32',
+  'Round of 32':           'Sextondelsfinalerna',
   'Round of 16':           'Åttondelsfinaler',
   'Quarter-final':         'Kvartsfinaler',
   'Semi-final':            'Semifinaler',
@@ -50,14 +50,14 @@ const ROUND_LABELS = {
   'Final':                 'Final',
 }
 
-// Deadlines in CEST — 4h before first match of each round (approximate display values)
+// Deadlines in CEST — 2h before first match of each round (approximate display values)
 const ROUND_DEADLINES = {
-  'Round of 32':           '29 juni, ca 20:00',
-  'Round of 16':           '7 juli, ca 20:00',
-  'Quarter-final':         '11 juli, ca 20:00',
-  'Semi-final':            '14 juli, ca 20:00',
-  'Match for third place': '18 juli, ca 19:00',
-  'Final':                 '19 juli, ca 17:00',
+  'Round of 32':           '29 juni, ca 19:00',
+  'Round of 16':           '7 juli, ca 18:00',
+  'Quarter-final':         '11 juli, ca 18:00',
+  'Semi-final':            '14 juli, ca 18:00',
+  'Match for third place': '18 juli, ca 17:00',
+  'Final':                 '19 juli, ca 15:00',
 }
 
 function groupReminderMail(namn) {
@@ -129,7 +129,7 @@ function knockoutReminderMail(namn, round) {
       <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:10px;padding:16px;margin:20px 0">
         <p style="font-size:0.7rem;font-weight:600;letter-spacing:0.15em;text-transform:uppercase;color:#856404;margin:0 0 8px;font-family:sans-serif">⏰ Deadline</p>
         <p style="color:#0a1628;font-weight:700;font-size:1.1rem;margin:0">${deadline} (CEST)</p>
-        <p style="color:#777;font-size:0.82rem;margin:4px 0 0">Tips låses 4 timmar innan den första matchen i omgången.</p>
+        <p style="color:#777;font-size:0.82rem;margin:4px 0 0">Tips låses 2 timmar innan den första matchen i omgången.</p>
       </div>
 
       <p style="color:#555;line-height:1.7;font-size:0.9rem">
@@ -162,10 +162,10 @@ export default async (req) => {
   }
 
   try {
-    const { user_ids, type, round } = await req.json()
+    const { user_ids, all, type, round } = await req.json()
 
-    if (!Array.isArray(user_ids) || user_ids.length === 0) {
-      return new Response(JSON.stringify({ error: 'Inga mottagare angivna' }), {
+    if (!all && (!Array.isArray(user_ids) || user_ids.length === 0)) {
+      return new Response(JSON.stringify({ error: 'Ange antingen { all: true } eller { user_ids: [...] }' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
       })
@@ -188,13 +188,15 @@ export default async (req) => {
     const sheets = await getSheets()
     const användareRader = await getRows(sheets, 'Användare!A2:C1000')
 
+    // Om all:true — skicka till samtliga användare med e-post
+    const målIds = all === true
+      ? new Set(användareRader.map((r) => r[0]).filter(Boolean))
+      : new Set(user_ids)
+
     const results = []
-    for (const uid of user_ids) {
-      const rad = användareRader.find((r) => r[0] === uid)
-      if (!rad) {
-        results.push({ user_id: uid, ok: false, error: 'Användare ej hittad' })
-        continue
-      }
+    for (const rad of användareRader) {
+      const uid = rad[0]
+      if (!uid || !målIds.has(uid)) continue
       const namn = rad[1]
       const email = rad[2]
       if (!email) {
@@ -217,7 +219,7 @@ export default async (req) => {
 
     const skickade = results.filter((r) => r.ok).length
     return new Response(
-      JSON.stringify({ message: `${skickade}/${user_ids.length} mail skickade`, results }),
+      JSON.stringify({ message: `${skickade}/${results.length} mail skickade`, results }),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     )
   } catch (err) {
