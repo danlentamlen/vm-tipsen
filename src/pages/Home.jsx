@@ -187,6 +187,9 @@ const DASHBOARD_STYLES = `
   .lb-name { flex:1; font-family:'Barlow',sans-serif; font-size:.88rem; font-weight:500; color:#0a1628; }
   .lb-pts { font-family:'Barlow Condensed',sans-serif; font-size:.95rem; font-weight:700; color:#0a1628; }
   .lb-pts-lbl { font-family:'Barlow Condensed',sans-serif; font-size:.62rem; color:#aaa; margin-left:2px; }
+  .lb-pts-wrap { text-align:right; }
+  .lb-pts-breakdown { display:flex; gap:5px; justify-content:flex-end; margin-top:1px; }
+  .lb-pts-chip { font-family:'Barlow Condensed',sans-serif; font-size:.62rem; font-weight:700; color:#bbb; white-space:nowrap; }
 
   /* ── Skytteligan ── */
   .sk-podium { display:grid; grid-template-columns:1fr 1fr; gap:.75rem; margin-bottom:.75rem; }
@@ -853,7 +856,13 @@ export default function Home() {
                     <span className={`lb-rank${i < 3 ? ' top3' : ''}`}>{i + 1}</span>
                     <div className={`lb-avatar${ärJag ? ' me' : ''}`}>{initials(rad.namn)}</div>
                     <span className="lb-name">{rad.namn}{ärJag ? ' (du)' : ''}</span>
-                    <span className="lb-pts">{rad.poäng}<span className="lb-pts-lbl"> p</span></span>
+                    <div className="lb-pts-wrap">
+                      <span className="lb-pts">{rad.poäng}<span className="lb-pts-lbl"> p</span></span>
+                      <div className="lb-pts-breakdown">
+                        <span className="lb-pts-chip">⚽ {(rad.poäng ?? 0) - (rad.frågepoäng ?? 0)}p</span>
+                        <span className="lb-pts-chip">🎯 {rad.frågepoäng ?? 0}p</span>
+                      </div>
+                    </div>
                     <span className="lb-chevron" aria-hidden="true">›</span>
                   </Link>
                 )

@@ -22,6 +22,8 @@ const STYLES = `
   .lb-namn.mig { color:var(--c-röd); }
   .lb-poäng  { font-family:var(--font-bred); font-size:1.1rem; font-weight:700; color:var(--c-text); }
   .lb-poäng-lbl { font-size:.72rem; color:var(--c-text-4); margin-left:3px; }
+  .lb-breakdown { display:flex; gap:6px; justify-content:flex-end; margin-top:2px; }
+  .lb-breakdown-chip { font-family:var(--font-bred); font-size:.65rem; font-weight:700; letter-spacing:.04em; color:var(--c-text-4); white-space:nowrap; }
   .lb-legend { display:flex; gap:1rem; flex-wrap:wrap; margin-top:1.25rem; padding-top:1rem; border-top:1px solid rgba(0,0,0,.06); }
   .lb-legend-post { display:flex; align-items:center; gap:6px; font-size:.78rem; color:#666; }
   .lb-legend-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
@@ -92,7 +94,15 @@ export default function Leaderboard() {
             <span className={`lb-namn${ärJag ? ' mig' : ''}`}>
               {rad.namn}{ärJag && ` ${t('leaderboard.du')}`}
             </span>
-            <span className="lb-poäng">{rad.poäng ?? 0}<span className="lb-poäng-lbl">p</span></span>
+            <div style={{ textAlign:'right' }}>
+              <span className="lb-poäng">{rad.poäng ?? 0}<span className="lb-poäng-lbl">p</span></span>
+              {(rad.frågepoäng > 0 || rad.poäng > 0) && (
+                <div className="lb-breakdown">
+                  <span className="lb-breakdown-chip">⚽ {(rad.poäng ?? 0) - (rad.frågepoäng ?? 0)}p</span>
+                  <span className="lb-breakdown-chip">🎯 {rad.frågepoäng ?? 0}p</span>
+                </div>
+              )}
+            </div>
           </>
         )
         // Klickbar rad → deltagarens sida med tipsen. Faller tillbaka till en
