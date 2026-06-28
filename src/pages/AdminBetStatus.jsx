@@ -135,6 +135,13 @@ const STYLES = `
   .abs-legend { display:flex; gap:1rem; flex-wrap:wrap; margin-top:.75rem; font-family:'Barlow',sans-serif; font-size:.7rem; color:#aaa; }
   .abs-legend-hint { margin-left:auto; }
 
+  /* Delete user */
+  .abs-delete-row { display:flex; align-items:center; gap:.75rem; flex-wrap:wrap; }
+  .abs-delete-input { flex:1; min-width:240px; padding:9px 12px; font-family:'Barlow',sans-serif; font-size:.85rem; border:1.5px solid rgba(0,0,0,.12); border-radius:8px; outline:none; box-sizing:border-box; }
+  .abs-delete-input:focus { border-color:#C8102E; }
+  .abs-delete-confirm { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; margin-top:.625rem; background:rgba(200,16,46,.06); border:1px solid rgba(200,16,46,.2); border-radius:8px; padding:.75rem 1rem; }
+  .abs-delete-warn { font-family:'Barlow',sans-serif; font-size:.82rem; color:#8a1020; flex:1; min-width:160px; }
+
   /* Toast */
   .abs-toast { position:fixed; bottom:2rem; left:50%; transform:translateX(-50%); background:#0a1628; color:#F0D060; font-family:'Barlow Condensed',sans-serif; font-size:.9rem; font-weight:700; letter-spacing:.08em; padding:.875rem 1.75rem; border-radius:100px; box-shadow:0 8px 24px rgba(0,0,0,.25); z-index:999; white-space:nowrap; }
 
@@ -178,8 +185,11 @@ export default function AdminBetStatus() {
   const [harLaddat, setHarLaddat]     = useState(false)
   const [selected, setSelected]       = useState(new Set())
   const [sending, setSending]         = useState(null)
-  const [tömmerCache, setTömmerCache] = useState(false)
-  const [toast, setToast]             = useState(null)
+  const [tömmerCache, setTömmerCache]   = useState(false)
+  const [deleteUserId, setDeleteUserId] = useState('')
+  const [deletingUser, setDeletingUser] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState(false)
+  const [toast, setToast]               = useState(null)
 
   function visaToast(text, ms = 3500) {
     setToast(text)
@@ -289,6 +299,25 @@ export default function AdminBetStatus() {
       visaToast('❌ Kunde inte skicka påminnelse')
     } finally {
       setSending(null)
+    }
+  }
+
+  async function taBortAnvändare() {
+    if (!deleteUserId.trim()) return
+    setDeletingUser(true)
+    try {
+      const res = await fetch('/.netlify/functions/admin-delete-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminSecret}` },
+        body: JSON.stringify({ user_id: deleteUserId.trim() }),
+      })
+      const d = await res.json()
+      visaToast(res.ok ? `✅ ${d.message}` : `❌ ${d.error || 'Fel'}`)
+      if (res.ok) { setDeleteUserId(''); setDeleteConfirm(false) }
+    } catch {
+      visaToast('❌ Kunde inte ta bort tips')
+    } finally {
+      setDeletingUser(false)
     }
   }
 
@@ -573,7 +602,41 @@ export default function AdminBetStatus() {
             </div>
           </>
         )}
-      </div>
+
+        {/* ── Ta bort användares tips ─────────────── */}
+        <div className="abs-card">
+          <p className="abs-card-title">🗑️ Ta bort användares tips</p>
+          <p style={{ fontFamily:"'Barlow',sans-serif", fontSize:'.82rem', color:'#888', margin:'0 0 .875rem' }}>
+            Raderar alla matchningar och frågesvar för angiven user_id från Tips- och FrågorSvar-sheeten.
+          </p>
+          <div className="abs-delete-row">
+            <input
+              className="abs-delete-input"
+              placeholder="user_id (t.ex. 550e8400-e29b-…)"
+              value={deleteUserId}
+              onChange={(e) => { setDeleteUserId(e.target.value); setDeleteConfirm(false) }}
+            />
+            <button
+              className="abs-remind-btn primary"
+              disabled={!deleteUserId.trim() || deletingUser}
+              onClick={() => setDeleteConfirm(true)}
+            >
+              Ta bort tips
+            </button>
+          </div>
+          {deleteConfirm && (
+            <div className="abs-delete-confirm">
+              <span className="abs-delete-warn">
+                ⚠️ Alla tips + frågesvar för <strong>{deleteUserId}</strong> raderas permanent.
+              </span>
+              <button className="abs-remind-btn primary" disabled={deletingUser} onClick={taBortAnvändare}>
+                {deletingUser ? '⏳ Tar bort…' : 'Ja, ta bort'}
+              </button>
+              <button className="abs-remind-btn outline" onClick={() => setDeleteConfirm(false)}>Avbryt</button>
+            </div>
+          )}
+        </div>
+      </div>{/* abs-wrap */}
 
       {toast && <div className="abs-toast">{toast}</div>}
     </>

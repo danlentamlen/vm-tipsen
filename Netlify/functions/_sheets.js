@@ -94,6 +94,43 @@ export async function overwriteRange(sheets, sheetTitle, values) {
   })
 }
 
+// ── Radborttagning ─────────────────────────────────────────────────────────
+// Tar bort specifika rader (0-baserade sheetsindexar) från ett sheet.
+// rowIndexes = nollbaserade radsiffror inom sheetet (0 = rubrikrad).
+// Sorterar fallande automatiskt så överstående raderingar inte förskjuter.
+export async function deleteRows(sheets, sheetId, rowIndexes) {
+  if (rowIndexes.length === 0) return
+  const sorted = [...new Set(rowIndexes)].sort((a, b) => b - a)
+  const requests = sorted.map((idx) => ({
+    deleteDimension: {
+      range: {
+        sheetId,
+        dimension: 'ROWS',
+        startIndex: idx,
+        endIndex: idx + 1,
+      },
+    },
+  }))
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId: SHEET_ID,
+    requestBody: { requests },
+  })
+}
+
+// Hämtar numeriska sheet-id:n (behövs för batchUpdate).
+// Returnerar ett objekt { 'Tips': 123, 'FrågorSvar': 456, ... }
+export async function getSheetIds(sheets) {
+  const meta = await sheets.spreadsheets.get({
+    spreadsheetId: SHEET_ID,
+    fields: 'sheets.properties',
+  })
+  const ids = {}
+  for (const s of meta.data.sheets || []) {
+    ids[s.properties.title] = s.properties.sheetId
+  }
+  return ids
+}
+
 // Skriver en enda kolumn (t.ex. matchpoäng på Tips) i ett anrop.
 export async function writeColumn(sheets, range, columnValues) {
   await sheets.spreadsheets.values.update({
