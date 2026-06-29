@@ -15,6 +15,7 @@ import { getSheets, getRows, ensureSheet, overwriteRange } from './_sheets.js'
 import { refreshLockedSnapshot } from './_lockedData.js'
 import { beräknaTopplista } from './_scoring.js'
 import { setCached } from './_persistentCache.js'
+import { clearAll as clearMemoryCache } from './_cache.js'
 
 const TOPPLISTA_HEADER = ['user_id', 'namn', 'poäng', 'exakta', 'rätta', 'frågepoäng', 'plats', 'uppdaterad']
 
@@ -36,7 +37,8 @@ export default async (req) => {
   }
 
   try {
-    // 1. Töm cache och läs om Frågor, FrågorSvar, Användare, Viner från Sheets
+    // 1. Töm persistent cache + in-memory cache (inkl. participant-profiler)
+    clearMemoryCache()
     const { användare, frågor, frågorSvar, viner } = await refreshLockedSnapshot()
 
     // 2. Hämta aktuella resultat och tips

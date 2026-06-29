@@ -1,5 +1,6 @@
-import { getSheets, getRows, getMultipleRanges } from './_sheets.js'
+import { getSheets, getMultipleRanges } from './_sheets.js'
 import { withCache } from './_cache.js'
+import { getLockedSnapshot } from './_lockedData.js'
 import { räknaMatchPoäng, dedupliceraTips, dedupliceraSvar } from './_scoring.js'
 import jwt from 'jsonwebtoken'
 
@@ -56,16 +57,21 @@ export default async (req) => {
     const profil = await withCache(`participant:${user_id}`, PROFILE_TTL, async () => {
       const sheets = await getSheets()
 
-      // One batchGet for all five ranges
-      const [användareRader, matcherRader, resultatRader, tipsRader, frågorRader, frågorSvarRader] =
+      // Frågor, FrågorSvar och Användare hämtas ur låst snapshot (delas med topplistan,
+      // invalideras av admin-cache → rätt_svar syns direkt efter cache-refresh).
+      const { frågor: frågorRader, frågorSvar: allFrågorSvarRader, användare: allAnvändareRader } =
+        await getLockedSnapshot()
+
+      // Matcher, Resultat och Tips läses direkt — de uppdateras löpande.
+      const [matcherRader, resultatRader, tipsRader] =
         await getMultipleRanges(sheets, [
-          'Användare!A2:B10000000',
           'Matcher!A2:H10000000',
           'Resultat!A2:D10000000',
           'Tips!A2:E100000',
-          'Frågor!A2:E10000000',
-          'FrågorSvar!A2:D10000000',
         ])
+
+      const användareRader = allAnvändareRader
+      const frågorSvarRader = allFrågorSvarRader
 
       const användareRad = användareRader.find((r) => r[0] === user_id)
       if (!användareRad) return null
