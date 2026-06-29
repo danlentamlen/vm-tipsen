@@ -134,6 +134,25 @@ export function parseMatchTid(datum, tid) {
 }
 
 /**
+ * Beräknar lås-deadline för en slutspelsomgång:
+ * 2 timmar innan den tidigaste matchen i omgången.
+ *
+ * @param {string}   omgång       - t.ex. 'Round of 16'
+ * @param {object[]} allaMatcher  - alla matcher med datum + tid
+ * @returns {Date|null}           - deadline-tidpunkt, eller null om inga matcher hittades
+ */
+export function beräknaOmgångsDeadline(omgång, allaMatcher) {
+  const omgångsMatcher = allaMatcher
+    .filter((m) => m.omgång === omgång)
+    .map((m) => ({ ...m, startTid: parseMatchTid(m.datum, m.tid) }))
+    .filter((m) => m.startTid !== null)
+    .sort((a, b) => a.startTid - b.startTid)
+
+  if (omgångsMatcher.length === 0) return null
+  return new Date(omgångsMatcher[0].startTid.getTime() - 2 * 60 * 60 * 1000)
+}
+
+/**
  * Returnerar en map: match_id -> boolean (låst eller ej)
  * Används av settings.js endpoint för att skicka till frontend.
  *

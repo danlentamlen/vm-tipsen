@@ -14,6 +14,8 @@
  */
 import { getSheets, getRows } from './_sheets.js'
 import { skickaMail } from './_mail.js'
+import { getMatcher } from './_lockedData.js'
+import { beräknaOmgångsDeadline } from './_settings.js'
 
 function verifyAdmin(req) {
   const auth = req.headers.get('authorization')
@@ -50,14 +52,16 @@ const ROUND_LABELS = {
   'Final':                 'Final',
 }
 
-// Deadlines in CEST — 2h before first match of each round (approximate display values)
-const ROUND_DEADLINES = {
-  'Round of 32':           '29 juni, ca 19:00',
-  'Round of 16':           '7 juli, ca 18:00',
-  'Quarter-final':         '11 juli, ca 18:00',
-  'Semi-final':            '14 juli, ca 18:00',
-  'Match for third place': '18 juli, ca 17:00',
-  'Final':                 '19 juli, ca 15:00',
+/**
+ * Formaterar en Date till "d MMMM HH:MM" på svenska i CEST-tid.
+ * Exempel: new Date('2026-07-07T22:00Z') → "7 juli 20:00"
+ */
+function formateraDeadline(date) {
+  if (!date) return 'se hemsidan'
+  const opts = { timeZone: 'Europe/Stockholm' }
+  const dag = new Intl.DateTimeFormat('sv-SE', { ...opts, day: 'numeric', month: 'long' }).format(date)
+  const tid = new Intl.DateTimeFormat('sv-SE', { ...opts, hour: '2-digit', minute: '2-digit' }).format(date)
+  return `${dag} ${tid}`
 }
 
 function groupReminderMail(namn) {
@@ -113,10 +117,9 @@ function groupReminderMail(namn) {
   }
 }
 
-function knockoutReminderMail(namn, round) {
+function knockoutReminderMail(namn, round, deadline) {
   const förnamn = namn.split(' ')[0]
   const roundLabel = ROUND_LABELS[round] || round
-  const deadline = ROUND_DEADLINES[round] || 'se hemsidan'
   return {
     subject: `⏰ Tipsen för ${roundLabel} stänger snart!`,
     html: wrap(`
@@ -188,6 +191,18 @@ export default async (req) => {
     const sheets = await getSheets()
     const användareRader = await getRows(sheets, 'Användare!A2:C1000')
 
+    // Beräkna knockout-deadline dynamiskt från matchdata
+    let knockoutDeadlineStr = 'se hemsidan'
+    if (type === 'knockout') {
+      const matchRader = await getMatcher()
+      const allaMatcher = matchRader.map((r) => ({
+        match_id: r[0], datum: r[1], tid: r[2],
+        hemmalag: r[3], bortalag: r[4], grupp: r[5], omgång: r[6],
+      }))
+      const deadline = beräknaOmgångsDeadline(round, allaMatcher)
+      knockoutDeadlineStr = formateraDeadline(deadline)
+    }
+
     // Om all:true — skicka till samtliga användare med e-post
     const målIds = all === true
       ? new Set(användareRader.map((r) => r[0]).filter(Boolean))
@@ -207,7 +222,7 @@ export default async (req) => {
       const { subject, html } =
         type === 'group'
           ? groupReminderMail(namn)
-          : knockoutReminderMail(namn, round)
+          : knockoutReminderMail(namn, round, knockoutDeadlineStr)
 
       try {
         await skickaMail(email, subject, html)
