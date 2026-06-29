@@ -171,12 +171,24 @@ function FrågaKort({ f, t, språk }) {
   )
 }
 
+const SLUTSPELS_OMGÅNG_ORDNING = [
+  'Round of 32', 'Round of 16', 'Quarter-final', 'Semi-final', 'Match for third place', 'Final',
+]
+const SLUTSPELS_OMGÅNG_LABEL = {
+  'Round of 32': 'Omg. 32',
+  'Round of 16': 'Omg. 16',
+  'Quarter-final': 'Kvartsfinaler',
+  'Semi-final': 'Semifinaler',
+  'Match for third place': 'Bronsmatch',
+  'Final': 'Final',
+}
+
 export default function BetOverview() {
   const [data, setData]   = useState(null)
   const [laddar, setLaddar] = useState(true)
   const [fel, setFel]     = useState(null)
   const [låst, setLåst]   = useState(false)
-  const [sektion, setSektion]   = useState('allt')   // 'allt' | 'grupp' | 'frågor'
+  const [sektion, setSektion]   = useState('allt')   // 'allt' | 'grupp' | 'slutspel' | 'frågor'
   const [valdGrupp, setValdGrupp] = useState(null)    // null = alla grupper
   const [sortering, setSortering] = useState('grupp') // 'grupp' | 'datum'
   const { t, språk }      = useLanguage()
@@ -224,32 +236,47 @@ export default function BetOverview() {
     </div></>
   )
 
-  const matcher = data?.matcher || []
-  const frågor  = data?.frågor || []
+  const allaMatcher = data?.matcher || []
+  const frågor      = data?.frågor || []
+
+  // Dela upp i gruppspel och slutspel
+  const gruppspelsMatcher = allaMatcher.filter((m) => m.grupp !== 'Slutspel')
+  const slutspelsMatcher  = allaMatcher.filter((m) => m.grupp === 'Slutspel')
+
+  const harSlutspel = slutspelsMatcher.length > 0
+  const harGruppspel = gruppspelsMatcher.length > 0
 
   const gruppRubrik = (g) => (/^[A-L]$/i.test(g) ? `${t('betOverview.grupp')} ${g.toUpperCase()}` : g)
   const kortGrupp  = (g) => (/^[A-L]$/i.test(g) ? g.toUpperCase() : g)
 
-  // Unika grupper i serverordning (= kronologisk) för filterchipsen.
+  // Unika grupper (bara gruppspel) för filterchipsen.
   const gruppLista = []
-  matcher.forEach((m) => { if (!gruppLista.includes(m.grupp)) gruppLista.push(m.grupp) })
+  gruppspelsMatcher.forEach((m) => { if (!gruppLista.includes(m.grupp)) gruppLista.push(m.grupp) })
 
-  const visaMatcher = sektion !== 'frågor' && matcher.length > 0
-  const visaFrågor  = sektion !== 'grupp'  && frågor.length  > 0
+  const visaGruppspel = (sektion === 'allt' || sektion === 'grupp') && harGruppspel
+  const visaSlutspel  = (sektion === 'allt' || sektion === 'slutspel') && harSlutspel
+  const visaFrågor    = (sektion === 'allt' || sektion === 'frågor') && frågor.length > 0
 
-  // Filtrera på vald grupp.
-  const filtrerade = valdGrupp ? matcher.filter((m) => m.grupp === valdGrupp) : matcher
+  // Filtrera gruppspels-matcher på vald grupp.
+  const filtreradeGruppspel = valdGrupp
+    ? gruppspelsMatcher.filter((m) => m.grupp === valdGrupp)
+    : gruppspelsMatcher
 
   // Gruppera efter grupp (serverordning) ELLER efter datum.
   const sektioner = []
   const idx = {}
   const nyckel = (m) => (sortering === 'datum' ? m.datum : m.grupp)
-  filtrerade.forEach((m) => {
+  filtreradeGruppspel.forEach((m) => {
     const k = nyckel(m)
     if (idx[k] === undefined) { idx[k] = sektioner.length; sektioner.push({ nyckel: k, matcher: [] }) }
     sektioner[idx[k]].matcher.push(m)
   })
   if (sortering === 'datum') sektioner.sort((a, b) => (a.nyckel < b.nyckel ? -1 : a.nyckel > b.nyckel ? 1 : 0))
+
+  // Gruppera slutspelsmatcher per omgång i turneringsordning
+  const slutspelSektioner = SLUTSPELS_OMGÅNG_ORDNING
+    .map((omgång) => ({ omgång, matcher: slutspelsMatcher.filter((m) => m.omgång === omgång) }))
+    .filter((s) => s.matcher.length > 0)
 
   const datumRubrik = (d) => {
     const dt = new Date(`${d}T00:00:00`)
@@ -267,15 +294,16 @@ export default function BetOverview() {
       <p className="eyebrow">{t('betOverview.eyebrow')}</p>
       <h2 className="page-title">{t('betOverview.titel')}</h2>
 
-      {(matcher.length > 0 || frågor.length > 0) && (
+      {(allaMatcher.length > 0 || frågor.length > 0) && (
         <div className="bo-filter">
-          <Chip aktiv={sektion === 'allt'} onClick={() => setSektion('allt')}>{t('betOverview.filter.allt')}</Chip>
-          {matcher.length > 0 && <Chip aktiv={sektion === 'grupp'} onClick={() => setSektion('grupp')}>{t('betOverview.gruppspel')}</Chip>}
+          <Chip aktiv={sektion === 'allt'} onClick={() => { setSektion('allt'); setValdGrupp(null) }}>{t('betOverview.filter.allt')}</Chip>
+          {harGruppspel && <Chip aktiv={sektion === 'grupp'} onClick={() => setSektion('grupp')}>{t('betOverview.gruppspel')}</Chip>}
+          {harSlutspel && <Chip aktiv={sektion === 'slutspel'} onClick={() => { setSektion('slutspel'); setValdGrupp(null) }}>Slutspel</Chip>}
           {frågor.length > 0 && <Chip aktiv={sektion === 'frågor'} onClick={() => setSektion('frågor')}>{t('betOverview.tilläggsfrågor')}</Chip>}
         </div>
       )}
 
-      {visaMatcher && gruppLista.length > 1 && (
+      {visaGruppspel && gruppLista.length > 1 && (
         <div className="bo-filter">
           <Chip aktiv={valdGrupp === null} onClick={() => setValdGrupp(null)}>{t('betOverview.filter.allaGrupper')}</Chip>
           {gruppLista.map((g) => (
@@ -288,7 +316,7 @@ export default function BetOverview() {
         </div>
       )}
 
-      {visaMatcher && (
+      {visaGruppspel && (
         <>
           <h3 className="bo-section-titel">⚽ {t('betOverview.gruppspel')}</h3>
           {sektioner.length === 0 ? (
@@ -304,6 +332,18 @@ export default function BetOverview() {
         </>
       )}
 
+      {visaSlutspel && (
+        <>
+          <h3 className="bo-section-titel">🏆 Slutspel</h3>
+          {slutspelSektioner.map((s) => (
+            <div key={s.omgång}>
+              <p className="bo-grupp-rubrik">{SLUTSPELS_OMGÅNG_LABEL[s.omgång] || s.omgång}</p>
+              {s.matcher.map((m) => <MatchKort key={m.match_id} m={m} t={t} />)}
+            </div>
+          ))}
+        </>
+      )}
+
       {visaFrågor && (
         <>
           <h3 className="bo-section-titel">🎯 {t('betOverview.tilläggsfrågor')}</h3>
@@ -311,7 +351,7 @@ export default function BetOverview() {
         </>
       )}
 
-      {matcher.length === 0 && frågor.length === 0 && (
+      {allaMatcher.length === 0 && frågor.length === 0 && (
         <p className="bo-tom" style={{ textAlign: 'center', padding: '2rem 0' }}>{t('betOverview.ingenData')}</p>
       )}
     </div></>

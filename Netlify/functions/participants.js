@@ -74,7 +74,7 @@ export default async (req) => {
       matcherRader.forEach((rad) => {
         matcherMap[rad[0]] = {
           match_id: rad[0], datum: rad[1], tid: rad[2],
-          hemmalag: rad[3], bortalag: rad[4], grupp: rad[5],
+          hemmalag: rad[3], bortalag: rad[4], grupp: rad[5], omgång: rad[6] || null,
         }
       })
 

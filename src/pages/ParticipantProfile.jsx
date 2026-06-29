@@ -130,6 +130,17 @@ const STYLES = `
   }
   .pp-tab:not(.active):hover { background: #f8f7f4; color: #555; }
 
+  /* Omgångsfilter (chips under Tips-fliken) */
+  .pp-round-filter { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 1rem; }
+  .pp-round-chip {
+    font-family: 'Barlow Condensed', sans-serif; font-size: 0.74rem; font-weight: 700;
+    letter-spacing: 0.04em; color: #888; background: #fff;
+    border: 1px solid rgba(0,0,0,0.12); border-radius: 20px; padding: 4px 12px;
+    cursor: pointer; transition: background 0.15s, border-color 0.15s, color 0.15s;
+  }
+  .pp-round-chip:hover { border-color: #0a1628; }
+  .pp-round-chip.aktiv { background: #0a1628; border-color: #0a1628; color: #F0D060; }
+
   /* Group header */
   .pp-group-header {
     display: flex; align-items: center; gap: 10px; margin-bottom: 0.75rem;
@@ -324,6 +335,7 @@ export default function ParticipantProfile() {
   const [placering, setPlacering] = useState(null)
   const [laddar, setLaddar] = useState(true)
   const [aktivFlik, setAktivFlik] = useState('tips')
+  const [aktivOmgång, setAktivOmgång] = useState('alla')
   const { tipsLåst } = useSettings()
 
   useEffect(() => {
@@ -364,12 +376,40 @@ export default function ParticipantProfile() {
   const exakta = profil.tips.filter((t) => t.poäng === 5).length
   const rätta  = profil.tips.filter((t) => t.poäng === 2).length
 
+  // Ordning för slutspelsomgångar
+  const OMGÅNG_ORDNING = [
+    'Round of 32', 'Round of 16', 'Quarter-final', 'Semi-final', 'Match for third place', 'Final',
+  ]
+  const OMGÅNG_LABEL = {
+    'Round of 32': 'Omg. 32',
+    'Round of 16': 'Omg. 16',
+    'Quarter-final': 'Kvartsfinaler',
+    'Semi-final': 'Semifinaler',
+    'Match for third place': 'Bronsmatch',
+    'Final': 'Final',
+  }
+
+  // Vilka slutspelsomgångar har den här personen tips i?
+  const harSlutspelsTips = profil.tips.some(t => t.grupp === 'Slutspel')
+  const slutspelsOmgångar = OMGÅNG_ORDNING.filter(o =>
+    profil.tips.some(t => t.omgång === o)
+  )
+
   // Stabil, kronologisk ordning (samma för alla deltagare): matcher sorteras på
   // avsparkstid, grupperna på när deras första match spelas. Annars visas tipsen
   // i den ordning personen råkade lämna dem → olika ordning per deltagare.
   const kickoff = (tip) => matchStartMs(tip.datum, tip.tid) ?? Number.MAX_SAFE_INTEGER
-  const grupperande = profil.tips.reduce((acc, tip) => {
-    const g = tip.grupp || 'Övrigt'
+
+  // Filtrera tips baserat på vald omgång
+  const filtrerade = aktivOmgång === 'alla'
+    ? profil.tips
+    : aktivOmgång === 'gruppspel'
+      ? profil.tips.filter(t => t.grupp !== 'Slutspel')
+      : profil.tips.filter(t => t.omgång === aktivOmgång)
+
+  const grupperande = filtrerade.reduce((acc, tip) => {
+    // Grupp-nyckel: slutspelsmatcher visas per omgång, gruppspel per grupp
+    const g = tip.grupp === 'Slutspel' ? (tip.omgång || 'Slutspel') : (tip.grupp || 'Övrigt')
     if (!acc[g]) acc[g] = []
     acc[g].push(tip)
     return acc
@@ -378,9 +418,16 @@ export default function ParticipantProfile() {
     tips.sort((a, b) => kickoff(a) - kickoff(b) || String(a.match_id).localeCompare(String(b.match_id)))
   )
   const sorteradeGrupper = Object.entries(grupperande).sort(
-    (a, b) =>
-      Math.min(...a[1].map(kickoff)) - Math.min(...b[1].map(kickoff)) ||
-      a[0].localeCompare(b[0], 'sv')
+    (a, b) => {
+      // Slutspelsomgångar sorteras i turneringsordning
+      const aiO = OMGÅNG_ORDNING.indexOf(a[0])
+      const biO = OMGÅNG_ORDNING.indexOf(b[0])
+      if (aiO !== -1 && biO !== -1) return aiO - biO
+      if (aiO !== -1) return 1   // slutspel efter gruppspel
+      if (biO !== -1) return -1
+      return Math.min(...a[1].map(kickoff)) - Math.min(...b[1].map(kickoff)) ||
+        a[0].localeCompare(b[0], 'sv')
+    }
   )
 
   return (
@@ -480,6 +527,26 @@ export default function ParticipantProfile() {
                   <div className="pp-empty">Inga tips lämnade.</div>
                 ) : (
                   <>
+                    {/* Omgångsfilter — visas bara om deltagaren har slutspelstips */}
+                    {harSlutspelsTips && (
+                      <div className="pp-round-filter">
+                        <button
+                          className={`pp-round-chip ${aktivOmgång === 'alla' ? 'aktiv' : ''}`}
+                          onClick={() => setAktivOmgång('alla')}
+                        >Alla</button>
+                        <button
+                          className={`pp-round-chip ${aktivOmgång === 'gruppspel' ? 'aktiv' : ''}`}
+                          onClick={() => setAktivOmgång('gruppspel')}
+                        >Gruppspel</button>
+                        {slutspelsOmgångar.map(o => (
+                          <button
+                            key={o}
+                            className={`pp-round-chip ${aktivOmgång === o ? 'aktiv' : ''}`}
+                            onClick={() => setAktivOmgång(o)}
+                          >{OMGÅNG_LABEL[o] || o}</button>
+                        ))}
+                      </div>
+                    )}
                     {sorteradeGrupper.map(([grupp, tips]) => {
                       const gruppPoäng = tips.reduce((s, t) => s + (t.poäng || 0), 0)
                       const gruppExakta = tips.filter(t => t.poäng === 5).length

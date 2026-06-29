@@ -349,9 +349,18 @@ export function byggBettingöversikt({
     tipsPerMatch[mid].push(`${Number(rad[3])}-${Number(rad[4])}`)
   })
 
-  // Bara gruppspel (knockout sparas med grupp === 'Slutspel').
+  // Alla matcher (gruppspel + slutspel) där match_id finns och lag är kända.
+  // Matcher med platshållare (t.ex. "1A", "W73") hoppas över — de har inga tips.
+  const ärPlaceholder = (namn) =>
+    !namn || /^[12][A-L]$/.test(namn) || /^3[A-L]/.test(namn) || /^[WL]\d+$/.test(namn)
+
   const matcher = matcherRader
-    .filter((rad) => rad && rad[0] && rad[5] && rad[5] !== 'Slutspel')
+    .filter((rad) => {
+      if (!rad || !rad[0] || !rad[5]) return false
+      // Hoppa över knockout-matcher där lagen ännu inte är kända
+      if (rad[5] === 'Slutspel' && (ärPlaceholder(rad[3]) || ärPlaceholder(rad[4]))) return false
+      return true
+    })
     .map((rad) => {
       const match_id   = rad[0]
       const tips        = tipsPerMatch[match_id] || []
@@ -372,7 +381,7 @@ export function byggBettingöversikt({
 
       return {
         match_id, datum: rad[1], tid: rad[2],
-        hemmalag: rad[3], bortalag: rad[4], grupp: rad[5],
+        hemmalag: rad[3], bortalag: rad[4], grupp: rad[5], omgång: rad[6] || null,
         totalt, resultat: resultatStr, fördelning,
       }
     })

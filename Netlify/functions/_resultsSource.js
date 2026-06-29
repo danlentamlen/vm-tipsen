@@ -86,11 +86,17 @@ async function fdFetch(query) {
 
 function fdNormalize(m) {
   const score = m.score?.fullTime ?? m.score?.halfTime ?? {}
+  // football-data.org returnerar score.winner = 'HOME_TEAM' | 'AWAY_TEAM' | 'DRAW' | null
+  // för avslutade knockout-matcher (inkl. AET och straffar). Används för att avgöra
+  // vinnaren i bracket-propagering när matchen slutar oavgjort på 90 min.
+  const fdWinner = m.score?.winner
+  const vinnare = fdWinner === 'HOME_TEAM' ? 'H' : fdWinner === 'AWAY_TEAM' ? 'A' : null
   return {
     hemmalag: LAGNAMN_MAP[m.homeTeam?.name] || m.homeTeam?.name || '',
     bortalag: LAGNAMN_MAP[m.awayTeam?.name] || m.awayTeam?.name || '',
     hemma:    score.home ?? null,
     borta:    score.away ?? null,
+    vinnare,                            // 'H' | 'A' | null (null = gruppspel/okänt)
     status:   m.status,                 // FINISHED | IN_PLAY | PAUSED | TIMED | SCHEDULED
     minut:    m.minute ?? null,
     källa:    'football-data',
@@ -211,9 +217,9 @@ export function mergeResults(...listor) {
  * kvalificera sig — då returnerar football-data det riktiga lagnamnet och nyckeln
  * matchar aldrig. Anroparen kan logga `omatchade` så felet syns.
  *
- * @param {Array}   avslutade     normaliserade FINISHED-resultat: { hemmalag, bortalag, hemma, borta }
+ * @param {Array}   avslutade     normaliserade FINISHED-resultat: { hemmalag, bortalag, hemma, borta, vinnare? }
  * @param {Array[]} matcherRader  Matcher-arket: A=match_id, B=datum, C=tid, D=team1, E=team2
- * @returns {{ rader: Array[], omatchade: Array }} rader = [[match_id, hemma, borta]]
+ * @returns {{ rader: Array[], omatchade: Array }} rader = [[match_id, hemma, borta, vinnare]]
  */
 export function mappaAvslutadeTillMatchId(avslutade = [], matcherRader = []) {
   const lookup = new Map()
@@ -225,13 +231,18 @@ export function mappaAvslutadeTillMatchId(avslutade = [], matcherRader = []) {
   const omatchade = []
   for (const m of avslutade || []) {
     if (!m || !m.hemmalag || !m.bortalag || m.hemma == null || m.borta == null) continue
+    const vinnare = m.vinnare || ''   // 'H', 'A', eller '' om okänt/gruppspel
 
     const direkt = lookup.get(matchKey(m.hemmalag, m.bortalag))
-    if (direkt) { rader.push([direkt, String(m.hemma), String(m.borta)]); continue }
+    if (direkt) { rader.push([direkt, String(m.hemma), String(m.borta), vinnare]); continue }
 
-    // Omvänd ordning → byt målen så de matchar arkets hemma/borta-kolumner
+    // Omvänd ordning → byt målen OCH vinnarkoden så de matchar arkets hemma/borta-kolumner
     const omvänd = lookup.get(matchKey(m.bortalag, m.hemmalag))
-    if (omvänd) { rader.push([omvänd, String(m.borta), String(m.hemma)]); continue }
+    if (omvänd) {
+      const omvändVinnare = vinnare === 'H' ? 'A' : vinnare === 'A' ? 'H' : vinnare
+      rader.push([omvänd, String(m.borta), String(m.hemma), omvändVinnare])
+      continue
+    }
 
     omatchade.push(m)
   }
@@ -1041,7 +1052,44 @@ export async function getAllKnockoutFixtures({ matcherRader = null, resultatRade
       return grupperStällning[grp]?.[2]?.namn ?? null
     }
 
-    // "W73", "L101" etc. (vidare omgångar — inte kända ännu)
+    // "W73", "L101" etc. — vinnare/förlorare av en knockout-match
+    // Slå upp matchen i Matcher-arket (riktiga lagnamn) + Resultat-arket (score + vinnare).
+    const wlMatch = kod.match(/^([WL])(\d+)$/)
+    if (wlMatch) {
+      const [, typ, numStr] = wlMatch
+      const matchId = `match_${String(numStr).padStart(3, '0')}`
+
+      // Hitta lagnamn från Matcher-arket (kolumn D/E)
+      const matchRad = matcherRader?.find((r) => r[0] === matchId)
+      if (!matchRad) return null
+      const hemmalag = matchRad[3]
+      const bortalag = matchRad[4]
+      // Hoppa över om något lag fortfarande är en platshållare
+      if (!hemmalag || !bortalag) return null
+      if (/^[12][A-L]$/.test(hemmalag) || /^3[A-L]/.test(hemmalag) ||
+          /^[WL]\d+$/.test(hemmalag) || /^[WL]\d+$/.test(bortalag)) return null
+
+      // Hitta resultat från Resultat-arket (kolumn B/C/D)
+      const resRad = resultatRader?.find((r) => r[0] === matchId)
+      if (!resRad) return null
+
+      let vinnare
+      if (resRad[3] === 'H') vinnare = hemmalag
+      else if (resRad[3] === 'A') vinnare = bortalag
+      else {
+        // Fallback: bestäm från mål (gäller när vinnare-kolumn (D) saknas eller matchen
+        // avgjordes inom 90/120 min utan straffar)
+        const h = parseInt(resRad[1])
+        const b = parseInt(resRad[2])
+        if (isNaN(h) || isNaN(b) || h === b) return null   // oavgjort → okänd vinnare
+        vinnare = h > b ? hemmalag : bortalag
+      }
+
+      if (typ === 'W') return vinnare
+      // 'L' = förloraren (används för 3:e-platsmatch)
+      return vinnare === hemmalag ? bortalag : hemmalag
+    }
+
     return null
   }
 

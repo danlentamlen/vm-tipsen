@@ -81,7 +81,7 @@ export default async () => {
     }
 
     // ── 3. Befintliga resultat ──────────────────────────────────────────────
-    const befintligaRader = await getRows(sheets, 'Resultat!A2:C1000')
+    const befintligaRader = await getRows(sheets, 'Resultat!A2:D1000')
     const sparade = new Set(befintligaRader.map((r) => r[0]).filter(Boolean))
 
     // ── 4. Hämta avslutade matcher (sammanslaget från alla källor) ──────────
@@ -106,10 +106,13 @@ export default async () => {
     const nya = mappade.filter((r) => !sparade.has(r[0]))
 
     // ── 6. Spara nya resultat ───────────────────────────────────────────────
+    // Kolumner: A=match_id, B=hemma, C=borta, D=vinnare ('H'/'A'/'')
+    // D fylls bara i av football-data.org för knockout-matcher där vinnaren
+    // kan avgöras via straffar (så att bracket-propagering fungerar korrekt).
     if (nya.length > 0) {
       await sheets.spreadsheets.values.append({
         spreadsheetId: process.env.GOOGLE_SHEET_ID,
-        range: 'Resultat!A:C',
+        range: 'Resultat!A:D',
         valueInputOption: 'RAW',
         insertDataOption: 'INSERT_ROWS',
         requestBody: { values: nya },
@@ -197,8 +200,8 @@ async function räknaOmSnapshots(sheets, matcherRader, resultatRader) {
  * Returnerar true om minst en uppdatering gjordes (cache behöver laddas om).
  */
 async function uppdateraKnockoutLagnamn(sheets, matcherRader) {
-  // Hämta Resultat-arket för aktuella poäng (openfootball kan lagga)
-  const resultatRaderMedScores = await getRows(sheets, 'Resultat!A2:C1000')
+  // Hämta Resultat-arket inkl. vinnare-kolumn (D) för bracket-propagering
+  const resultatRaderMedScores = await getRows(sheets, 'Resultat!A2:D1000')
 
   let fixtures = []
   try {

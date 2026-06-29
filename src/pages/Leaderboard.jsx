@@ -24,6 +24,8 @@ const STYLES = `
   .lb-poäng-lbl { font-size:.72rem; color:var(--c-text-4); margin-left:3px; }
   .lb-breakdown { display:flex; gap:6px; justify-content:flex-end; margin-top:2px; }
   .lb-breakdown-chip { font-family:var(--font-bred); font-size:.65rem; font-weight:700; letter-spacing:.04em; color:var(--c-text-4); white-space:nowrap; }
+  .lb-vin { font-family:var(--font-text); font-size:.7rem; color:var(--c-text-4); margin-top:1px; text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:120px; }
+  .lb-vin-pris { font-family:var(--font-bred); font-size:.7rem; font-weight:700; color:#C5A028; margin-left:3px; white-space:nowrap; }
   .lb-legend { display:flex; gap:1rem; flex-wrap:wrap; margin-top:1.25rem; padding-top:1rem; border-top:1px solid rgba(0,0,0,.06); }
   .lb-legend-post { display:flex; align-items:center; gap:6px; font-size:.78rem; color:#666; }
   .lb-legend-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
@@ -32,18 +34,31 @@ const MEDALJER = ['🥇', '🥈', '🥉']
 
 export default function Leaderboard() {
   const [topplista, setTopplista] = useState([])
+  const [vinerMap, setVinerMap]   = useState({})
   const [laddar, setLaddar]       = useState(true)
   const [fel, setFel]             = useState(null)
   const { användare }             = useAuth()
-  const { t }                     = useLanguage()   // ← NY
+  const { t }                     = useLanguage()
 
   const hämtaTopplista = useCallback(async () => {
     setLaddar(true); setFel(null)
     try {
-      const res = await fetch('/.netlify/functions/scores')
-      if (!res.ok) throw new Error(`Status ${res.status}`)
-      const data = await res.json()
+      const [scoresRes, vinerRes] = await Promise.all([
+        fetch('/.netlify/functions/scores'),
+        fetch('/.netlify/functions/viner-hamta').catch(() => null),
+      ])
+      if (!scoresRes.ok) throw new Error(`Status ${scoresRes.status}`)
+      const data = await scoresRes.json()
       setTopplista(Array.isArray(data) ? data.filter((r) => r?.namn) : [])
+
+      if (vinerRes?.ok) {
+        const viner = await vinerRes.json().catch(() => [])
+        const map = {}
+        if (Array.isArray(viner)) {
+          viner.forEach((v) => { if (v.user_id && v.betalt === 'betalt') map[v.user_id] = v })
+        }
+        setVinerMap(map)
+      }
     } catch (err) {
       console.error('[Leaderboard]', err)
       setFel(t('leaderboard.fel'))
@@ -88,18 +103,25 @@ export default function Leaderboard() {
 
       {topplista.map((rad, i) => {
         const ärJag = användare?.user_id === rad.user_id
+        const vin   = vinerMap[rad.user_id]
         const innehåll = (
           <>
             {i < 3 ? <span className="lb-medalj">{MEDALJER[i]}</span> : <span className="lb-plats">{i + 1}</span>}
             <span className={`lb-namn${ärJag ? ' mig' : ''}`}>
               {rad.namn}{ärJag && ` ${t('leaderboard.du')}`}
             </span>
-            <div style={{ textAlign:'right' }}>
+            <div style={{ textAlign:'right', minWidth:0 }}>
               <span className="lb-poäng">{rad.poäng ?? 0}<span className="lb-poäng-lbl">p</span></span>
               {(rad.frågepoäng > 0 || rad.poäng > 0) && (
                 <div className="lb-breakdown">
                   <span className="lb-breakdown-chip">⚽ {(rad.poäng ?? 0) - (rad.frågepoäng ?? 0)}p</span>
                   <span className="lb-breakdown-chip">🎯 {rad.frågepoäng ?? 0}p</span>
+                </div>
+              )}
+              {vin?.vin_namn && (
+                <div className="lb-vin">
+                  🍷 <span title={vin.vin_namn}>{vin.vin_namn}</span>
+                  {vin.vin_pris && <span className="lb-vin-pris">{vin.vin_pris}</span>}
                 </div>
               )}
             </div>
@@ -126,6 +148,7 @@ export default function Leaderboard() {
         <div className="lb-legend-post"><div className="lb-legend-dot" style={{ background:'#C8102E' }} />{t('leaderboard.legend.exakt')}</div>
         <div className="lb-legend-post"><div className="lb-legend-dot" style={{ background:'#1a2e4a' }} />{t('leaderboard.legend.rätt')}</div>
         <div className="lb-legend-post"><div className="lb-legend-dot" style={{ background:'#C5A028' }} />{t('leaderboard.legend.bonus')}</div>
+        <div className="lb-legend-post"><div className="lb-legend-dot" style={{ background:'#C5A028' }} />Vid lika poäng: flest exakta → dyrast vin</div>
       </div>
     </div></>
   )
