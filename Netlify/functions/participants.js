@@ -26,7 +26,7 @@ export default async (req) => {
     if (!user_id) {
       const deltagare = await withCache('participants:list', LIST_TTL, async () => {
         const sheets = await getSheets()
-        const användare = await getRows(sheets, 'Användare!A2:F1000')
+        const användare = await getRows(sheets, 'Användare!A2:F10000000')
         const rekMap = {}
         användare.forEach((rad) => {
           const rekryteradAv = rad[5]?.trim()
@@ -59,12 +59,12 @@ export default async (req) => {
       // One batchGet for all five ranges
       const [användareRader, matcherRader, resultatRader, tipsRader, frågorRader, frågorSvarRader] =
         await getMultipleRanges(sheets, [
-          'Användare!A2:B1000',
-          'Matcher!A2:H1000',
-          'Resultat!A2:D1000',
+          'Användare!A2:B10000000',
+          'Matcher!A2:H10000000',
+          'Resultat!A2:D10000000',
           'Tips!A2:E100000',
-          'Frågor!A2:E1000',
-          'FrågorSvar!A2:D1000',
+          'Frågor!A2:E10000000',
+          'FrågorSvar!A2:D10000000',
         ])
 
       const användareRad = användareRader.find((r) => r[0] === user_id)
