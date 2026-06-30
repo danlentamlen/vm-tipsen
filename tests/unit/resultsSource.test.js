@@ -6,7 +6,7 @@
  * här (de är inkapslade i try/catch och opt-in).
  */
 import { describe, it, expect } from 'vitest'
-import { norm, matchKey, mergeResults, mappaAvslutadeTillMatchId, väljLive, filtreraEjLive, tsdbV1Normalize, tsdbV2Normalize } from '../../Netlify/functions/_resultsSource.js'
+import { norm, matchKey, mergeResults, mappaAvslutadeTillMatchId, väljLive, filtreraEjLive, tsdbV1Normalize, tsdbV2Normalize, fdNormalize } from '../../Netlify/functions/_resultsSource.js'
 
 describe('norm', () => {
   it('mappar avvikande lagnamn och normaliserar till gemener', () => {
@@ -214,6 +214,77 @@ describe('tsdbV2Normalize — AET/PEN-fall', () => {
     expect(r.borta).toBe(1)
     expect(r.vinnare).toBe('A')
     expect(r.status).toBe('FINISHED')
+  })
+})
+
+describe('fdNormalize — AET/PEN-fall', () => {
+  // Bekräftat med rå FD-data 2026-06-30:
+  // score.fullTime är KUMULATIVT (FT-mål + ET-mål + straffmål).
+  // score.extraTime = enbart ET-mål, score.penalties = enbart straffmål.
+
+  const makeMatch = (overrides) => ({
+    homeTeam: { name: 'Germany' },
+    awayTeam: { name: 'Paraguay' },
+    status: 'FINISHED',
+    minute: null,
+    score: {
+      duration: 'REGULAR_TIME',
+      winner: null,
+      fullTime: { home: 2, away: 1 },
+      extraTime: { home: null, away: null },
+      penalties: { home: null, away: null },
+      ...overrides,
+    },
+  })
+
+  it('REGULAR_TIME: fullTime bevaras as-is', () => {
+    const r = fdNormalize(makeMatch())
+    expect(r.hemma).toBe(2)
+    expect(r.borta).toBe(1)
+    expect(r.vinnare).toBeNull()
+  })
+
+  it('PENALTY_SHOOTOUT utan ET-mål: subtraherar straffmål från fullTime', () => {
+    // Germany 1-1 Paraguay → straffar 3-4. FD: fullTime={4,5}, penalties={3,4}
+    const r = fdNormalize(makeMatch({
+      duration: 'PENALTY_SHOOTOUT',
+      winner: 'AWAY_TEAM',
+      fullTime:   { home: 4, away: 5 },
+      extraTime:  { home: 0, away: 0 },
+      penalties:  { home: 3, away: 4 },
+    }))
+    expect(r.hemma).toBe(1)   // 4 - 0 - 3 = 1
+    expect(r.borta).toBe(1)   // 5 - 0 - 4 = 1
+    expect(r.vinnare).toBe('A')
+  })
+
+  it('PENALTY_SHOOTOUT med ET-mål: subtraherar både ET och straffmål', () => {
+    // 1-1 FT, 0-1 i ET → 1-2 efter 120 min, hemmalag vinner 5-4 på straff
+    // FD: fullTime={1+0+5, 1+1+4}={6,6}, extraTime={0,1}, penalties={5,4}
+    const r = fdNormalize(makeMatch({
+      duration: 'PENALTY_SHOOTOUT',
+      winner: 'HOME_TEAM',
+      fullTime:  { home: 6, away: 6 },
+      extraTime: { home: 0, away: 1 },
+      penalties: { home: 5, away: 4 },
+    }))
+    expect(r.hemma).toBe(1)   // 6 - 0 - 5 = 1
+    expect(r.borta).toBe(1)   // 6 - 1 - 4 = 1
+    expect(r.vinnare).toBe('H')
+  })
+
+  it('EXTRA_TIME: subtraherar ET-mål men ej straffmål', () => {
+    // 0-0 FT, hemmalag gör mål i ET → 1-0 efter 120 min. FD: fullTime={1,0}, extraTime={1,0}
+    const r = fdNormalize(makeMatch({
+      duration: 'EXTRA_TIME',
+      winner: 'HOME_TEAM',
+      fullTime:  { home: 1, away: 0 },
+      extraTime: { home: 1, away: 0 },
+      penalties: { home: null, away: null },
+    }))
+    expect(r.hemma).toBe(0)   // 1 - 1 = 0
+    expect(r.borta).toBe(0)   // 0 - 0 = 0
+    expect(r.vinnare).toBe('H')
   })
 })
 

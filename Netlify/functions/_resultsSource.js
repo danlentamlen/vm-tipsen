@@ -84,18 +84,46 @@ async function fdFetch(query) {
   return res.json()
 }
 
-function fdNormalize(m) {
-  const score = m.score?.fullTime ?? m.score?.halfTime ?? {}
-  // football-data.org returnerar score.winner = 'HOME_TEAM' | 'AWAY_TEAM' | 'DRAW' | null
-  // för avslutade knockout-matcher (inkl. AET och straffar). Används för att avgöra
-  // vinnaren i bracket-propagering när matchen slutar oavgjort på 90 min.
+// football-data.org v4 lagrar ett KUMULATIVT resultat i score.fullTime:
+//   REGULAR_TIME    : fullTime = 90-min-mål               (korrekt as-is)
+//   EXTRA_TIME      : fullTime = 90-min-mål + ET-mål
+//   PENALTY_SHOOTOUT: fullTime = 90-min-mål + ET-mål + straffmål  ← (!!)
+//
+// score.extraTime  = enbart mål gjorda UNDER förlängningstiden (ej kumulativa)
+// score.penalties  = enbart straffmål (ej kumulativa med fältmål)
+//
+// Bekräftat med rå API-data (2026-06-30):
+//   Germany-Paraguay 1-1 FT → straffar 3-4 → FD rapporterar fullTime={4,5}
+//   Netherlands-Morocco 1-1 FT → straffar 2-3 → FD rapporterar fullTime={3,4}
+//
+// Vi subtraherar ET-mål och straffmål för att få 90-min-resultatet.
+export function fdNormalize(m) {
+  const duration = m.score?.duration   // 'REGULAR_TIME' | 'EXTRA_TIME' | 'PENALTY_SHOOTOUT'
+  const ft   = m.score?.fullTime   ?? m.score?.halfTime ?? {}
+  const et   = m.score?.extraTime  ?? {}
+  const pens = m.score?.penalties  ?? {}
+
+  let hemma = ft.home ?? null
+  let borta = ft.away ?? null
+
+  if (hemma != null && borta != null) {
+    if (duration === 'EXTRA_TIME' || duration === 'PENALTY_SHOOTOUT') {
+      hemma -= et.home ?? 0
+      borta -= et.away ?? 0
+    }
+    if (duration === 'PENALTY_SHOOTOUT') {
+      hemma -= pens.home ?? 0
+      borta -= pens.away ?? 0
+    }
+  }
+
+  // score.winner sätts av FD för knockout-matcher → vinnare för bracket-propagering
   const fdWinner = m.score?.winner
   const vinnare = fdWinner === 'HOME_TEAM' ? 'H' : fdWinner === 'AWAY_TEAM' ? 'A' : null
   return {
     hemmalag: LAGNAMN_MAP[m.homeTeam?.name] || m.homeTeam?.name || '',
     bortalag: LAGNAMN_MAP[m.awayTeam?.name] || m.awayTeam?.name || '',
-    hemma:    score.home ?? null,
-    borta:    score.away ?? null,
+    hemma, borta,
     vinnare,                            // 'H' | 'A' | null (null = gruppspel/okänt)
     status:   m.status,                 // FINISHED | IN_PLAY | PAUSED | TIMED | SCHEDULED
     minut:    m.minute ?? null,

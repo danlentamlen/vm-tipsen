@@ -44,8 +44,23 @@ export default async (req) => {
 
     let totalMål = 0
     matcher.forEach((m) => {
-      const hemma = m.score?.fullTime?.home ?? 0
-      const borta = m.score?.fullTime?.away ?? 0
+      // football-data.org v4: score.fullTime är KUMULATIVT — inkluderar ET-mål och straffmål.
+      // score.extraTime  = enbart mål gjorda under förlängningstiden (ej kumulativa)
+      // score.penalties  = enbart straffmål (ej kumulativa)
+      // score.duration   = 'REGULAR_TIME' | 'EXTRA_TIME' | 'PENALTY_SHOOTOUT'
+      //
+      // Vi räknar bara ordinarie-tidsmål → subtrahera ET-mål och straffmål.
+      const duration = m.score?.duration
+      let hemma = m.score?.fullTime?.home ?? 0
+      let borta = m.score?.fullTime?.away ?? 0
+      if (duration === 'EXTRA_TIME' || duration === 'PENALTY_SHOOTOUT') {
+        hemma -= m.score?.extraTime?.home ?? 0
+        borta -= m.score?.extraTime?.away ?? 0
+      }
+      if (duration === 'PENALTY_SHOOTOUT') {
+        hemma -= m.score?.penalties?.home ?? 0
+        borta -= m.score?.penalties?.away ?? 0
+      }
       totalMål += hemma + borta
     })
 
