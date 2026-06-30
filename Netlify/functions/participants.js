@@ -115,10 +115,15 @@ export default async (req) => {
       const minaSvar = dedupliceraSvar(frågorSvarRader.filter((rad) => rad[1] === user_id))
         .map((rad) => {
           const fråga = frågorMap[rad[2]] || {}
+          const svar = rad[3]
+          const rätt_svar = fråga.rätt_svar || null
+          if (rätt_svar) {
+            console.log(`[participants debug] fråga_id=${rad[2]} svar=${JSON.stringify(svar)} rätt_svar=${JSON.stringify(rätt_svar)} match=${svar?.trim().toLowerCase() === rätt_svar.trim().toLowerCase()}`)
+          }
           return {
             svar_id: rad[0], fråga_id: rad[2],
             fråga: fråga.fråga || null, fråga_nr: fråga.index || null,
-            svar: rad[3], rätt_svar: fråga.rätt_svar || null,
+            svar, rätt_svar,
           }
         })
 
