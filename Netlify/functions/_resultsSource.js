@@ -112,14 +112,59 @@ function tsdbV1Status(ev) {
   return 'SCHEDULED'
 }
 
-function tsdbV1Normalize(ev) {
+export function tsdbV1Normalize(ev) {
   const toNum = (v) => (v === null || v === undefined || v === '' ? null : Number(v))
+  const s = (ev.strStatus || '').toUpperCase()
+  const status = tsdbV1Status(ev)
+
+  // TheSportsDB returnerar ett kumulativt slutresultat i intHomeScore/intAwayScore:
+  //   FT-match  : 90-min-mål
+  //   AET-match : 90-min-mål + förlängningsmål
+  //   PEN-match : 90-min-mål + förlängningsmål + straffmål (!)
+  //
+  // intHomeExtraTime  = enbart mål gjorda under förlängningstid
+  // intHomePenaltyScore = enbart straffmål (ej kumulativa med fältmål)
+  //
+  // För att få 90-min-resultatet subtraherar vi både ET-mål och straffmål.
+  let hemma = toNum(ev.intHomeScore)
+  let borta = toNum(ev.intAwayScore)
+  const penH = toNum(ev.intHomeScoresPenaltyScore) ?? toNum(ev.intHomePenaltyScore) ?? null
+  const penB = toNum(ev.intAwayScoresPenaltyScore) ?? toNum(ev.intAwayPenaltyScore) ?? null
+  if (['AET', 'PEN'].includes(s) && hemma != null && borta != null) {
+    const etH = toNum(ev.intHomeExtraTime) ?? 0
+    const etB = toNum(ev.intAwayExtraTime) ?? 0
+    hemma -= etH
+    borta -= etB
+    if (s === 'PEN' && penH != null && penB != null) {
+      hemma -= penH
+      borta -= penB
+    }
+  }
+
+  // Vinnare för bracket-propagering i knockout-matcher
+  let vinnare = ''
+  if (['AET', 'PEN'].includes(s)) {
+    if (penH != null && penB != null) {
+      // Straffar avgör: enkel jämförelse av straffmål
+      vinnare = penH > penB ? 'H' : penH < penB ? 'A' : ''
+    } else {
+      // AET avgjord utan straffar — vinnaren avgörs av TOTALRESULTATET (inkl. ET),
+      // dvs de ursprungliga intHomeScore/intAwayScore-värdena (innan vi subtraherade ET-målen).
+      const totH = toNum(ev.intHomeScore) ?? hemma
+      const totB = toNum(ev.intAwayScore) ?? borta
+      if (totH != null && totB != null && totH !== totB) {
+        vinnare = totH > totB ? 'H' : 'A'
+      }
+    }
+  }
+
   return {
     hemmalag: LAGNAMN_MAP[ev.strHomeTeam] || ev.strHomeTeam || '',
     bortalag: LAGNAMN_MAP[ev.strAwayTeam] || ev.strAwayTeam || '',
-    hemma:    toNum(ev.intHomeScore),
-    borta:    toNum(ev.intAwayScore),
-    status:   tsdbV1Status(ev),
+    hemma,
+    borta,
+    vinnare,
+    status,
     minut:    ev.strProgress ? parseInt(ev.strProgress) || null : null,
     källa:    'thesportsdb-v1',
   }
@@ -155,14 +200,48 @@ function tsdbV2Minut(progress, status) {
   return parseInt(m[1], 10) + (m[2] ? parseInt(m[2], 10) : 0)
 }
 
-function tsdbV2Normalize(ev) {
+export function tsdbV2Normalize(ev) {
   const toNum = (v) => (v === null || v === undefined || v === '' ? null : Number(v))
+  const s = (ev.strStatus || '').toUpperCase()
   const status = tsdbV2Status(ev)
+
+  // Samma logik som V1: intHomeScore är kumulativt (FT + ET + straffmål för PEN).
+  // Subtrahera ET-mål och, för PEN-matcher, även straffmål för att få 90-min-resultatet.
+  let hemma = toNum(ev.intHomeScore)
+  let borta = toNum(ev.intAwayScore)
+  const penH = toNum(ev.intHomeScoresPenaltyScore) ?? toNum(ev.intHomePenaltyScore) ?? null
+  const penB = toNum(ev.intAwayScoresPenaltyScore) ?? toNum(ev.intAwayPenaltyScore) ?? null
+  if (['AET', 'PEN'].includes(s) && hemma != null && borta != null) {
+    const etH = toNum(ev.intHomeExtraTime) ?? 0
+    const etB = toNum(ev.intAwayExtraTime) ?? 0
+    hemma -= etH
+    borta -= etB
+    if (s === 'PEN' && penH != null && penB != null) {
+      hemma -= penH
+      borta -= penB
+    }
+  }
+
+  // Vinnare för bracket-propagering
+  let vinnare = ''
+  if (['AET', 'PEN'].includes(s)) {
+    if (penH != null && penB != null) {
+      vinnare = penH > penB ? 'H' : penH < penB ? 'A' : ''
+    } else {
+      const totH = toNum(ev.intHomeScore) ?? hemma
+      const totB = toNum(ev.intAwayScore) ?? borta
+      if (totH != null && totB != null && totH !== totB) {
+        vinnare = totH > totB ? 'H' : 'A'
+      }
+    }
+  }
+
   return {
     hemmalag: LAGNAMN_MAP[ev.strHomeTeam] || ev.strHomeTeam || '',
     bortalag: LAGNAMN_MAP[ev.strAwayTeam] || ev.strAwayTeam || '',
-    hemma:    toNum(ev.intHomeScore),
-    borta:    toNum(ev.intAwayScore),
+    hemma,
+    borta,
+    vinnare,
     status,
     minut:    tsdbV2Minut(ev.strProgress, ev.strStatus),
     källa:    'thesportsdb-v2',

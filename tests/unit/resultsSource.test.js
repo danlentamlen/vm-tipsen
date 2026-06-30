@@ -151,9 +151,10 @@ describe('tsdbV1Normalize — AET/PEN-fall', () => {
 
   it('PEN-match utan förlängningsmål: 90-min-resultatet bevaras och vinnare sätts från straffar', () => {
     // Germany 1-1 Paraguay efter 90 min, inga ET-mål, Paraguay vinner 4-3 på straffar
+    // TSDB rapporterar intHomeScore=4 (1 FT-mål + 3 straffmål), intAwayScore=5 (1+4)
     const ev = {
       strHomeTeam: 'Germany', strAwayTeam: 'Paraguay',
-      intHomeScore: '1', intAwayScore: '1',
+      intHomeScore: '4', intAwayScore: '5',   // kumulativt: 1 FT + 3 resp 4 straffmål
       intHomeExtraTime: '0', intAwayExtraTime: '0',
       intHomePenaltyScore: '3', intAwayPenaltyScore: '4',
       strStatus: 'PEN', strProgress: null,
@@ -183,9 +184,10 @@ describe('tsdbV1Normalize — AET/PEN-fall', () => {
   it('PEN-match med förlängningsmål: subtraherar ET-mål och vinnare från straffar', () => {
     // 1-1 efter 90 min, bortalag gör mål i ET → 1-2 efter 120 min
     // sedan hemmalag vinner 5-4 på straff
+    // TSDB: intHomeScore = 1 (FT) + 0 (ET) + 5 (pens) = 6, intAwayScore = 1+1+4 = 6
     const ev = {
       strHomeTeam: 'France', strAwayTeam: 'Argentina',
-      intHomeScore: '1', intAwayScore: '2',    // totalt inkl. ET
+      intHomeScore: '6', intAwayScore: '6',    // kumulativt: FT + ET + straffmål
       intHomeExtraTime: '0', intAwayExtraTime: '1', // mål i ET
       intHomePenaltyScore: '5', intAwayPenaltyScore: '4',
       strStatus: 'PEN', strProgress: null,
@@ -199,9 +201,10 @@ describe('tsdbV1Normalize — AET/PEN-fall', () => {
 
 describe('tsdbV2Normalize — AET/PEN-fall', () => {
   it('PEN-match utan förlängningsmål: 90-min-resultatet bevaras', () => {
+    // TSDB: intHomeScore = 1 + 2 pens = 3, intAwayScore = 1 + 3 pens = 4
     const ev = {
       strHomeTeam: 'Netherlands', strAwayTeam: 'Morocco',
-      intHomeScore: '1', intAwayScore: '1',
+      intHomeScore: '3', intAwayScore: '4',   // kumulativt inkl. straffmål
       intHomeExtraTime: '0', intAwayExtraTime: '0',
       intHomePenaltyScore: '2', intAwayPenaltyScore: '3',
       strStatus: 'PEN', strProgress: null,
