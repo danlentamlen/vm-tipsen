@@ -41,13 +41,13 @@ export default async (req) => {
 
     const [tipsRader, resultatRader] = await getMultipleRanges(sheets, [
       'Tips!A2:E100000',
-      'Resultat!A2:C1000',
+      'Resultat!A2:D1000',
     ])
 
     // Build result map: match_id → { hemma, borta }
     const resultat = {}
     resultatRader.forEach((rad) => {
-      if (rad[0]) resultat[rad[0]] = { hemma: Number(rad[1]), borta: Number(rad[2]) }
+      if (rad[0]) resultat[rad[0]] = { hemma: Number(rad[1]), borta: Number(rad[2]), vinnare: rad[3] || '' }
     })
 
     // Group tips by match_id — dedupe först så ett redigerat tips bara räknas en
@@ -114,7 +114,7 @@ export default async (req) => {
         borta_pct: Math.round((bortaVinst / totalt) * 100),
         populäraste,
         ...(res !== undefined
-          ? { exakt, rätt_vinnare, fel, resultat_hemma: res.hemma, resultat_borta: res.borta }
+          ? { exakt, rätt_vinnare, fel, resultat_hemma: res.hemma, resultat_borta: res.borta, vinnare: res.vinnare || '' }
           : {}),
       }
     })

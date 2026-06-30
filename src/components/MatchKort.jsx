@@ -256,6 +256,7 @@ export const MATCH_KORT_STYLES = `
   .mc-sc-bar-wrap { flex:1; height:4px; background:rgba(0,0,0,.07); border-radius:2px; overflow:hidden; }
   .mc-sc-bar-fill { height:100%; background:#0a1628; border-radius:2px; opacity:.5; transition:width .3s; }
   .mc-sc-cnt { font-family:'Barlow',sans-serif; font-size:.62rem; color:#aaa; text-align:right; min-width:38px; white-space:nowrap; }
+  .mc-vidare { font-family:'Barlow Condensed',sans-serif; font-size:.63rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:#C5A028; white-space:nowrap; }
   .mc-footer { display:flex; align-items:center; gap:6px; padding:.4rem 1rem .5rem; border-top:1px solid rgba(0,0,0,.05); font-family:'Barlow',sans-serif; font-size:.75rem; color:#bbb; }
   .mc-footer-dot { width:3px; height:3px; border-radius:50%; background:#ddd; }
   .mc-detail-link { margin-left:auto; display:inline-flex; align-items:center; gap:3px; font-family:'Barlow Condensed',sans-serif; font-size:.7rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:#C5A028; text-decoration:none; white-space:nowrap; }
@@ -383,10 +384,14 @@ export default function MatchKort({ match, tip, inloggad, tipsLåst, sparar, onS
                 <span className="mc-score-box">{borta}</span>
               </div>
             ) : tipsLåst && harResultat ? (
-              <div className="mc-result-inline">
-                <span className="mc-rbox">{stats.resultat_hemma}</span>
-                <span className="mc-rsep">–</span>
-                <span className="mc-rbox">{stats.resultat_borta}</span>
+              <div className="mc-live-wrap">
+                <div className="mc-result-inline">
+                  <span className="mc-rbox">{stats.resultat_hemma}</span>
+                  <span className="mc-rsep">–</span>
+                  <span className="mc-rbox">{stats.resultat_borta}</span>
+                </div>
+                {stats.vinnare === 'H' && <span className="mc-vidare">🏆 {match.hemmalag} vidare</span>}
+                {stats.vinnare === 'A' && <span className="mc-vidare">🏆 {match.bortalag} vidare</span>}
               </div>
             ) : (
               <span className="mc-vs">{t?.('matches.vs') || 'vs'}</span>
