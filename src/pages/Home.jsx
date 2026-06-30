@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
 import MatchKort, { normName, getFlag, MATCH_KORT_STYLES, formatTid, dagOffset } from '../components/MatchKort'
 import { prognosForSpelare } from '../utils/prediktion'
+import KnockoutBracket from '../components/KnockoutBracket'
 
 /**
  * Justerar matchens datum (YYYY-MM-DD) om CEST-konverteringen korsar midnatt.
@@ -740,6 +741,20 @@ export default function Home() {
                 liveScore={liveScoreForMatch(match)}
               />
             ))}
+          </div>
+        )}
+
+        {/* ── Slutspelsträd ── */}
+        {matcher.some(m => m.grupp === 'Slutspel') && (
+          <div className="dash-section" style={{ overflow: 'hidden', padding: 0, background: '#07101f', borderRadius: 12, border: '1px solid rgba(255,255,255,0.07)', marginBottom: '1rem' }}>
+            <KnockoutBracket
+              matcher={matcher}
+              matchStats={matchStats}
+              liveScores={liveScores}
+              minaTips={minaTips}
+              inloggad={!!användare}
+              compact={true}
+            />
           </div>
         )}
 

@@ -73,6 +73,7 @@ export default function Navbar() {
   // ── FIX: useMemo → stabil referens, skapas bara om på t() eller inloggning ──
   const allaLänkar = useMemo(() => [
     { to: '/matches',      label: t('navbar.links.matches'),      icon: '📅', inloggadKrävs: false },
+    { to: '/slutspel',     label: 'Slutspel',                     icon: '🏆', inloggadKrävs: false },
     { to: '/questions',    label: t('navbar.links.questions'),    icon: '🎯', inloggadKrävs: false },
     { to: '/skytteliga',   label: t('navbar.links.skytteliga'),   icon: '👟', inloggadKrävs: false },
     { to: '/leaderboard',  label: t('navbar.links.leaderboard'),  icon: '🏆', inloggadKrävs: false },

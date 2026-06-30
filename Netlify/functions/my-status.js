@@ -1,5 +1,5 @@
 import { getSheets, getRows } from './_sheets.js'
-import { getLockedSnapshot } from './_lockedData.js'
+import { getLockedSnapshot, getMatcher } from './_lockedData.js'
 import { GRUPPSPEL_DEADLINE, parseMatchTid } from './_settings.js'
 import jwt from 'jsonwebtoken'
 
@@ -81,9 +81,10 @@ export default async (req) => {
 
     // Matcher/Frågor/FrågorSvar är låsta → ur persistent cache (ett Sheets-anrop,
     // delat mellan instanser). Bara Tips läses live (kan växa för slutspel).
-    const [{ matcher: matcherRader, frågor: frågorRader, frågorSvar: svarRader }, tipsRader] =
+    const [{ frågor: frågorRader, frågorSvar: svarRader }, matcherRader, tipsRader] =
       await Promise.all([
         getLockedSnapshot(),
+        getMatcher(),
         getRows(sheets, 'Tips!A2:E100000'),
       ])
 

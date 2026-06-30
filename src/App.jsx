@@ -19,6 +19,7 @@ import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
 import Forum from './pages/Forum'
 import AdminBetStatus from './pages/AdminBetStatus'
+import Bracket from './pages/Bracket'
 
 const INGEN_FOOTER = ['/login', '/register', '/välkommen', '/glomt-losenord', '/nytt-losenord']
 
@@ -92,6 +93,7 @@ export default function App() {
           <Route path="/glomt-losenord" element={<ForgotPassword />} />
           <Route path="/nytt-losenord" element={<ResetPassword />} />
           <Route path="/forum" element={<Forum />} />
+          <Route path="/slutspel" element={<Bracket />} />
         </Routes>
       </main>
       <Footer />
