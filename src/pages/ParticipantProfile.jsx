@@ -221,8 +221,8 @@ const STYLES = `
     padding: 0.875rem 1rem; margin-bottom: 0.5rem;
     box-shadow: 0 1px 2px rgba(0,0,0,0.03);
   }
-  .pp-answer.correct { border-left-color: #C8102E; background: rgba(200,16,46,0.02); }
-  .pp-answer.wrong   { border-left-color: rgba(0,0,0,0.1); }
+  .pp-answer.correct { border-left-color: #1a7a40; background: rgba(40,160,85,0.05); }
+  .pp-answer.wrong   { border-left-color: #C8102E; background: rgba(200,16,46,0.03); }
   .pp-answer.pending { border-left-color: rgba(0,0,0,0.06); background: #fafafa; opacity: 0.75; }
 
   .pp-answer-nr {
@@ -253,10 +253,10 @@ const STYLES = `
     font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em;
   }
   .pp-answer-badge.correct {
-    background: rgba(200,16,46,0.08); border: 1px solid rgba(200,16,46,0.2); color: #C8102E;
+    background: rgba(40,160,85,0.1); border: 1px solid rgba(40,160,85,0.28); color: #1a7a40;
   }
   .pp-answer-badge.wrong {
-    background: rgba(0,0,0,0.04); border: 1px solid rgba(0,0,0,0.1); color: #bbb;
+    background: rgba(200,16,46,0.08); border: 1px solid rgba(200,16,46,0.2); color: #C8102E;
   }
   .pp-answer-badge.pending {
     background: rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.08); color: #ccc;
@@ -266,7 +266,7 @@ const STYLES = `
     font-family: 'Barlow Condensed', sans-serif;
     font-size: 0.78rem; font-weight: 700; letter-spacing: 0.02em;
   }
-  .pp-answer-pts.correct { color: #C8102E; }
+  .pp-answer-pts.correct { color: #1a7a40; }
   .pp-answer-pts.wrong   { color: #bbb; }
   .pp-answer-facit {
     font-family: 'Barlow', sans-serif;
