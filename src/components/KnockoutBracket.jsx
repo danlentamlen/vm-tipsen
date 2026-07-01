@@ -163,23 +163,34 @@ function buildWinnerMap(knockout, matchStats) {
   const map = {}
   knockout.forEach((m) => {
     const s = matchStats?.[m.match_id]
-    if (s?.resultat_hemma === undefined || s?.resultat_hemma === null) return
-    if (s.resultat_hemma > s.resultat_borta) {
-      map[m.match_id] = m.hemmalag
-    } else if (s.resultat_borta > s.resultat_hemma) {
-      map[m.match_id] = m.bortalag
-    } else {
-      // Oavgjort (OT/straffar) → leta efter laget i en SENARE match
-      const hem = m.hemmalag?.toLowerCase().trim()
-      const bor = m.bortalag?.toLowerCase().trim()
-      const mNum = Number(m.match_id)
-      for (const nm of knockout) {
-        if (Number(nm.match_id) <= mNum) continue
-        const nh = nm.hemmalag?.toLowerCase().trim()
-        const nb = nm.bortalag?.toLowerCase().trim()
-        if (nh && !nh.includes('vinnare') && (nh === hem || nb === hem)) { map[m.match_id] = m.hemmalag; break }
-        if (nh && !nh.includes('vinnare') && (nh === bor || nb === bor)) { map[m.match_id] = m.bortalag; break }
-      }
+    if (!s) return
+
+    // 1. Auktoritativt: admin-satt "vinnare" (H/A) i Resultat-arket. Detta är
+    //    enda pålitliga källan vid straffar/förlängning — matchen kan sluta
+    //    oavgjort men ett lag går ändå vidare. Samma fält som matchkortet visar.
+    if (s.vinnare === 'H') { map[m.match_id] = m.hemmalag; return }
+    if (s.vinnare === 'A') { map[m.match_id] = m.bortalag; return }
+
+    // 2. Annars: avgör på ordinarie resultat.
+    if (s.resultat_hemma === undefined || s.resultat_hemma === null) return
+    if (s.resultat_hemma > s.resultat_borta) { map[m.match_id] = m.hemmalag; return }
+    if (s.resultat_borta > s.resultat_hemma) { map[m.match_id] = m.bortalag; return }
+
+    // 3. Oavgjort utan vinnare-flagga → laget som går vidare är det som dyker
+    //    upp (med riktigt lagnamn, ej platshållare) i en SENARE match.
+    const hem = m.hemmalag?.toLowerCase().trim()
+    const bor = m.bortalag?.toLowerCase().trim()
+    const mNum = Number(m.match_id)
+    const ärPlatshållare = (n) => !n || n.includes('vinnare') || n.includes('winner')
+    const senare = knockout
+      .filter((nm) => Number(nm.match_id) > mNum)
+      .sort((a, b) => Number(a.match_id) - Number(b.match_id))
+    for (const nm of senare) {
+      const riktiga = [nm.hemmalag, nm.bortalag]
+        .map((n) => n?.toLowerCase().trim())
+        .filter((n) => !ärPlatshållare(n))
+      if (riktiga.includes(hem)) { map[m.match_id] = m.hemmalag; break }
+      if (riktiga.includes(bor)) { map[m.match_id] = m.bortalag; break }
     }
   })
   return map

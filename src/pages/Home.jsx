@@ -563,9 +563,22 @@ export default function Home() {
   const harResultat = (m) => matchStats[m.match_id] && matchStats[m.match_id].resultat_hemma !== undefined
   const harStartat  = (m) => { const t = parseMatchTidFrontend(m.datum, m.tid); return t ? t <= now : false }
 
-  const speladaIdag = dagensMatcherRaw.filter(m => harResultat(m))
-  const ingaResult  = dagensMatcherRaw.filter(m => !harResultat(m))
-  const pågående    = ingaResult.filter(m => harStartat(m))
+  // En match räknas som pågående så snart live-API:t säger att den inte är klar
+  // (inkl. paus/halvtid) — oavsett datum eller om ett delresultat råkat skrivas.
+  // Det är den pålitliga signalen och ser till att matchen alltid hamnar i
+  // "Pågår nu" ovanför slutspelsträdet.
+  const ärLiveNu = (m) => {
+    const ls = liveScoreForMatch(m)
+    return !!(ls && ls.status && ls.status !== 'FINISHED')
+  }
+  const liveMatcher = matcher.filter(ärLiveNu)
+  const liveIds     = new Set(liveMatcher.map(m => m.match_id))
+
+  const speladaIdag = dagensMatcherRaw.filter(m => harResultat(m) && !liveIds.has(m.match_id))
+  const ingaResult  = dagensMatcherRaw.filter(m => !harResultat(m) && !liveIds.has(m.match_id))
+  // Pågående = allt live-API:t säger är igång (valfritt datum) + matcher som
+  // hunnit starta men ännu saknar både live-data och resultat.
+  const pågående    = [...liveMatcher, ...ingaResult.filter(m => harStartat(m))]
   const kommande    = ingaResult.filter(m => !harStartat(m))
 
   const minRank = användare && topplista.length > 0
