@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { getFlag } from './MatchKort'
+import { getFlag, formatTid, dagOffset, matchStartMs } from './MatchKort'
 import BracketMatchModal from './BracketMatchModal'
 
 // ── Rundan i visningsordning (ytterst → innerst) ────────────────────────────
@@ -133,6 +133,22 @@ export function buildBracket(matcher) {
   return { byRound, left, right, activeRounds, knockout }
 }
 
+// ── Datum + tid för en bracket-cell (svensk tid) ────────────────────────────
+const BKT_MÅN = ['jan', 'feb', 'mar', 'apr', 'maj', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec']
+
+function formatBracketNär(match) {
+  if (!match?.datum) return ''
+  const dm = String(match.datum).match(/(\d{4})-(\d{2})-(\d{2})/)
+  if (!dm) return ''
+  // Justera datumet för ev. midnattskorsning vid CEST-omvandling (samma som
+  // matchlistan) så att datum och tid hör ihop.
+  const d = new Date(Date.UTC(+dm[1], +dm[2] - 1, +dm[3]))
+  d.setUTCDate(d.getUTCDate() + dagOffset(match.tid))
+  const datumStr = `${d.getUTCDate()} ${BKT_MÅN[d.getUTCMonth()]}`
+  const tidStr = formatTid(match.tid)
+  return tidStr ? `${datumStr} · ${tidStr}` : datumStr
+}
+
 // ── Hjälp: hämta resultat/live-ställning för en match ───────────────────────
 function matchScore(match, matchStats, liveScores) {
   const s = matchStats?.[match.match_id]
@@ -213,10 +229,10 @@ function findNextMatchId(knockout, matchStats, liveScores) {
   knockout.forEach((m) => {
     const s = matchStats?.[m.match_id]
     if ((s?.resultat_hemma !== undefined && s?.resultat_hemma !== null) || liveIds.has(m.match_id)) return
-    if (!m.datum) return
-    const tidStr = m.tid || '00:00'
-    const dt = new Date(`${m.datum}T${tidStr}:00`)
-    const ms = dt.getTime()
+    // matchStartMs tolkar "HH:MM UTC±N" korrekt (den gamla new Date(...) gav NaN
+    // för det formatet, så nästa match hittades aldrig).
+    const ms = matchStartMs(m.datum, m.tid)
+    if (ms == null) return
     if (ms < earliestMs) { earliestMs = ms; earliest = m.match_id }
   })
   return earliest
@@ -295,8 +311,16 @@ function MatchCell({ match, matchStats, liveScores, minaTips, compact, onClick, 
         </div>
       )}
 
-      {/* Nästa match-indikator */}
-      {isNext && !score?.live && (
+      {/* Datum/tid-fot (full vy, ospelad match) + ev. NÄSTA-markör */}
+      {!compact && !score && match.datum && (
+        <div className={['bkt-when', isNext ? 'bkt-when-next-row' : ''].filter(Boolean).join(' ')}>
+          {isNext && <span className="bkt-when-next">NÄSTA</span>}
+          <span className="bkt-when-txt">{formatBracketNär(match)}</span>
+        </div>
+      )}
+
+      {/* Kompakt widget: liten NÄSTA-markör */}
+      {compact && isNext && !score?.live && (
         <div className="bkt-next-badge">NÄSTA</div>
       )}
     </div>
@@ -573,6 +597,21 @@ const BRACKET_CSS = `
     text-transform:uppercase; color:rgba(197,160,40,.9);
     background:rgba(197,160,40,.1); padding:1px 3px; border-radius:2px;
   }
+
+  /* ── Datum/tid-fot ── */
+  .bkt-when {
+    display:flex; align-items:center; gap:5px;
+    padding:3px 8px; border-top:1px solid rgba(255,255,255,.05);
+    font-family:'Barlow Condensed',sans-serif;
+    font-size:9.5px; font-weight:600; letter-spacing:.04em;
+    color:rgba(255,255,255,.34);
+  }
+  .bkt-when-next-row { color:rgba(240,208,96,.9); }
+  .bkt-when-next {
+    font-size:8px; font-weight:800; letter-spacing:.1em; text-transform:uppercase;
+    color:#07101f; background:#F0D060; border-radius:3px; padding:1px 5px;
+  }
+  .bkt-when-txt { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
   /* ── Centrera bracket-griden ── */
   .bkt-grid-full, .bkt-grid-compact {
