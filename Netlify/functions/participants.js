@@ -1,4 +1,4 @@
-import { getSheets, getMultipleRanges } from './_sheets.js'
+import { getSheets, getMultipleRanges, getRows } from './_sheets.js'
 import { withCache } from './_cache.js'
 import { getLockedSnapshot } from './_lockedData.js'
 import { räknaMatchPoäng, dedupliceraTips, dedupliceraSvar } from './_scoring.js'
