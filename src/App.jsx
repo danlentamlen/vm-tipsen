@@ -1,5 +1,7 @@
-import { Routes, Route, useLocation } from 'react-router-dom'
+import { Routes, Route, useLocation, Link } from 'react-router-dom'
 import Navbar from './components/Navbar'
+import releaseNotes from './generated/releaseNotes.json'
+import ReleaseNotes from './pages/ReleaseNotes'
 import Home from './pages/Home'
 import Login from './pages/Login'
 import Register from './pages/Register'
@@ -63,6 +65,15 @@ function Footer() {
             Daniel Lennartsson
           </span>
         </span>
+        <span style={{ color: 'rgba(255,255,255,0.15)', fontSize: 12 }}>·</span>
+        <Link to="/uppdateringar" style={{
+          fontFamily: "'Barlow', sans-serif",
+          fontSize: 12,
+          color: 'rgba(255,255,255,0.3)',
+          textDecoration: 'none',
+        }}>
+          Vad är nytt?{releaseNotes?.latest?.date ? ` · ${releaseNotes.latest.date}` : ''}
+        </Link>
       </div>
     </footer>
   )
@@ -94,6 +105,7 @@ export default function App() {
           <Route path="/nytt-losenord" element={<ResetPassword />} />
           <Route path="/forum" element={<Forum />} />
           <Route path="/slutspel" element={<Bracket />} />
+          <Route path="/uppdateringar" element={<ReleaseNotes />} />
         </Routes>
       </main>
       <Footer />

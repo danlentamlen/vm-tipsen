@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "gen:notes": "node scripts/gen-release-notes.mjs",
+    "build": "node scripts/gen-release-notes.mjs && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "seed-matches": "node scripts/seed-matches.js",

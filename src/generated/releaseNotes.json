@@ -1,0 +1,886 @@
+{
+  "generatedAt": "2026-07-01T09:24:53.086Z",
+  "latest": {
+    "date": "2026-07-01",
+    "hash": "f7c8e1a"
+  },
+  "groups": [
+    {
+      "date": "2026-07-01",
+      "items": [
+        {
+          "hash": "f7c8e1a",
+          "date": "2026-07-01",
+          "typ": "feat",
+          "label": "Nytt",
+          "rank": 0,
+          "scope": "startsida",
+          "text": "visa poanguppdelning aven pa min egen topplisterad"
+        },
+        {
+          "hash": "6cc5e40",
+          "date": "2026-07-01",
+          "typ": "feat",
+          "label": "Nytt",
+          "rank": 0,
+          "scope": "oversikt",
+          "text": "visa hur manga mal-tips som fortfarande har chans"
+        },
+        {
+          "hash": "649439d",
+          "date": "2026-07-01",
+          "typ": "feat",
+          "label": "Nytt",
+          "rank": 0,
+          "scope": null,
+          "text": "lankar fran startsidan till oversikt/deltagare/matcher + omojliga mal-tips + scrollbar meny"
+        },
+        {
+          "hash": "3fdeabf",
+          "date": "2026-07-01",
+          "typ": "feat",
+          "label": "Nytt",
+          "rank": 0,
+          "scope": "startsida",
+          "text": "sortera kommande (och pagaende) matcher pa avsparkstid"
+        },
+        {
+          "hash": "77127e1",
+          "date": "2026-07-01",
+          "typ": "feat",
+          "label": "Nytt",
+          "rank": 0,
+          "scope": "slutspel",
+          "text": "visa nasta match + datum/tid i tradet"
+        },
+        {
+          "hash": "3a1cb5f",
+          "date": "2026-07-01",
+          "typ": "fix",
+          "label": "Fixat",
+          "rank": 1,
+          "scope": "vm-vinnare",
+          "text": "las hela FragorSvar (A2:D100000) sa alla deltagares VM-vinnare visas"
+        },
+        {
+          "hash": "4846b91",
+          "date": "2026-07-01",
+          "typ": "fix",
+          "label": "Fixat",
+          "rank": 1,
+          "scope": "participants",
+          "text": "importera getRows sa deltagarlistan laddar"
+        },
+        {
+          "hash": "5508288",
+          "date": "2026-07-01",
+          "typ": "fix",
+          "label": "Fixat",
+          "rank": 1,
+          "scope": "slutspel",
+          "text": "highlighta laget som gar vidare + live-match ovanfor tradet"
+        },
+        {
+          "hash": "282cc0c",
+          "date": "2026-07-01",
+          "typ": "fix",
+          "label": "Fixat",
+          "rank": 1,
+          "scope": "profil",
+          "text": "tillaggsfragor visar ratt facit och poang"
+        },
+        {
+          "hash": "bc7d80c",
+          "date": "2026-07-01",
+          "typ": "style",
+          "label": "Design",
+          "rank": 3,
+          "scope": "oversikt",
+          "text": "gront for ratt konsekvent + markera ovriga tips som fel"
+        },
+        {
+          "hash": "b307e59",
+          "date": "2026-07-01",
+          "typ": "style",
+          "label": "Design",
+          "rank": 3,
+          "scope": "profil",
+          "text": "gron for ratt svar, rod for fel pa tillaggsfragor"
+        }
+      ]
+    },
+    {
+      "date": "2026-06-30",
+      "items": [
+        {
+          "hash": "91f313e",
+          "date": "2026-06-30",
+          "typ": "feat",
+          "label": "Nytt",
+          "rank": 0,
+          "scope": "slutspel",
+          "text": "mobilanpassad bracket + korrekt FIFA-ordning"
+        },
+        {
+          "hash": "87d5928",
+          "date": "2026-06-30",
+          "typ": "feat",
+          "label": "Nytt",
+          "rank": 0,
+          "scope": null,
+          "text": "visa vilket lag som går vidare på matchkortet (PEN/AET)"
+        },
+        {
+          "hash": "9e08039",
+          "date": "2026-06-30",
+          "typ": "fix",
+          "label": "Fixat",
+          "rank": 1,
+          "scope": null,
+          "text": "football-data.org score.fullTime är kumulativt — subtrahera ET-mål och straffmål"
+        },
+        {
+          "hash": "fbd0f8f",
+          "date": "2026-06-30",
+          "typ": "fix",
+          "label": "Fixat",
+          "rank": 1,
+          "scope": null,
+          "text": "subtrahera straffmål från intHomeScore för PEN-matcher (TSDB kumulativt format)"
+        },
+        {
+          "hash": "f0e8561",
+          "date": "2026-06-30",
+          "typ": "fix",
+          "label": "Fixat",
+          "rank": 1,
+          "scope": null,
+          "text": "räkna bara 90-min-resultat för slutspelsmatcher (exkludera AET/PEN)"
+        }
+      ]
+    },
+    {
+      "date": "2026-06-29",
+      "items": [
+        {
+          "hash": "0c113ec",
+          "date": "2026-06-29",
+          "typ": "feat",
+          "label": "Nytt",
+          "rank": 0,
+          "scope": "reminder",
+          "text": "beräkna knockout-deadline dynamiskt från matchdata"
+        },
+        {
+          "hash": "1c85f39",
+          "date": "2026-06-29",
+          "typ": "feat",
+          "label": "Nytt",
+          "rank": 0,
+          "scope": null,
+          "text": "slutspelsbracket, omgångsfilter, bettingöversikt & vin i topplista"
+        },
+        {
+          "hash": "f75ed52",
+          "date": "2026-06-29",
+          "typ": "fix",
+          "label": "Fixat",
+          "rank": 1,
+          "scope": null,
+          "text": "participants uses locked snapshot so rätt_svar updates instantly after admin cache refresh"
+        },
+        {
+          "hash": "3dd66fb",
+          "date": "2026-06-29",
+          "typ": "fix",
+          "label": "Fixat",
+          "rank": 1,
+          "scope": "participants",
+          "text": "hoj las-range 1000 till 100000"
+        }
+      ]
+    },
+    {
+      "date": "2026-06-28",
+      "items": [
+        {
+          "hash": "b0d1df5",
+          "date": "2026-06-28",
+          "typ": "feat",
+          "label": "Nytt",
+          "rank": 0,
+          "scope": null,
+          "text": "lägg till admin-delete-user endpoint"
+        },
+        {
+          "hash": "6e51fef",
+          "date": "2026-06-28",
+          "typ": "feat",
+          "label": "Nytt",
+          "rank": 0,
+          "scope": null,
+          "text": "ta bort användartips via admin-UI; matchpoäng vs frågepoäng i topplista; admin-cache omräknar direkt; rätt/fel i frågor"
+        },
+        {
+          "hash": "0955151",
+          "date": "2026-06-28",
+          "typ": "feat",
+          "label": "Nytt",
+          "rank": 0,
+          "scope": null,
+          "text": "matchpoäng vs frågepoäng i topplista (startsida + topplista); admin-cache omräknar direkt; rätt/fel i frågor"
+        },
+        {
+          "hash": "73bba76",
+          "date": "2026-06-28",
+          "typ": "feat",
+          "label": "Nytt",
+          "rank": 0,
+          "scope": null,
+          "text": "admin-cache räknar om topplistan direkt; visa rätt/fel i frågor"
+        },
+        {
+          "hash": "f1dc6a3",
+          "date": "2026-06-28",
+          "typ": "feat",
+          "label": "Nytt",
+          "rank": 0,
+          "scope": null,
+          "text": "visa rätt/fel per tilläggsfråga när facit är känt"
+        },
+        {
+          "hash": "ebeedb6",
+          "date": "2026-06-28",
+          "typ": "feat",
+          "label": "Nytt",
+          "rank": 0,
+          "scope": null,
+          "text": "admin-cache endpoint för cache-invalidering"
+        },
+        {
+          "hash": "c4bc0c5",
+          "date": "2026-06-28",
+          "typ": "feat",
+          "label": "Nytt",
+          "rank": 0,
+          "scope": null,
+          "text": "2h lock, Sextondelsfinalerna, multi-svar, Påminn alla, Töm cache; fix: skrivpaus-test"
+        },
+        {
+          "hash": "079f94d",
+          "date": "2026-06-28",
+          "typ": "feat",
+          "label": "Nytt",
+          "rank": 0,
+          "scope": null,
+          "text": "2h lock, Sextondelsfinalerna, Påminn alla, Töm cache"
+        }
+      ]
+    },
+    {
+      "date": "2026-06-27",
+      "items": [
+        {
+          "hash": "962e211",
+          "date": "2026-06-27",
+          "typ": "fix",
+          "label": "Fixat",
+          "rank": 1,
+          "scope": null,
+          "text": "matcher-cache 5min + race condition tips-sparande"
+        },
+        {
+          "hash": "766c713",
+          "date": "2026-06-27",
+          "typ": "fix",
+          "label": "Fixat",
+          "rank": 1,
+          "scope": null,
+          "text": "skrivpaus börjar 10:00 CEST istället för 09:00"
+        },
+        {
+          "hash": "a3ab009",
+          "date": "2026-06-27",
+          "typ": "fix",
+          "label": "Fixat",
+          "rank": 1,
+          "scope": null,
+          "text": "polling var 5 min på Matches-sidan för knockout-lagnamn"
+        }
+      ]
+    },
+    {
+      "date": "2026-06-26",
+      "items": [
+        {
+          "hash": "9bdec27",
+          "date": "2026-06-26",
+          "typ": "feat",
+          "label": "Nytt",
+          "rank": 0,
+          "scope": null,
+          "text": "conduct score + FIFA-rankning som tiebreakers för tabelltreor"
+        },
+        {
+          "hash": "9246fe5",
+          "date": "2026-06-26",
+          "typ": "feat",
+          "label": "Nytt",
+          "rank": 0,
+          "scope": null,
+          "text": "knockout lagnamn + 3:e plats via FIFAs 495-kombinationstabell"
+        },
+        {
+          "hash": "518ab91",
+          "date": "2026-06-26",
+          "typ": "fix",
+          "label": "Fixat",
+          "rank": 1,
+          "scope": null,
+          "text": "erPositionKlar returnerar true när alla gruppens matcher är spelade"
+        },
+        {
+          "hash": "179577c",
+          "date": "2026-06-26",
+          "typ": "fix",
+          "label": "Fixat",
+          "rank": 1,
+          "scope": null,
+          "text": "korta cache-tid för /matches till 5 min (knockout-namn uppdateras löpande)"
+        },
+        {
+          "hash": "12a11b2",
+          "date": "2026-06-26",
+          "typ": "fix",
+          "label": "Fixat",
+          "rank": 1,
+          "scope": null,
+          "text": "kör knockout-lagnamnsuppdatering även under skrivpaus"
+        }
+      ]
+    },
+    {
+      "date": "2026-06-21",
+      "items": [
+        {
+          "hash": "3fd3fd2",
+          "date": "2026-06-21",
+          "typ": "fix",
+          "label": "Fixat",
+          "rank": 1,
+          "scope": null,
+          "text": "FD auktoritativ för live-ställning, åtgärdar VAR-bugg"
+        }
+      ]
+    },
+    {
+      "date": "2026-06-14",
+      "items": [
+        {
+          "hash": "87c3a43",
+          "date": "2026-06-14",
+          "typ": "feat",
+          "label": "Nytt",
+          "rank": 0,
+          "scope": null,
+          "text": "rankning tiebreak — dyrast vinflaska vid lika poäng & lika antal femmor"
+        },
+        {
+          "hash": "2b43b05",
+          "date": "2026-06-14",
+          "typ": "feat",
+          "label": "Nytt",
+          "rank": 0,
+          "scope": null,
+          "text": "visa slutresultat direkt från live-källan vid matchslut"
+        },
+        {
+          "hash": "87872a7",
+          "date": "2026-06-14",
+          "typ": "fix",
+          "label": "Fixat",
+          "rank": 1,
+          "scope": null,
+          "text": "stabil kronologisk ordning av matcher på deltagarprofilen"
+        },
+        {
+          "hash": "fb9b2b5",
+          "date": "2026-06-14",
+          "typ": "fix",
+          "label": "Fixat",
+          "rank": 1,
+          "scope": null,
+          "text": "robustare BALLDONTLIE-källa så live-minuten alltid finns"
+        },
+        {
+          "hash": "7a610cb",
+          "date": "2026-06-14",
+          "typ": "fix",
+          "label": "Fixat",
+          "rank": 1,
+          "scope": null,
+          "text": "live-poäng på matchkort + riktig matchminut"
+        }
+      ]
+    },
+    {
+      "date": "2026-06-13",
+      "items": [
+        {
+          "hash": "06fde8c",
+          "date": "2026-06-13",
+          "typ": "fix",
+          "label": "Fixat",
+          "rank": 1,
+          "scope": null,
+          "text": "rätt Netlify-syntax för schemalagda funktioner ([functions.\"namn\"])"
+        },
+        {
+          "hash": "3e303ea",
+          "date": "2026-06-13",
+          "typ": "fix",
+          "label": "Fixat",
+          "rank": 1,
+          "scope": null,
+          "text": "matcher fastnar inte i 'Pågår nu' efter slut"
+        },
+        {
+          "hash": "4ebb37d",
+          "date": "2026-06-13",
+          "typ": "fix",
+          "label": "Fixat",
+          "rank": 1,
+          "scope": null,
+          "text": "robust resultatmatchning + synliggör omatchade matcher"
+        },
+        {
+          "hash": "edd19dd",
+          "date": "2026-06-13",
+          "typ": "perf",
+          "label": "Prestanda",
+          "rank": 2,
+          "scope": null,
+          "text": "koppla topplistans läs-cache till sync-results (TTL 10min→60s)"
+        }
+      ]
+    },
+    {
+      "date": "2026-06-12",
+      "items": [
+        {
+          "hash": "c1fd7ab",
+          "date": "2026-06-12",
+          "typ": "feat",
+          "label": "Nytt",
+          "rank": 0,
+          "scope": null,
+          "text": "min ställning på startsidan (poäng, placering, gap, slutplaceringsprognos) + Min sida-länk"
+        },
+        {
+          "hash": "02de62b",
+          "date": "2026-06-12",
+          "typ": "fix",
+          "label": "Fixat",
+          "rank": 1,
+          "scope": null,
+          "text": "räkna bara senaste tips/svar per nyckel + live skytteliga"
+        }
+      ]
+    },
+    {
+      "date": "2026-06-11",
+      "items": [
+        {
+          "hash": "9c4e2dc",
+          "date": "2026-06-11",
+          "typ": "feat",
+          "label": "Nytt",
+          "rank": 0,
+          "scope": null,
+          "text": "live scores, green dot rest period, UX fixes"
+        },
+        {
+          "hash": "ffabc82",
+          "date": "2026-06-11",
+          "typ": "fix",
+          "label": "Fixat",
+          "rank": 1,
+          "scope": null,
+          "text": "green dot before June 26 + fetch live scores by date"
+        },
+        {
+          "hash": "62d5d05",
+          "date": "2026-06-11",
+          "typ": "fix",
+          "label": "Fixat",
+          "rank": 1,
+          "scope": null,
+          "text": "push gruppspel deadline to 19:00 + fix my-status match filter"
+        }
+      ]
+    },
+    {
+      "date": "2026-06-10",
+      "items": [
+        {
+          "hash": "846033c",
+          "date": "2026-06-10",
+          "typ": "feat",
+          "label": "Nytt",
+          "rank": 0,
+          "scope": null,
+          "text": "slutspelsstatus + statusdot på mobil"
+        },
+        {
+          "hash": "a7d4371",
+          "date": "2026-06-10",
+          "typ": "feat",
+          "label": "Nytt",
+          "rank": 0,
+          "scope": null,
+          "text": "tips-statusindikator i navbar (dot + progressrad)"
+        },
+        {
+          "hash": "e47bd02",
+          "date": "2026-06-10",
+          "typ": "feat",
+          "label": "Nytt",
+          "rank": 0,
+          "scope": null,
+          "text": "Swedish time conversion, date adjustment, extended today's matches & best-of-evening widget"
+        },
+        {
+          "hash": "8422037",
+          "date": "2026-06-10",
+          "typ": "fix",
+          "label": "Fixat",
+          "rank": 1,
+          "scope": null,
+          "text": "use grupp !== Slutspel filter + slutspel round support in my-status"
+        },
+        {
+          "hash": "bcd483e",
+          "date": "2026-06-10",
+          "typ": "fix",
+          "label": "Fixat",
+          "rank": 1,
+          "scope": null,
+          "text": "remove stray slash from GRUPPSPEL_DEADLINE export"
+        }
+      ]
+    },
+    {
+      "date": "2026-06-09",
+      "items": [
+        {
+          "hash": "19ca398",
+          "date": "2026-06-09",
+          "typ": "feat",
+          "label": "Nytt",
+          "rank": 0,
+          "scope": null,
+          "text": "post-lock home dashboard + extract MatchKort to shared component"
+        },
+        {
+          "hash": "def5f00",
+          "date": "2026-06-09",
+          "typ": "feat",
+          "label": "Nytt",
+          "rank": 0,
+          "scope": null,
+          "text": "add admin-resend-vin-mail function (missed in previous commit)"
+        },
+        {
+          "hash": "3ae510e",
+          "date": "2026-06-09",
+          "typ": "fix",
+          "label": "Fixat",
+          "rank": 1,
+          "scope": null,
+          "text": "add Swish number to all confirmation and reminder emails"
+        },
+        {
+          "hash": "6b6fc3b",
+          "date": "2026-06-09",
+          "typ": "fix",
+          "label": "Fixat",
+          "rank": 1,
+          "scope": null,
+          "text": "await email in viner-spara + admin resend confirmation mail"
+        }
+      ]
+    },
+    {
+      "date": "2026-06-08",
+      "items": [
+        {
+          "hash": "69b7a17",
+          "date": "2026-06-08",
+          "typ": "feat",
+          "label": "Nytt",
+          "rank": 0,
+          "scope": null,
+          "text": "odds probability bar + questions answered state"
+        },
+        {
+          "hash": "dc18bdb",
+          "date": "2026-06-08",
+          "typ": "feat",
+          "label": "Nytt",
+          "rank": 0,
+          "scope": null,
+          "text": "add admin bet status page with reminder emails"
+        }
+      ]
+    },
+    {
+      "date": "2026-05-21",
+      "items": [
+        {
+          "hash": "73f3060",
+          "date": "2026-05-21",
+          "typ": "feat",
+          "label": "Nytt",
+          "rank": 0,
+          "scope": null,
+          "text": "add wine reminder feature + fix netlify dev vite proxy"
+        }
+      ]
+    },
+    {
+      "date": "2026-05-17",
+      "items": [
+        {
+          "hash": "216a898",
+          "date": "2026-05-17",
+          "typ": "fix",
+          "label": "Fixat",
+          "rank": 1,
+          "scope": null,
+          "text": "utöka Google Sheets-ranges till 100000 rader för att hämta alla tips korrekt"
+        }
+      ]
+    },
+    {
+      "date": "2026-05-16",
+      "items": [
+        {
+          "hash": "236dce3",
+          "date": "2026-05-16",
+          "typ": "feat",
+          "label": "Nytt",
+          "rank": 0,
+          "scope": "i18n",
+          "text": "full English translation for all major pages"
+        },
+        {
+          "hash": "72f020e",
+          "date": "2026-05-16",
+          "typ": "feat",
+          "label": "Nytt",
+          "rank": 0,
+          "scope": null,
+          "text": "i18n, navbar-redesign och buggfixar"
+        }
+      ]
+    },
+    {
+      "date": "2026-05-11",
+      "items": [
+        {
+          "hash": "3993a1c",
+          "date": "2026-05-11",
+          "typ": "feat",
+          "label": "Nytt",
+          "rank": 0,
+          "scope": null,
+          "text": "updated texts on home"
+        },
+        {
+          "hash": "ed28059",
+          "date": "2026-05-11",
+          "typ": "feat",
+          "label": "Nytt",
+          "rank": 0,
+          "scope": null,
+          "text": "updated text on home page - new text about the price"
+        }
+      ]
+    },
+    {
+      "date": "2026-05-08",
+      "items": [
+        {
+          "hash": "3ef6bcf",
+          "date": "2026-05-08",
+          "typ": "feat",
+          "label": "Nytt",
+          "rank": 0,
+          "scope": null,
+          "text": "auto-send email on admin payment status save"
+        },
+        {
+          "hash": "85f4915",
+          "date": "2026-05-08",
+          "typ": "feat",
+          "label": "Nytt",
+          "rank": 0,
+          "scope": null,
+          "text": "admin payment view split by status & home recruiter text"
+        }
+      ]
+    },
+    {
+      "date": "2026-05-07",
+      "items": [
+        {
+          "hash": "fe19f46",
+          "date": "2026-05-07",
+          "typ": "feat",
+          "label": "Nytt",
+          "rank": 0,
+          "scope": null,
+          "text": "recruiter feature & home improvements"
+        }
+      ]
+    },
+    {
+      "date": "2026-05-06",
+      "items": [
+        {
+          "hash": "848fc84",
+          "date": "2026-05-06",
+          "typ": "feat",
+          "label": "Nytt",
+          "rank": 0,
+          "scope": null,
+          "text": "corrected % totalFlaskor Vinpotten"
+        }
+      ]
+    },
+    {
+      "date": "2026-05-04",
+      "items": [
+        {
+          "hash": "4ff0814",
+          "date": "2026-05-04",
+          "typ": "feat",
+          "label": "Nytt",
+          "rank": 0,
+          "scope": null,
+          "text": "per-match locking with deadline logic & UX improvements"
+        }
+      ]
+    },
+    {
+      "date": "2026-05-03",
+      "items": [
+        {
+          "hash": "8f65e94",
+          "date": "2026-05-03",
+          "typ": "feat",
+          "label": "Nytt",
+          "rank": 0,
+          "scope": null,
+          "text": "update Info.jsx with full deadline schedule"
+        },
+        {
+          "hash": "c8a6714",
+          "date": "2026-05-03",
+          "typ": "fix",
+          "label": "Fixat",
+          "rank": 1,
+          "scope": null,
+          "text": "correct match grouping for knockout rounds"
+        }
+      ]
+    },
+    {
+      "date": "2026-05-02",
+      "items": [
+        {
+          "hash": "ddad7f0",
+          "date": "2026-05-02",
+          "typ": "feat",
+          "label": "Nytt",
+          "rank": 0,
+          "scope": null,
+          "text": "add footer with author credit & forum improvements"
+        },
+        {
+          "hash": "4b089dd",
+          "date": "2026-05-02",
+          "typ": "feat",
+          "label": "Nytt",
+          "rank": 0,
+          "scope": null,
+          "text": "add forum with unread badge, admin moderation & auth gate"
+        },
+        {
+          "hash": "5f01677",
+          "date": "2026-05-02",
+          "typ": "fix",
+          "label": "Fixat",
+          "rank": 1,
+          "scope": null,
+          "text": "resolve leaderboard showing \"Okänd\" and SPA reload 404"
+        }
+      ]
+    },
+    {
+      "date": "2026-04-27",
+      "items": [
+        {
+          "hash": "3a50932",
+          "date": "2026-04-27",
+          "typ": "feat",
+          "label": "Nytt",
+          "rank": 0,
+          "scope": null,
+          "text": "glömt lösenord & återställningsflöde"
+        },
+        {
+          "hash": "cf8d10f",
+          "date": "2026-04-27",
+          "typ": "fix",
+          "label": "Fixat",
+          "rank": 1,
+          "scope": null,
+          "text": "rätta filnamns-casing för ForgotPassword och ResetPassword"
+        },
+        {
+          "hash": "5ce7721",
+          "date": "2026-04-27",
+          "typ": "fix",
+          "label": "Fixat",
+          "rank": 1,
+          "scope": null,
+          "text": "useSettings tolkar tips_låst som boolean korrekt"
+        }
+      ]
+    },
+    {
+      "date": "2026-04-26",
+      "items": [
+        {
+          "hash": "568bd5a",
+          "date": "2026-04-26",
+          "typ": "feat",
+          "label": "Nytt",
+          "rank": 0,
+          "scope": null,
+          "text": "resultatsynk, skytteliga & mål-tracker"
+        },
+        {
+          "hash": "6fe92f3",
+          "date": "2026-04-26",
+          "typ": "feat",
+          "label": "Nytt",
+          "rank": 0,
+          "scope": null,
+          "text": "VM-design, betalningsflöde, mail, admin & ticker"
+        }
+      ]
+    }
+  ]
+}
