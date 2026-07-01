@@ -198,6 +198,14 @@ const sv = {
     },
   },
 
+  releaseNotes: {
+    eyebrow: 'VM-tipsen 2026',
+    titel:   'Uppdateringar',
+    intro:   'Nya funktioner och förbättringar i appen, senaste först.',
+    tomt:    'Inga uppdateringar att visa än.',
+    footer:  'Vad är nytt?',
+  },
+
   betOverview: {
     eyebrow:        'VM-tipsen 2026',
     titel:          'Bettingöversikt',

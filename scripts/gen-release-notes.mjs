@@ -32,8 +32,9 @@ function skriv(obj) {
 function main() {
   let raw = ''
   try {
-    // %h = kort hash, %ad = datum (short), %s = subject. \x1f som fältavgränsare.
-    raw = execSync('git log --no-merges --pretty=format:%h%x1f%ad%x1f%s --date=short', {
+    // %h hash, %ad datum, %s subject, %b body. \x1f = fältavgränsare inom en
+    // commit, \x1e = avgränsare mellan commits (body kan innehålla radbrytningar).
+    raw = execSync('git log --no-merges --pretty=format:%h%x1f%ad%x1f%s%x1f%b%x1e --date=short', {
       encoding: 'utf8',
       maxBuffer: 20 * 1024 * 1024,
     })
@@ -45,9 +46,10 @@ function main() {
   }
 
   const parsed = []
-  for (const rad of raw.split('\n')) {
-    if (!rad) continue
-    const [hash, date, subject] = rad.split('\x1f')
+  for (const rec of raw.split('\x1e')) {
+    const r = rec.replace(/^\s+/, '')          // ta bort ledande radbrytning
+    if (!r) continue
+    const [hash, date, subject, body = ''] = r.split('\x1f')
     if (!subject) continue
     // type(scope)!: text
     const m = subject.match(/^(\w+)(?:\(([^)]+)\))?!?:\s*(.+)$/)
@@ -56,12 +58,16 @@ function main() {
     if (!TYPMAP[typ]) continue                 // dölj icke-användarnära typer
     const text = (m[3] || '').trim()
     if (!text || /^debug\b/i.test(text)) continue
+    // Valfri engelsk översättning i commit-body: en rad som börjar med "en:".
+    const enRad = body.split('\n').map((l) => l.trim()).find((l) => /^en:/i.test(l))
+    const text_en = enRad ? enRad.replace(/^en:\s*/i, '').trim() : null
     parsed.push({
       hash, date, typ,
       label: TYPMAP[typ].label,
       rank: TYPMAP[typ].rank,
       scope: m[2] || null,
       text,
+      text_en: text_en || null,
     })
   }
 

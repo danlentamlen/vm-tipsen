@@ -196,6 +196,14 @@ const en = {
     },
   },
 
+  releaseNotes: {
+    eyebrow: 'WC Predictions 2026',
+    titel:   'Updates',
+    intro:   'New features and improvements, most recent first.',
+    tomt:    'No updates to show yet.',
+    footer:  "What's new?",
+  },
+
   betOverview: {
     eyebrow:        'WC Predictions 2026',
     titel:          'Betting overview',

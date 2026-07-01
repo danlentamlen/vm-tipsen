@@ -1,13 +1,23 @@
 {
-  "generatedAt": "2026-07-01T09:37:46.033Z",
+  "generatedAt": "2026-07-01T09:40:55.771Z",
   "latest": {
     "date": "2026-07-01",
-    "hash": "7d849ce"
+    "hash": "4716db4"
   },
   "groups": [
     {
       "date": "2026-07-01",
       "items": [
+        {
+          "hash": "4716db4",
+          "date": "2026-07-01",
+          "typ": "feat",
+          "label": "Nytt",
+          "rank": 0,
+          "scope": "uppdateringar",
+          "text": "visa bara nya funktioner (feat)",
+          "text_en": null
+        },
         {
           "hash": "7d849ce",
           "date": "2026-07-01",
@@ -15,7 +25,8 @@
           "label": "Nytt",
           "rank": 0,
           "scope": null,
-          "text": "release notes-sida (/uppdateringar) genererad fran git"
+          "text": "release notes-sida (/uppdateringar) genererad fran git",
+          "text_en": null
         },
         {
           "hash": "f7c8e1a",
@@ -24,7 +35,8 @@
           "label": "Nytt",
           "rank": 0,
           "scope": "startsida",
-          "text": "visa poanguppdelning aven pa min egen topplisterad"
+          "text": "visa poanguppdelning aven pa min egen topplisterad",
+          "text_en": null
         },
         {
           "hash": "6cc5e40",
@@ -33,7 +45,8 @@
           "label": "Nytt",
           "rank": 0,
           "scope": "oversikt",
-          "text": "visa hur manga mal-tips som fortfarande har chans"
+          "text": "visa hur manga mal-tips som fortfarande har chans",
+          "text_en": null
         },
         {
           "hash": "649439d",
@@ -42,7 +55,8 @@
           "label": "Nytt",
           "rank": 0,
           "scope": null,
-          "text": "lankar fran startsidan till oversikt/deltagare/matcher + omojliga mal-tips + scrollbar meny"
+          "text": "lankar fran startsidan till oversikt/deltagare/matcher + omojliga mal-tips + scrollbar meny",
+          "text_en": null
         },
         {
           "hash": "3fdeabf",
@@ -51,7 +65,8 @@
           "label": "Nytt",
           "rank": 0,
           "scope": "startsida",
-          "text": "sortera kommande (och pagaende) matcher pa avsparkstid"
+          "text": "sortera kommande (och pagaende) matcher pa avsparkstid",
+          "text_en": null
         },
         {
           "hash": "77127e1",
@@ -60,7 +75,8 @@
           "label": "Nytt",
           "rank": 0,
           "scope": "slutspel",
-          "text": "visa nasta match + datum/tid i tradet"
+          "text": "visa nasta match + datum/tid i tradet",
+          "text_en": null
         }
       ]
     },
@@ -74,7 +90,8 @@
           "label": "Nytt",
           "rank": 0,
           "scope": "slutspel",
-          "text": "mobilanpassad bracket + korrekt FIFA-ordning"
+          "text": "mobilanpassad bracket + korrekt FIFA-ordning",
+          "text_en": null
         },
         {
           "hash": "87d5928",
@@ -83,7 +100,8 @@
           "label": "Nytt",
           "rank": 0,
           "scope": null,
-          "text": "visa vilket lag som går vidare på matchkortet (PEN/AET)"
+          "text": "visa vilket lag som går vidare på matchkortet (PEN/AET)",
+          "text_en": null
         }
       ]
     },
@@ -97,7 +115,8 @@
           "label": "Nytt",
           "rank": 0,
           "scope": "reminder",
-          "text": "beräkna knockout-deadline dynamiskt från matchdata"
+          "text": "beräkna knockout-deadline dynamiskt från matchdata",
+          "text_en": null
         },
         {
           "hash": "1c85f39",
@@ -106,7 +125,8 @@
           "label": "Nytt",
           "rank": 0,
           "scope": null,
-          "text": "slutspelsbracket, omgångsfilter, bettingöversikt & vin i topplista"
+          "text": "slutspelsbracket, omgångsfilter, bettingöversikt & vin i topplista",
+          "text_en": null
         }
       ]
     },
@@ -120,7 +140,8 @@
           "label": "Nytt",
           "rank": 0,
           "scope": null,
-          "text": "lägg till admin-delete-user endpoint"
+          "text": "lägg till admin-delete-user endpoint",
+          "text_en": null
         },
         {
           "hash": "6e51fef",
@@ -129,7 +150,8 @@
           "label": "Nytt",
           "rank": 0,
           "scope": null,
-          "text": "ta bort användartips via admin-UI; matchpoäng vs frågepoäng i topplista; admin-cache omräknar direkt; rätt/fel i frågor"
+          "text": "ta bort användartips via admin-UI; matchpoäng vs frågepoäng i topplista; admin-cache omräknar direkt; rätt/fel i frågor",
+          "text_en": null
         },
         {
           "hash": "0955151",
@@ -138,7 +160,8 @@
           "label": "Nytt",
           "rank": 0,
           "scope": null,
-          "text": "matchpoäng vs frågepoäng i topplista (startsida + topplista); admin-cache omräknar direkt; rätt/fel i frågor"
+          "text": "matchpoäng vs frågepoäng i topplista (startsida + topplista); admin-cache omräknar direkt; rätt/fel i frågor",
+          "text_en": null
         },
         {
           "hash": "73bba76",
@@ -147,7 +170,8 @@
           "label": "Nytt",
           "rank": 0,
           "scope": null,
-          "text": "admin-cache räknar om topplistan direkt; visa rätt/fel i frågor"
+          "text": "admin-cache räknar om topplistan direkt; visa rätt/fel i frågor",
+          "text_en": null
         },
         {
           "hash": "f1dc6a3",
@@ -156,7 +180,8 @@
           "label": "Nytt",
           "rank": 0,
           "scope": null,
-          "text": "visa rätt/fel per tilläggsfråga när facit är känt"
+          "text": "visa rätt/fel per tilläggsfråga när facit är känt",
+          "text_en": null
         },
         {
           "hash": "ebeedb6",
@@ -165,7 +190,8 @@
           "label": "Nytt",
           "rank": 0,
           "scope": null,
-          "text": "admin-cache endpoint för cache-invalidering"
+          "text": "admin-cache endpoint för cache-invalidering",
+          "text_en": null
         },
         {
           "hash": "c4bc0c5",
@@ -174,7 +200,8 @@
           "label": "Nytt",
           "rank": 0,
           "scope": null,
-          "text": "2h lock, Sextondelsfinalerna, multi-svar, Påminn alla, Töm cache; fix: skrivpaus-test"
+          "text": "2h lock, Sextondelsfinalerna, multi-svar, Påminn alla, Töm cache; fix: skrivpaus-test",
+          "text_en": null
         },
         {
           "hash": "079f94d",
@@ -183,7 +210,8 @@
           "label": "Nytt",
           "rank": 0,
           "scope": null,
-          "text": "2h lock, Sextondelsfinalerna, Påminn alla, Töm cache"
+          "text": "2h lock, Sextondelsfinalerna, Påminn alla, Töm cache",
+          "text_en": null
         }
       ]
     },
@@ -197,7 +225,8 @@
           "label": "Nytt",
           "rank": 0,
           "scope": null,
-          "text": "conduct score + FIFA-rankning som tiebreakers för tabelltreor"
+          "text": "conduct score + FIFA-rankning som tiebreakers för tabelltreor",
+          "text_en": null
         },
         {
           "hash": "9246fe5",
@@ -206,7 +235,8 @@
           "label": "Nytt",
           "rank": 0,
           "scope": null,
-          "text": "knockout lagnamn + 3:e plats via FIFAs 495-kombinationstabell"
+          "text": "knockout lagnamn + 3:e plats via FIFAs 495-kombinationstabell",
+          "text_en": null
         }
       ]
     },
@@ -220,7 +250,8 @@
           "label": "Nytt",
           "rank": 0,
           "scope": null,
-          "text": "rankning tiebreak — dyrast vinflaska vid lika poäng & lika antal femmor"
+          "text": "rankning tiebreak — dyrast vinflaska vid lika poäng & lika antal femmor",
+          "text_en": null
         },
         {
           "hash": "2b43b05",
@@ -229,7 +260,8 @@
           "label": "Nytt",
           "rank": 0,
           "scope": null,
-          "text": "visa slutresultat direkt från live-källan vid matchslut"
+          "text": "visa slutresultat direkt från live-källan vid matchslut",
+          "text_en": null
         }
       ]
     },
@@ -243,7 +275,8 @@
           "label": "Nytt",
           "rank": 0,
           "scope": null,
-          "text": "min ställning på startsidan (poäng, placering, gap, slutplaceringsprognos) + Min sida-länk"
+          "text": "min ställning på startsidan (poäng, placering, gap, slutplaceringsprognos) + Min sida-länk",
+          "text_en": null
         }
       ]
     },
@@ -257,7 +290,8 @@
           "label": "Nytt",
           "rank": 0,
           "scope": null,
-          "text": "live scores, green dot rest period, UX fixes"
+          "text": "live scores, green dot rest period, UX fixes",
+          "text_en": null
         }
       ]
     },
@@ -271,7 +305,8 @@
           "label": "Nytt",
           "rank": 0,
           "scope": null,
-          "text": "slutspelsstatus + statusdot på mobil"
+          "text": "slutspelsstatus + statusdot på mobil",
+          "text_en": null
         },
         {
           "hash": "a7d4371",
@@ -280,7 +315,8 @@
           "label": "Nytt",
           "rank": 0,
           "scope": null,
-          "text": "tips-statusindikator i navbar (dot + progressrad)"
+          "text": "tips-statusindikator i navbar (dot + progressrad)",
+          "text_en": null
         },
         {
           "hash": "e47bd02",
@@ -289,7 +325,8 @@
           "label": "Nytt",
           "rank": 0,
           "scope": null,
-          "text": "Swedish time conversion, date adjustment, extended today's matches & best-of-evening widget"
+          "text": "Swedish time conversion, date adjustment, extended today's matches & best-of-evening widget",
+          "text_en": null
         }
       ]
     },
@@ -303,7 +340,8 @@
           "label": "Nytt",
           "rank": 0,
           "scope": null,
-          "text": "post-lock home dashboard + extract MatchKort to shared component"
+          "text": "post-lock home dashboard + extract MatchKort to shared component",
+          "text_en": null
         },
         {
           "hash": "def5f00",
@@ -312,7 +350,8 @@
           "label": "Nytt",
           "rank": 0,
           "scope": null,
-          "text": "add admin-resend-vin-mail function (missed in previous commit)"
+          "text": "add admin-resend-vin-mail function (missed in previous commit)",
+          "text_en": null
         }
       ]
     },
@@ -326,7 +365,8 @@
           "label": "Nytt",
           "rank": 0,
           "scope": null,
-          "text": "odds probability bar + questions answered state"
+          "text": "odds probability bar + questions answered state",
+          "text_en": null
         },
         {
           "hash": "dc18bdb",
@@ -335,7 +375,8 @@
           "label": "Nytt",
           "rank": 0,
           "scope": null,
-          "text": "add admin bet status page with reminder emails"
+          "text": "add admin bet status page with reminder emails",
+          "text_en": null
         }
       ]
     },
@@ -349,7 +390,8 @@
           "label": "Nytt",
           "rank": 0,
           "scope": null,
-          "text": "add wine reminder feature + fix netlify dev vite proxy"
+          "text": "add wine reminder feature + fix netlify dev vite proxy",
+          "text_en": null
         }
       ]
     },
@@ -363,7 +405,8 @@
           "label": "Nytt",
           "rank": 0,
           "scope": "i18n",
-          "text": "full English translation for all major pages"
+          "text": "full English translation for all major pages",
+          "text_en": null
         },
         {
           "hash": "72f020e",
@@ -372,7 +415,8 @@
           "label": "Nytt",
           "rank": 0,
           "scope": null,
-          "text": "i18n, navbar-redesign och buggfixar"
+          "text": "i18n, navbar-redesign och buggfixar",
+          "text_en": null
         }
       ]
     },
@@ -386,7 +430,8 @@
           "label": "Nytt",
           "rank": 0,
           "scope": null,
-          "text": "updated texts on home"
+          "text": "updated texts on home",
+          "text_en": null
         },
         {
           "hash": "ed28059",
@@ -395,7 +440,8 @@
           "label": "Nytt",
           "rank": 0,
           "scope": null,
-          "text": "updated text on home page - new text about the price"
+          "text": "updated text on home page - new text about the price",
+          "text_en": null
         }
       ]
     },
@@ -409,7 +455,8 @@
           "label": "Nytt",
           "rank": 0,
           "scope": null,
-          "text": "auto-send email on admin payment status save"
+          "text": "auto-send email on admin payment status save",
+          "text_en": null
         },
         {
           "hash": "85f4915",
@@ -418,7 +465,8 @@
           "label": "Nytt",
           "rank": 0,
           "scope": null,
-          "text": "admin payment view split by status & home recruiter text"
+          "text": "admin payment view split by status & home recruiter text",
+          "text_en": null
         }
       ]
     },
@@ -432,7 +480,8 @@
           "label": "Nytt",
           "rank": 0,
           "scope": null,
-          "text": "recruiter feature & home improvements"
+          "text": "recruiter feature & home improvements",
+          "text_en": null
         }
       ]
     },
@@ -446,7 +495,8 @@
           "label": "Nytt",
           "rank": 0,
           "scope": null,
-          "text": "corrected % totalFlaskor Vinpotten"
+          "text": "corrected % totalFlaskor Vinpotten",
+          "text_en": null
         }
       ]
     },
@@ -460,7 +510,8 @@
           "label": "Nytt",
           "rank": 0,
           "scope": null,
-          "text": "per-match locking with deadline logic & UX improvements"
+          "text": "per-match locking with deadline logic & UX improvements",
+          "text_en": null
         }
       ]
     },
@@ -474,7 +525,8 @@
           "label": "Nytt",
           "rank": 0,
           "scope": null,
-          "text": "update Info.jsx with full deadline schedule"
+          "text": "update Info.jsx with full deadline schedule",
+          "text_en": null
         }
       ]
     },
@@ -488,7 +540,8 @@
           "label": "Nytt",
           "rank": 0,
           "scope": null,
-          "text": "add footer with author credit & forum improvements"
+          "text": "add footer with author credit & forum improvements",
+          "text_en": null
         },
         {
           "hash": "4b089dd",
@@ -497,7 +550,8 @@
           "label": "Nytt",
           "rank": 0,
           "scope": null,
-          "text": "add forum with unread badge, admin moderation & auth gate"
+          "text": "add forum with unread badge, admin moderation & auth gate",
+          "text_en": null
         }
       ]
     },
@@ -511,7 +565,8 @@
           "label": "Nytt",
           "rank": 0,
           "scope": null,
-          "text": "glömt lösenord & återställningsflöde"
+          "text": "glömt lösenord & återställningsflöde",
+          "text_en": null
         }
       ]
     },
@@ -525,7 +580,8 @@
           "label": "Nytt",
           "rank": 0,
           "scope": null,
-          "text": "resultatsynk, skytteliga & mål-tracker"
+          "text": "resultatsynk, skytteliga & mål-tracker",
+          "text_en": null
         },
         {
           "hash": "6fe92f3",
@@ -534,7 +590,8 @@
           "label": "Nytt",
           "rank": 0,
           "scope": null,
-          "text": "VM-design, betalningsflöde, mail, admin & ticker"
+          "text": "VM-design, betalningsflöde, mail, admin & ticker",
+          "text_en": null
         }
       ]
     }

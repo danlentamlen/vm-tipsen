@@ -2,6 +2,7 @@ import { Routes, Route, useLocation, Link } from 'react-router-dom'
 import Navbar from './components/Navbar'
 import releaseNotes from './generated/releaseNotes.json'
 import ReleaseNotes from './pages/ReleaseNotes'
+import { useLanguage } from './context/LanguageContext'
 import Home from './pages/Home'
 import Login from './pages/Login'
 import Register from './pages/Register'
@@ -27,6 +28,7 @@ const INGEN_FOOTER = ['/login', '/register', '/välkommen', '/glomt-losenord', '
 
 function Footer() {
   const location = useLocation()
+  const { t } = useLanguage()
   if (INGEN_FOOTER.includes(location.pathname)) return null
 
   return (
@@ -72,7 +74,7 @@ function Footer() {
           color: 'rgba(255,255,255,0.3)',
           textDecoration: 'none',
         }}>
-          Vad är nytt?{releaseNotes?.latest?.date ? ` · ${releaseNotes.latest.date}` : ''}
+          {t('releaseNotes.footer')}{releaseNotes?.latest?.date ? ` · ${releaseNotes.latest.date}` : ''}
         </Link>
       </div>
     </footer>

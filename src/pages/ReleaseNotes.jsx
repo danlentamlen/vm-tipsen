@@ -6,6 +6,7 @@
  * Endast användarnära commits (feat/fix/perf/style) tas med.
  */
 import releaseNotes from '../generated/releaseNotes.json'
+import { useLanguage } from '../context/LanguageContext'
 
 const STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500&display=swap');
@@ -28,38 +29,37 @@ const STYLES = `
   .rn-empty { text-align:center; color:#aaa; font-family:'Barlow',sans-serif; padding:3rem 1rem; }
 `
 
-function formateraDatum(d) {
+function formateraDatum(d, språk) {
   const dt = new Date(`${d}T00:00:00`)
   if (isNaN(dt)) return d
-  return dt.toLocaleDateString('sv-SE', { day: 'numeric', month: 'long', year: 'numeric' })
+  return dt.toLocaleDateString(språk === 'en' ? 'en-GB' : 'sv-SE', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
 export default function ReleaseNotes() {
+  const { t, språk } = useLanguage()
   const grupper = releaseNotes?.groups || []
 
   return (
     <>
       <style>{STYLES}</style>
       <div className="rn-wrap">
-        <p className="rn-eyebrow">VM-tipsen 2026</p>
-        <h1 className="rn-title">Uppdateringar</h1>
-        <p className="rn-intro">
-          Nya funktioner och förbättringar i appen, senaste först.
-        </p>
+        <p className="rn-eyebrow">{t('releaseNotes.eyebrow')}</p>
+        <h1 className="rn-title">{t('releaseNotes.titel')}</h1>
+        <p className="rn-intro">{t('releaseNotes.intro')}</p>
 
         {grupper.length === 0 ? (
-          <p className="rn-empty">Inga uppdateringar att visa än.</p>
+          <p className="rn-empty">{t('releaseNotes.tomt')}</p>
         ) : (
           grupper.map((g) => (
             <div key={g.date} className="rn-group">
-              <p className="rn-date">{formateraDatum(g.date)}</p>
+              <p className="rn-date">{formateraDatum(g.date, språk)}</p>
               <div className="rn-card">
                 {g.items.map((it) => (
                   <div key={it.hash} className="rn-item">
                     <span className="rn-dot" aria-hidden="true" />
                     <span className="rn-text">
                       {it.scope && <span className="rn-scope">{it.scope}</span>}
-                      {it.text}
+                      {(språk === 'en' && it.text_en) ? it.text_en : it.text}
                     </span>
                   </div>
                 ))}
