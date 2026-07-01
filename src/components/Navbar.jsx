@@ -399,7 +399,7 @@ export default function Navbar() {
       {menuOpen && <div onClick={() => setMenuOpen(false)} style={{ position:'fixed', inset:0, zIndex:49, background:'rgba(0,0,0,.6)' }} />}
 
       {/* Mobile drawer */}
-      <div style={{ position:'fixed', top:60, left:0, right:0, zIndex:50, background:'linear-gradient(180deg,#0d1f3c 0%,#0a1628 100%)', borderBottom:'1px solid rgba(197,160,40,.2)', transform: menuOpen ? 'translateY(0)' : 'translateY(-110%)', transition:'transform .3s cubic-bezier(.4,0,.2,1)', padding:'1rem 1.25rem 1.5rem', display:'flex', flexDirection:'column', gap:4 }}>
+      <div style={{ position:'fixed', top:60, left:0, right:0, zIndex:50, background:'linear-gradient(180deg,#0d1f3c 0%,#0a1628 100%)', borderBottom:'1px solid rgba(197,160,40,.2)', transform: menuOpen ? 'translateY(0)' : 'translateY(-110%)', transition:'transform .3s cubic-bezier(.4,0,.2,1)', padding:'1rem 1.25rem 1.5rem', display:'flex', flexDirection:'column', gap:4, maxHeight:'calc(100dvh - 60px)', overflowY:'auto', WebkitOverflowScrolling:'touch' }}>
         {användare && (
           <div style={{ padding:'10px 16px', background:'rgba(197,160,40,.08)', borderRadius:10, marginBottom:8 }}>
             <div style={{ display:'flex', alignItems:'center', gap:10 }}>

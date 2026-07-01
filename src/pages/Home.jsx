@@ -137,7 +137,11 @@ const DASHBOARD_STYLES = `
   .home-banner { display:flex; border:1px solid rgba(0,0,0,.07); border-radius:12px; overflow:hidden; margin-bottom:1.75rem; box-shadow:0 1px 3px rgba(0,0,0,.04); }
   .home-banner-main { flex:1; background:#fff; padding:.9rem 1rem; display:flex; align-items:center; }
   .home-banner-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(72px,1fr)); gap:.6rem; width:100%; }
-  .hb-stat { display:flex; flex-direction:column; align-items:center; gap:3px; padding:.6rem .25rem; border-radius:8px; background:rgba(10,22,40,.03); }
+  .hb-stat { display:flex; flex-direction:column; align-items:center; gap:3px; padding:.6rem .25rem; border-radius:8px; background:rgba(10,22,40,.03); text-decoration:none; color:inherit; transition:background .15s; }
+  a.hb-stat { cursor:pointer; }
+  a.hb-stat:hover { background:rgba(197,160,40,.12); }
+  a.sk-leader { text-decoration:none; cursor:pointer; transition:transform .15s; }
+  a.sk-leader:hover { transform:translateY(-1px); }
   .hb-icon { font-size:1.1rem; line-height:1; }
   .hb-num { font-family:'Barlow Condensed',sans-serif; font-size:1.35rem; font-weight:700; color:#0a1628; line-height:1; }
   .hb-lbl { font-size:.58rem; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:#bbb; text-align:center; }
@@ -705,32 +709,32 @@ export default function Home() {
           <div className="home-banner-main">
             <div className="home-banner-grid">
               {målData?.totalMål > 0 && (
-                <div className="hb-stat">
+                <Link to="/oversikt?fokus=mal" className="hb-stat" aria-label="Se översikt: totalt antal mål">
                   <span className="hb-icon">⚽</span>
                   <span className="hb-num">{målData.totalMål}</span>
                   <span className="hb-lbl">Mål totalt</span>
-                </div>
+                </Link>
               )}
               {målData?.speladeMatcher > 0 && (
-                <div className="hb-stat">
+                <Link to="/matches" className="hb-stat" aria-label="Se spelade matcher">
                   <span className="hb-icon">📅</span>
                   <span className="hb-num">{målData.speladeMatcher}</span>
                   <span className="hb-lbl">Matcher spelat</span>
-                </div>
+                </Link>
               )}
               {topScorers.length > 0 && (
-                <div className="hb-stat">
+                <Link to="/oversikt?fokus=skytteliga" className="hb-stat" aria-label="Se översikt: skytteligan">
                   <span className="hb-icon">{getFlag(topScorers[0].land)}</span>
                   <span className="hb-num">{topScorers[0].mål}</span>
                   <span className="hb-lbl">⚽ {topScorers[0].spelare}</span>
-                </div>
+                </Link>
               )}
               {ticker?.antalBetalda > 0 && (
-                <div className="hb-stat">
+                <Link to="/participants" className="hb-stat" aria-label="Se deltagare">
                   <span className="hb-icon">👥</span>
                   <span className="hb-num">{ticker.antalBetalda}</span>
                   <span className="hb-lbl">Deltagare</span>
-                </div>
+                </Link>
               )}
             </div>
           </div>
@@ -931,14 +935,14 @@ export default function Home() {
 
             {/* Podium: leader (left) + 2nd/3rd (right) */}
             <div className="sk-podium">
-              <div className="sk-leader">
+              <Link to="/oversikt?fokus=skytteliga" className="sk-leader" aria-label="Se översikt: skytteligan">
                 <span className="sk-leader-medal">🥇</span>
                 <span className="sk-leader-flag">{getFlag(topScorers[0].land)}</span>
                 <span className="sk-leader-goals">{topScorers[0].mål}</span>
                 <span className="sk-leader-goals-lbl">mål</span>
                 <span className="sk-leader-name">{topScorers[0].spelare}</span>
                 <span className="sk-leader-country">{topScorers[0].land}</span>
-              </div>
+              </Link>
 
               <div className="sk-sub-col">
                 {topScorers[1] && (

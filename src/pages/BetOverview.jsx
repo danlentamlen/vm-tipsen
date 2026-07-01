@@ -9,10 +9,25 @@
  * så sidan gör ett enda anrop och behöver ingen klientlogik för poäng.
  */
 import { useState, useEffect, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useLanguage } from '../context/LanguageContext'
 import { getFlag } from '../components/MatchKort'
 
 const TOPP = 3 // antal rader som visas innan "fler"
+
+// Känner igen "totalt antal mål"-frågan (text innehåller mål + total).
+const ärMålFråga = (text) => /m[åa]l/i.test(text || '') && /total/i.test(text || '')
+
+// Deep-link: hitta fråga-id att scrolla till från ?fokus=mal|skytteliga.
+function matchaFokusFråga(frågor, fokus) {
+  if (!fokus) return null
+  const test =
+    fokus === 'mal' ? (s) => ärMålFråga(s)
+    : fokus === 'skytteliga' ? (s) => /skyttelig/i.test(s)
+    : () => false
+  const hit = (frågor || []).find((f) => test(`${f.fråga || ''} ${f.fråga_en || ''}`))
+  return hit ? hit.fråga_id : null
+}
 
 const STYLES = `
   .bo-filter { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin:.5rem 0 .25rem; }
@@ -58,6 +73,11 @@ const STYLES = `
   .bo-facit { display:inline-flex; align-items:center; gap:5px; margin-bottom:.4rem; font-family:var(--font-text); font-size:.78rem; }
   .bo-facit-lbl { color:var(--c-text-4); }
   .bo-facit-val { font-weight:700; color:var(--c-röd); }
+  .bo-row.omöjlig .bo-row-key { text-decoration:line-through; color:var(--c-röd); opacity:.85; }
+  .bo-row.omöjlig .bo-bar { background:rgba(200,16,46,.28); }
+  .bo-cross { color:var(--c-röd); font-weight:700; flex-shrink:0; font-size:.8rem; }
+  .bo-mal-note { font-family:var(--font-text); font-size:.74rem; color:var(--c-röd); background:rgba(200,16,46,.06); border:1px solid rgba(200,16,46,.15); border-radius:6px; padding:5px 9px; margin-bottom:.45rem; line-height:1.4; }
+  .bo-card.fokus { box-shadow:0 0 0 2px rgba(197,160,40,.6); border-color:rgba(197,160,40,.6); transition:box-shadow .3s; }
   @media (max-width:560px) {
     .bo-row-cnt { display:none; }
     .bo-team-namn { font-size:.8rem; }
@@ -132,13 +152,23 @@ function MatchKort({ m, t }) {
   )
 }
 
-function FrågaKort({ f, t, språk }) {
+function FrågaKort({ f, t, språk, totalMål = 0 }) {
   const [öppen, setÖppen] = useState(false)
   const text = (språk === 'en' && f.fråga_en) ? f.fråga_en : f.fråga
   const rader = synligaRader(f.fördelning, öppen)
   const dolda = f.fördelning.length - rader.length
+
+  // "Totalt antal mål"-frågan: svar lägre än redan gjorda mål är omöjliga att
+  // vinna → markeras tydligt som fel (även innan facit finns).
+  const målFråga = ärMålFråga(f.fråga) && !f.rätt_svar && totalMål > 0
+  const ärOmöjlig = (svar) => {
+    if (!målFråga) return false
+    const n = Number(svar)
+    return Number.isFinite(n) && n < totalMål
+  }
+
   return (
-    <div className={`bo-card${f.rätt_svar ? ' klar' : ''}`}>
+    <div id={`fraga-${f.fråga_id}`} className={`bo-card${f.rätt_svar ? ' klar' : ''}`}>
       <div className="bo-q-head">
         <span className="bo-q-text">{text}</span>
         {f.poäng > 0 && <span className="bo-q-poäng">{f.poäng}p</span>}
@@ -149,19 +179,28 @@ function FrågaKort({ f, t, språk }) {
           <span className="bo-facit-val">{f.rätt_svar}</span>
         </div>
       )}
+      {målFråga && (
+        <div className="bo-mal-note">
+          Redan {totalMål} mål gjorda — tips under {totalMål} är uträknade ✗
+        </div>
+      )}
       {f.totalt === 0 ? (
         <p className="bo-tom">{t('betOverview.ingaSvar')}</p>
       ) : (
         <div className="bo-dist">
-          {rader.map((d) => (
-            <div key={d.svar} className={`bo-row${d.rätt ? ' rätt' : ''}`}>
-              <span className="bo-row-key" style={{ minWidth: 0, flex: '0 1 auto', maxWidth: '45%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.svar}</span>
-              <div className="bo-bar-wrap"><div className="bo-bar" style={{ width: `${d.procent}%` }} /></div>
-              {d.rätt && <span className="bo-check" aria-label={t('betOverview.rättSvar')}>✓</span>}
-              <span className="bo-row-pct">{d.procent}%</span>
-              <span className="bo-row-cnt">{d.antal} {t('betOverview.svar')}</span>
-            </div>
-          ))}
+          {rader.map((d) => {
+            const omöjlig = ärOmöjlig(d.svar)
+            return (
+              <div key={d.svar} className={`bo-row${d.rätt ? ' rätt' : ''}${omöjlig ? ' omöjlig' : ''}`}>
+                <span className="bo-row-key" style={{ minWidth: 0, flex: '0 1 auto', maxWidth: '45%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.svar}</span>
+                <div className="bo-bar-wrap"><div className="bo-bar" style={{ width: `${d.procent}%` }} /></div>
+                {d.rätt && <span className="bo-check" aria-label={t('betOverview.rättSvar')}>✓</span>}
+                {omöjlig && <span className="bo-cross" title={`Lägre än nuvarande ${totalMål} mål`} aria-label="Uträknad">✗</span>}
+                <span className="bo-row-pct">{d.procent}%</span>
+                <span className="bo-row-cnt">{d.antal} {t('betOverview.svar')}</span>
+              </div>
+            )
+          })}
           {(dolda > 0 || öppen) && f.fördelning.length > TOPP && (
             <MerKnapp antal={dolda} expanderat={öppen} onClick={() => setÖppen((v) => !v)} t={t} />
           )}
@@ -184,11 +223,14 @@ const SLUTSPELS_OMGÅNG_LABEL = {
 }
 
 export default function BetOverview() {
+  const [searchParams] = useSearchParams()
+  const fokus = searchParams.get('fokus')            // 'mal' | 'skytteliga' | null
   const [data, setData]   = useState(null)
+  const [totalMål, setTotalMål] = useState(0)
   const [laddar, setLaddar] = useState(true)
   const [fel, setFel]     = useState(null)
   const [låst, setLåst]   = useState(false)
-  const [sektion, setSektion]   = useState('allt')   // 'allt' | 'grupp' | 'slutspel' | 'frågor'
+  const [sektion, setSektion]   = useState(fokus ? 'frågor' : 'allt') // 'allt' | 'grupp' | 'slutspel' | 'frågor'
   const [valdGrupp, setValdGrupp] = useState(null)    // null = alla grupper
   const [sortering, setSortering] = useState('grupp') // 'grupp' | 'datum'
   const { t, språk }      = useLanguage()
@@ -207,6 +249,29 @@ export default function BetOverview() {
   }, [t])
 
   useEffect(() => { hämta() }, [hämta])
+
+  // Nuvarande totalantal mål — för att markera mål-tips som redan är uträknade.
+  useEffect(() => {
+    fetch('/.netlify/functions/total-mal')
+      .then((r) => r.json())
+      .then((d) => { if (d && typeof d.totalMål === 'number') setTotalMål(d.totalMål) })
+      .catch(() => {})
+  }, [])
+
+  // Deep-link: scrolla till och markera fokuserad fråga (?fokus=mal|skytteliga).
+  useEffect(() => {
+    if (!data || !fokus) return
+    const id = matchaFokusFråga(data.frågor, fokus)
+    if (!id) return
+    const timer = setTimeout(() => {
+      const el = document.getElementById(`fraga-${id}`)
+      if (!el) return
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      el.classList.add('fokus')
+      setTimeout(() => el.classList.remove('fokus'), 2600)
+    }, 200)
+    return () => clearTimeout(timer)
+  }, [data, fokus])
 
   if (laddar) return (
     <div style={{ textAlign: 'center', padding: '4rem 1rem', color: 'var(--c-text-3)' }}>
@@ -347,7 +412,7 @@ export default function BetOverview() {
       {visaFrågor && (
         <>
           <h3 className="bo-section-titel">🎯 {t('betOverview.tilläggsfrågor')}</h3>
-          {frågor.map((f) => <FrågaKort key={f.fråga_id} f={f} t={t} språk={språk} />)}
+          {frågor.map((f) => <FrågaKort key={f.fråga_id} f={f} t={t} språk={språk} totalMål={totalMål} />)}
         </>
       )}
 
