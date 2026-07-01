@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
-import MatchKort, { normName, getFlag, MATCH_KORT_STYLES, formatTid, dagOffset } from '../components/MatchKort'
+import MatchKort, { normName, getFlag, MATCH_KORT_STYLES, formatTid, dagOffset, matchStartMs } from '../components/MatchKort'
 import { prognosForSpelare } from '../utils/prediktion'
 import KnockoutBracket from '../components/KnockoutBracket'
 
@@ -576,10 +576,20 @@ export default function Home() {
 
   const speladaIdag = dagensMatcherRaw.filter(m => harResultat(m) && !liveIds.has(m.match_id))
   const ingaResult  = dagensMatcherRaw.filter(m => !harResultat(m) && !liveIds.has(m.match_id))
+  // Sortera kronologiskt på avsparkstid (matchStartMs tolkar "HH:MM UTC±N").
+  // Matcher utan tolkbar tid hamnar sist.
+  const sorteraPåTid = (a, b) => {
+    const ma = matchStartMs(a.datum, a.tid)
+    const mb = matchStartMs(b.datum, b.tid)
+    if (ma == null && mb == null) return 0
+    if (ma == null) return 1
+    if (mb == null) return -1
+    return ma - mb
+  }
   // Pågående = allt live-API:t säger är igång (valfritt datum) + matcher som
   // hunnit starta men ännu saknar både live-data och resultat.
-  const pågående    = [...liveMatcher, ...ingaResult.filter(m => harStartat(m))]
-  const kommande    = ingaResult.filter(m => !harStartat(m))
+  const pågående    = [...liveMatcher, ...ingaResult.filter(m => harStartat(m))].sort(sorteraPåTid)
+  const kommande    = ingaResult.filter(m => !harStartat(m)).sort(sorteraPåTid)
 
   const minRank = användare && topplista.length > 0
     ? topplista.findIndex(r => r.user_id === användare.user_id)
