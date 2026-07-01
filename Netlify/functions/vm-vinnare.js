@@ -32,8 +32,11 @@ export default async (req) => {
         headers: { 'Content-Type': 'application/json' },
       })
     }
-    // Hitta första team-svaret per användare
-    const svarRader = await getRows(sheets, 'FrågorSvar!A2:D1000')
+    // Hitta första team-svaret per användare.
+    // OBS: FrågorSvar har en rad per (användare × fråga) → med många deltagare
+    // passeras 1000 rader lätt. Läs samma vida range som övriga koden (100000)
+    // annars tappas svar för deltagare längre ner i arket.
+    const svarRader = await getRows(sheets, 'FrågorSvar!A2:D100000')
     const vinnareMap = {}
 
     svarRader.forEach((rad) => {
