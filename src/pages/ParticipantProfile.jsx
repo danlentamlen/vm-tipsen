@@ -261,6 +261,18 @@ const STYLES = `
   .pp-answer-badge.pending {
     background: rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.08); color: #ccc;
   }
+  .pp-answer-meta { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .pp-answer-pts {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.78rem; font-weight: 700; letter-spacing: 0.02em;
+  }
+  .pp-answer-pts.correct { color: #C8102E; }
+  .pp-answer-pts.wrong   { color: #bbb; }
+  .pp-answer-facit {
+    font-family: 'Barlow', sans-serif;
+    font-size: 0.78rem; color: #888; margin-top: 0.4rem;
+  }
+  .pp-answer-facit::before { content: ''; }
 
   /* Wine card */
   .pp-wine-card {
@@ -314,16 +326,29 @@ function ptsClass(poäng) {
   return 'pp-tip-pts pending'
 }
 
-function answerClass(svar, rätt_svar) {
-  if (!rätt_svar) return 'pp-answer pending'
-  return svar?.trim().toLowerCase() === rätt_svar.trim().toLowerCase()
-    ? 'pp-answer correct'
-    : 'pp-answer wrong'
+// Är svaret rätt? Använd backendens fält (rätt/avgjord) när de finns; annars
+// fall tillbaka på semikolon-medveten matchning (flera godkända svar), samma
+// logik som topplistan — aldrig en naiv heltextsjämförelse.
+function svarÄrRätt(s) {
+  if (typeof s.rätt === 'boolean') return s.rätt
+  if (!s.rätt_svar) return false
+  const accepterade = s.rätt_svar.split(';').map((x) => x.trim().toLowerCase()).filter(Boolean)
+  return accepterade.includes(s.svar?.trim().toLowerCase())
 }
 
-function answerBadge(svar, rätt_svar) {
-  if (!rätt_svar) return { cls: 'pending', label: 'PÅGÅR' }
-  return svar?.trim().toLowerCase() === rätt_svar.trim().toLowerCase()
+function svarAvgjord(s) {
+  if (typeof s.avgjord === 'boolean') return s.avgjord
+  return !!(s.rätt_svar && s.rätt_svar.trim())
+}
+
+function answerClass(s) {
+  if (!svarAvgjord(s)) return 'pp-answer pending'
+  return svarÄrRätt(s) ? 'pp-answer correct' : 'pp-answer wrong'
+}
+
+function answerBadge(s) {
+  if (!svarAvgjord(s)) return { cls: 'pending', label: 'PÅGÅR' }
+  return svarÄrRätt(s)
     ? { cls: 'correct', label: 'RÄTT' }
     : { cls: 'wrong', label: 'FEL' }
 }
@@ -372,7 +397,13 @@ export default function ParticipantProfile() {
     )
   }
 
-  const totalPoäng = profil.tips.reduce((sum, t) => sum + (t.poäng || 0), 0)
+  // Frågepoäng räknas in i totalen så profilens "Poäng" matchar topplistan.
+  const frågePoäng = (profil.svar || []).reduce(
+    (sum, s) => sum + (s.intjänad != null ? s.intjänad : (svarÄrRätt(s) ? (s.poäng || 0) : 0)),
+    0
+  )
+  const matchPoäng = profil.tips.reduce((sum, t) => sum + (t.poäng || 0), 0)
+  const totalPoäng = matchPoäng + frågePoäng
   const exakta = profil.tips.filter((t) => t.poäng === 5).length
   const rätta  = profil.tips.filter((t) => t.poäng === 2).length
 
@@ -614,9 +645,14 @@ export default function ParticipantProfile() {
                   <div className="pp-empty">Inga svar lämnade.</div>
                 ) : (
                   [...profil.svar].sort((a, b) => (a.fråga_nr ?? 999) - (b.fråga_nr ?? 999)).map((s) => {
-                    const badge = answerBadge(s.svar, s.rätt_svar)
+                    const badge = answerBadge(s)
+                    const avgjord = svarAvgjord(s)
+                    const rätt = svarÄrRätt(s)
+                    const intjänad = s.intjänad != null ? s.intjänad : (rätt ? (s.poäng || 0) : 0)
+                    const facit = (s.rätt_svar || '')
+                      .split(';').map((x) => x.trim()).filter(Boolean).join(' / ')
                     return (
-                      <div key={s.fråga_id} className={answerClass(s.svar, s.rätt_svar)}>
+                      <div key={s.fråga_id} className={answerClass(s)}>
                         {s.fråga_nr && (
                           <div className="pp-answer-nr">Fråga {s.fråga_nr}</div>
                         )}
@@ -628,12 +664,22 @@ export default function ParticipantProfile() {
                             <span className="pp-answer-arrow">→</span>
                             <span className="pp-answer-a">{s.svar}</span>
                           </div>
-                          <div className={`pp-answer-badge ${badge.cls}`}>
-                            {badge.cls === 'correct' && '✓ '}
-                            {badge.cls === 'wrong' && '✗ '}
-                            {badge.label}
+                          <div className="pp-answer-meta">
+                            {avgjord && (
+                              <span className={`pp-answer-pts ${rätt ? 'correct' : 'wrong'}`}>
+                                {rätt ? `+${intjänad}p` : '0p'}
+                              </span>
+                            )}
+                            <div className={`pp-answer-badge ${badge.cls}`}>
+                              {badge.cls === 'correct' && '✓ '}
+                              {badge.cls === 'wrong' && '✗ '}
+                              {badge.label}
+                            </div>
                           </div>
                         </div>
+                        {avgjord && !rätt && facit && (
+                          <div className="pp-answer-facit">Rätt svar: {facit}</div>
+                        )}
                       </div>
                     )
                   })

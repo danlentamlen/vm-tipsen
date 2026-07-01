@@ -107,23 +107,41 @@ export default async (req) => {
           }
         })
 
+      // Frågor-arket: A=id, B=fråga, C=poäng, E(idx 4)=rätt_svar.
+      // rätt_svar kan vara semikolonseparerat för flera godkända svar
+      // (t.ex. "Germany; Netherlands"). Vi normaliserar till en lista och
+      // matchar EXAKT som topplistan (se byggFrågorMap i _scoring.js) så att
+      // profilens facit/poäng aldrig avviker från topplistan.
       const frågorMap = {}
       frågorRader.forEach((rad, i) => {
-        if (rad[0]) frågorMap[rad[0]] = { fråga: rad[1], poäng: parseInt(rad[2]) || 0, rätt_svar: rad[4] || null, index: i + 1 }
+        if (!rad[0]) return
+        const facit = (rad[4] || '').trim()
+        frågorMap[rad[0]] = {
+          fråga: rad[1],
+          poäng: parseInt(rad[2]) || 0,
+          rätt_svar: facit || null,
+          accepterade: facit
+            ? facit.split(';').map((s) => s.trim().toLowerCase()).filter(Boolean)
+            : [],
+          index: i + 1,
+        }
       })
 
       const minaSvar = dedupliceraSvar(frågorSvarRader.filter((rad) => rad[1] === user_id))
         .map((rad) => {
           const fråga = frågorMap[rad[2]] || {}
           const svar = rad[3]
-          const rätt_svar = fråga.rätt_svar || null
-          if (rätt_svar) {
-            console.log(`[participants debug] fråga_id=${rad[2]} svar=${JSON.stringify(svar)} rätt_svar=${JSON.stringify(rätt_svar)} match=${svar?.trim().toLowerCase() === rätt_svar.trim().toLowerCase()}`)
-          }
+          const svarNorm = svar?.trim().toLowerCase()
+          const avgjord = (fråga.accepterade?.length || 0) > 0
+          const rätt = avgjord && !!svarNorm && fråga.accepterade.includes(svarNorm)
+          const frågaPoäng = fråga.poäng || 0
           return {
             svar_id: rad[0], fråga_id: rad[2],
             fråga: fråga.fråga || null, fråga_nr: fråga.index || null,
-            svar, rätt_svar,
+            svar, rätt_svar: fråga.rätt_svar || null,
+            avgjord, rätt,
+            poäng: frågaPoäng,            // frågans maxpoäng
+            intjänad: rätt ? frågaPoäng : 0, // faktiskt intjänade poäng
           }
         })
 
