@@ -166,6 +166,14 @@ function FrågaKort({ f, t, språk, totalMål = 0 }) {
     const n = Number(svar)
     return Number.isFinite(n) && n < totalMål
   }
+  // Antal tips som fortfarande kan vinna = svar ≥ nuvarande målantal
+  // (mål kan bara öka, så tips under är uträknade).
+  const kvarChans = målFråga
+    ? f.fördelning.reduce((s, d) => {
+        const n = Number(d.svar)
+        return s + (Number.isFinite(n) && n >= totalMål ? (d.antal || 0) : 0)
+      }, 0)
+    : 0
 
   return (
     <div id={`fraga-${f.fråga_id}`} className={`bo-card${f.rätt_svar ? ' klar' : ''}`}>
@@ -181,7 +189,7 @@ function FrågaKort({ f, t, språk, totalMål = 0 }) {
       )}
       {målFråga && (
         <div className="bo-mal-note">
-          Redan {totalMål} mål gjorda — tips under {totalMål} är uträknade ✗
+          Redan {totalMål} mål gjorda — <strong>{kvarChans} av {f.totalt}</strong> tips har fortfarande chans. Tips under {totalMål} är uträknade ✗
         </div>
       )}
       {f.totalt === 0 ? (
