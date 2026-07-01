@@ -56,14 +56,17 @@ const STYLES = `
   .bo-dist { display:flex; flex-direction:column; gap:3px; }
   .bo-row { display:flex; align-items:center; gap:7px; }
   .bo-row-key { font-family:var(--font-bred); font-size:.8rem; font-weight:700; color:var(--c-text); min-width:38px; flex-shrink:0; }
-  .bo-row.rätt .bo-row-key { color:var(--c-röd); }
+  .bo-row.rätt .bo-row-key { color:#1a7a40; }
   .bo-bar-wrap { flex:1; height:5px; background:rgba(0,0,0,.06); border-radius:3px; overflow:hidden; }
   .bo-bar { height:100%; border-radius:3px; background:var(--c-text-4); transition:width .3s; }
-  .bo-row.rätt .bo-bar { background:var(--c-röd); }
+  .bo-row.rätt .bo-bar { background:#1a7a40; }
   .bo-row-pct { font-family:var(--font-bred); font-size:.78rem; font-weight:700; color:var(--c-text); min-width:34px; text-align:right; flex-shrink:0; }
   .bo-row-cnt { font-family:var(--font-text); font-size:.66rem; color:var(--c-text-4); min-width:48px; text-align:right; flex-shrink:0; white-space:nowrap; }
-  .bo-row.rätt .bo-row-pct { color:var(--c-röd); }
-  .bo-check { color:var(--c-röd); font-weight:700; flex-shrink:0; font-size:.8rem; }
+  .bo-row.rätt .bo-row-pct { color:#1a7a40; }
+  .bo-check { color:#1a7a40; font-weight:700; flex-shrink:0; font-size:.8rem; }
+  .bo-row.fel .bo-row-key { color:var(--c-röd); opacity:.8; }
+  .bo-row.fel .bo-bar { background:rgba(200,16,46,.25); }
+  .bo-row.fel .bo-row-pct { color:var(--c-röd); opacity:.85; }
   .bo-mer { font-family:var(--font-bred); font-size:.7rem; font-weight:700; letter-spacing:.04em; color:var(--c-text-4); background:none; border:none; cursor:pointer; padding:2px 0 0; margin-top:1px; text-align:left; }
   .bo-mer:hover { color:var(--c-mörk); text-decoration:underline; }
   .bo-tom { font-family:var(--font-text); font-size:.78rem; color:var(--c-text-4); font-style:italic; padding:1px 0; margin:0; }
@@ -72,7 +75,7 @@ const STYLES = `
   .bo-q-poäng { font-family:var(--font-bred); font-size:.66rem; font-weight:700; color:var(--c-text-4); white-space:nowrap; flex-shrink:0; background:rgba(0,0,0,.04); border-radius:20px; padding:2px 8px; }
   .bo-facit { display:inline-flex; align-items:center; gap:5px; margin-bottom:.4rem; font-family:var(--font-text); font-size:.78rem; }
   .bo-facit-lbl { color:var(--c-text-4); }
-  .bo-facit-val { font-weight:700; color:var(--c-röd); }
+  .bo-facit-val { font-weight:700; color:#1a7a40; }
   .bo-row.omöjlig .bo-row-key { text-decoration:line-through; color:var(--c-röd); opacity:.85; }
   .bo-row.omöjlig .bo-bar { background:rgba(200,16,46,.28); }
   .bo-cross { color:var(--c-röd); font-weight:700; flex-shrink:0; font-size:.8rem; }
@@ -134,15 +137,19 @@ function MatchKort({ m, t }) {
         <p className="bo-tom">{t('betOverview.ingaTips')}</p>
       ) : (
         <div className="bo-dist">
-          {rader.map((f) => (
-            <div key={f.resultat} className={`bo-row${f.rätt ? ' rätt' : ''}`}>
-              <span className="bo-row-key">{f.resultat.replace('-', '–')}</span>
-              <div className="bo-bar-wrap"><div className="bo-bar" style={{ width: `${f.procent}%` }} /></div>
-              {f.rätt && <span className="bo-check" aria-label={t('betOverview.rättResultat')}>✓</span>}
-              <span className="bo-row-pct">{f.procent}%</span>
-              <span className="bo-row-cnt">{f.antal} {t('betOverview.tips')}</span>
-            </div>
-          ))}
+          {rader.map((f) => {
+            const fel = !!m.resultat && !f.rätt
+            return (
+              <div key={f.resultat} className={`bo-row${f.rätt ? ' rätt' : fel ? ' fel' : ''}`}>
+                <span className="bo-row-key">{f.resultat.replace('-', '–')}</span>
+                <div className="bo-bar-wrap"><div className="bo-bar" style={{ width: `${f.procent}%` }} /></div>
+                {f.rätt && <span className="bo-check" aria-label={t('betOverview.rättResultat')}>✓</span>}
+                {fel && <span className="bo-cross" aria-label="Fel">✗</span>}
+                <span className="bo-row-pct">{f.procent}%</span>
+                <span className="bo-row-cnt">{f.antal} {t('betOverview.tips')}</span>
+              </div>
+            )
+          })}
           {(dolda > 0 || öppen) && m.fördelning.length > TOPP && (
             <MerKnapp antal={dolda} expanderat={öppen} onClick={() => setÖppen((v) => !v)} t={t} />
           )}
@@ -198,12 +205,14 @@ function FrågaKort({ f, t, språk, totalMål = 0 }) {
         <div className="bo-dist">
           {rader.map((d) => {
             const omöjlig = ärOmöjlig(d.svar)
+            const fel = !!f.rätt_svar && !d.rätt        // frågan avgjord men detta svar är fel
+            const markeraFel = omöjlig || fel
             return (
-              <div key={d.svar} className={`bo-row${d.rätt ? ' rätt' : ''}${omöjlig ? ' omöjlig' : ''}`}>
+              <div key={d.svar} className={`bo-row${d.rätt ? ' rätt' : omöjlig ? ' omöjlig' : fel ? ' fel' : ''}`}>
                 <span className="bo-row-key" style={{ minWidth: 0, flex: '0 1 auto', maxWidth: '45%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.svar}</span>
                 <div className="bo-bar-wrap"><div className="bo-bar" style={{ width: `${d.procent}%` }} /></div>
                 {d.rätt && <span className="bo-check" aria-label={t('betOverview.rättSvar')}>✓</span>}
-                {omöjlig && <span className="bo-cross" title={`Lägre än nuvarande ${totalMål} mål`} aria-label="Uträknad">✗</span>}
+                {markeraFel && !d.rätt && <span className="bo-cross" title={omöjlig ? `Lägre än nuvarande ${totalMål} mål` : 'Fel svar'} aria-label="Fel">✗</span>}
                 <span className="bo-row-pct">{d.procent}%</span>
                 <span className="bo-row-cnt">{d.antal} {t('betOverview.svar')}</span>
               </div>
