@@ -916,7 +916,15 @@ export default function Home() {
                     <span className="lb-rank">{minRank + 1}</span>
                     <div className="lb-avatar me">{initials(användare.namn)}</div>
                     <span className="lb-name">{användare.namn} (du)</span>
-                    <span className="lb-pts">{topplista[minRank]?.poäng ?? '—'}<span className="lb-pts-lbl"> p</span></span>
+                    <div className="lb-pts-wrap">
+                      <span className="lb-pts">{minRad?.poäng ?? '—'}<span className="lb-pts-lbl"> p</span></span>
+                      {minRad && (
+                        <div className="lb-pts-breakdown">
+                          <span className="lb-pts-chip">⚽ {(minRad.poäng ?? 0) - (minRad.frågepoäng ?? 0)}p</span>
+                          <span className="lb-pts-chip">🎯 {minRad.frågepoäng ?? 0}p</span>
+                        </div>
+                      )}
+                    </div>
                     <span className="lb-chevron" aria-hidden="true">›</span>
                   </Link>
                 </>
