@@ -22,11 +22,7 @@ const STYLES = `
   .rn-card { background:#fff; border:1px solid rgba(0,0,0,.07); border-radius:12px; padding:.4rem .25rem; box-shadow:0 1px 3px rgba(0,0,0,.04); }
   .rn-item { display:flex; align-items:flex-start; gap:10px; padding:.55rem .75rem; border-bottom:.5px solid rgba(0,0,0,.05); }
   .rn-item:last-child { border-bottom:none; }
-  .rn-chip { flex-shrink:0; font-family:'Barlow Condensed',sans-serif; font-size:.66rem; font-weight:700; letter-spacing:.05em; text-transform:uppercase; border-radius:20px; padding:2px 9px; margin-top:1px; min-width:64px; text-align:center; }
-  .rn-chip.feat  { background:rgba(40,160,85,.12);  color:#1a7a40; }
-  .rn-chip.fix   { background:rgba(24,95,165,.12);   color:#185FA5; }
-  .rn-chip.perf  { background:rgba(197,160,40,.15);  color:#8a6e1a; }
-  .rn-chip.style { background:rgba(83,74,183,.12);   color:#534AB7; }
+  .rn-dot { flex-shrink:0; width:7px; height:7px; border-radius:50%; background:#1a7a40; margin-top:7px; }
   .rn-text { flex:1; font-family:'Barlow',sans-serif; font-size:.9rem; color:#2a2a2a; line-height:1.45; min-width:0; }
   .rn-scope { font-family:'Barlow Condensed',sans-serif; font-size:.62rem; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:#aaa; background:rgba(0,0,0,.04); border-radius:5px; padding:1px 6px; margin-right:6px; }
   .rn-empty { text-align:center; color:#aaa; font-family:'Barlow',sans-serif; padding:3rem 1rem; }
@@ -48,7 +44,7 @@ export default function ReleaseNotes() {
         <p className="rn-eyebrow">VM-tipsen 2026</p>
         <h1 className="rn-title">Uppdateringar</h1>
         <p className="rn-intro">
-          Vad som är nytt, fixat och förbättrat i appen — hämtat direkt från förändringshistoriken.
+          Nya funktioner och förbättringar i appen, senaste först.
         </p>
 
         {grupper.length === 0 ? (
@@ -60,7 +56,7 @@ export default function ReleaseNotes() {
               <div className="rn-card">
                 {g.items.map((it) => (
                   <div key={it.hash} className="rn-item">
-                    <span className={`rn-chip ${it.typ}`}>{it.label}</span>
+                    <span className="rn-dot" aria-hidden="true" />
                     <span className="rn-text">
                       {it.scope && <span className="rn-scope">{it.scope}</span>}
                       {it.text}

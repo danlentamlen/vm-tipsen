@@ -16,12 +16,10 @@ import { fileURLToPath } from 'node:url'
 
 const OUT = fileURLToPath(new URL('../src/generated/releaseNotes.json', import.meta.url))
 
-// Vilka conventional-commit-typer som visas + hur de etiketteras.
+// Vilka conventional-commit-typer som visas. Endast 'feat' — nya funktioner.
+// fix/perf/style/refactor/chore m.m. är mer tekniska och döljs.
 const TYPMAP = {
-  feat:  { label: 'Nytt',      rank: 0 },
-  fix:   { label: 'Fixat',     rank: 1 },
-  perf:  { label: 'Prestanda', rank: 2 },
-  style: { label: 'Design',    rank: 3 },
+  feat: { label: 'Nytt', rank: 0 },
 }
 
 function skriv(obj) {

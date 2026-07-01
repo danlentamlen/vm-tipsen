@@ -1,13 +1,22 @@
 {
-  "generatedAt": "2026-07-01T09:24:53.086Z",
+  "generatedAt": "2026-07-01T09:37:46.033Z",
   "latest": {
     "date": "2026-07-01",
-    "hash": "f7c8e1a"
+    "hash": "7d849ce"
   },
   "groups": [
     {
       "date": "2026-07-01",
       "items": [
+        {
+          "hash": "7d849ce",
+          "date": "2026-07-01",
+          "typ": "feat",
+          "label": "Nytt",
+          "rank": 0,
+          "scope": null,
+          "text": "release notes-sida (/uppdateringar) genererad fran git"
+        },
         {
           "hash": "f7c8e1a",
           "date": "2026-07-01",
@@ -52,60 +61,6 @@
           "rank": 0,
           "scope": "slutspel",
           "text": "visa nasta match + datum/tid i tradet"
-        },
-        {
-          "hash": "3a1cb5f",
-          "date": "2026-07-01",
-          "typ": "fix",
-          "label": "Fixat",
-          "rank": 1,
-          "scope": "vm-vinnare",
-          "text": "las hela FragorSvar (A2:D100000) sa alla deltagares VM-vinnare visas"
-        },
-        {
-          "hash": "4846b91",
-          "date": "2026-07-01",
-          "typ": "fix",
-          "label": "Fixat",
-          "rank": 1,
-          "scope": "participants",
-          "text": "importera getRows sa deltagarlistan laddar"
-        },
-        {
-          "hash": "5508288",
-          "date": "2026-07-01",
-          "typ": "fix",
-          "label": "Fixat",
-          "rank": 1,
-          "scope": "slutspel",
-          "text": "highlighta laget som gar vidare + live-match ovanfor tradet"
-        },
-        {
-          "hash": "282cc0c",
-          "date": "2026-07-01",
-          "typ": "fix",
-          "label": "Fixat",
-          "rank": 1,
-          "scope": "profil",
-          "text": "tillaggsfragor visar ratt facit och poang"
-        },
-        {
-          "hash": "bc7d80c",
-          "date": "2026-07-01",
-          "typ": "style",
-          "label": "Design",
-          "rank": 3,
-          "scope": "oversikt",
-          "text": "gront for ratt konsekvent + markera ovriga tips som fel"
-        },
-        {
-          "hash": "b307e59",
-          "date": "2026-07-01",
-          "typ": "style",
-          "label": "Design",
-          "rank": 3,
-          "scope": "profil",
-          "text": "gron for ratt svar, rod for fel pa tillaggsfragor"
         }
       ]
     },
@@ -129,33 +84,6 @@
           "rank": 0,
           "scope": null,
           "text": "visa vilket lag som går vidare på matchkortet (PEN/AET)"
-        },
-        {
-          "hash": "9e08039",
-          "date": "2026-06-30",
-          "typ": "fix",
-          "label": "Fixat",
-          "rank": 1,
-          "scope": null,
-          "text": "football-data.org score.fullTime är kumulativt — subtrahera ET-mål och straffmål"
-        },
-        {
-          "hash": "fbd0f8f",
-          "date": "2026-06-30",
-          "typ": "fix",
-          "label": "Fixat",
-          "rank": 1,
-          "scope": null,
-          "text": "subtrahera straffmål från intHomeScore för PEN-matcher (TSDB kumulativt format)"
-        },
-        {
-          "hash": "f0e8561",
-          "date": "2026-06-30",
-          "typ": "fix",
-          "label": "Fixat",
-          "rank": 1,
-          "scope": null,
-          "text": "räkna bara 90-min-resultat för slutspelsmatcher (exkludera AET/PEN)"
         }
       ]
     },
@@ -179,24 +107,6 @@
           "rank": 0,
           "scope": null,
           "text": "slutspelsbracket, omgångsfilter, bettingöversikt & vin i topplista"
-        },
-        {
-          "hash": "f75ed52",
-          "date": "2026-06-29",
-          "typ": "fix",
-          "label": "Fixat",
-          "rank": 1,
-          "scope": null,
-          "text": "participants uses locked snapshot so rätt_svar updates instantly after admin cache refresh"
-        },
-        {
-          "hash": "3dd66fb",
-          "date": "2026-06-29",
-          "typ": "fix",
-          "label": "Fixat",
-          "rank": 1,
-          "scope": "participants",
-          "text": "hoj las-range 1000 till 100000"
         }
       ]
     },
@@ -278,38 +188,6 @@
       ]
     },
     {
-      "date": "2026-06-27",
-      "items": [
-        {
-          "hash": "962e211",
-          "date": "2026-06-27",
-          "typ": "fix",
-          "label": "Fixat",
-          "rank": 1,
-          "scope": null,
-          "text": "matcher-cache 5min + race condition tips-sparande"
-        },
-        {
-          "hash": "766c713",
-          "date": "2026-06-27",
-          "typ": "fix",
-          "label": "Fixat",
-          "rank": 1,
-          "scope": null,
-          "text": "skrivpaus börjar 10:00 CEST istället för 09:00"
-        },
-        {
-          "hash": "a3ab009",
-          "date": "2026-06-27",
-          "typ": "fix",
-          "label": "Fixat",
-          "rank": 1,
-          "scope": null,
-          "text": "polling var 5 min på Matches-sidan för knockout-lagnamn"
-        }
-      ]
-    },
-    {
       "date": "2026-06-26",
       "items": [
         {
@@ -329,47 +207,6 @@
           "rank": 0,
           "scope": null,
           "text": "knockout lagnamn + 3:e plats via FIFAs 495-kombinationstabell"
-        },
-        {
-          "hash": "518ab91",
-          "date": "2026-06-26",
-          "typ": "fix",
-          "label": "Fixat",
-          "rank": 1,
-          "scope": null,
-          "text": "erPositionKlar returnerar true när alla gruppens matcher är spelade"
-        },
-        {
-          "hash": "179577c",
-          "date": "2026-06-26",
-          "typ": "fix",
-          "label": "Fixat",
-          "rank": 1,
-          "scope": null,
-          "text": "korta cache-tid för /matches till 5 min (knockout-namn uppdateras löpande)"
-        },
-        {
-          "hash": "12a11b2",
-          "date": "2026-06-26",
-          "typ": "fix",
-          "label": "Fixat",
-          "rank": 1,
-          "scope": null,
-          "text": "kör knockout-lagnamnsuppdatering även under skrivpaus"
-        }
-      ]
-    },
-    {
-      "date": "2026-06-21",
-      "items": [
-        {
-          "hash": "3fd3fd2",
-          "date": "2026-06-21",
-          "typ": "fix",
-          "label": "Fixat",
-          "rank": 1,
-          "scope": null,
-          "text": "FD auktoritativ för live-ställning, åtgärdar VAR-bugg"
         }
       ]
     },
@@ -393,74 +230,6 @@
           "rank": 0,
           "scope": null,
           "text": "visa slutresultat direkt från live-källan vid matchslut"
-        },
-        {
-          "hash": "87872a7",
-          "date": "2026-06-14",
-          "typ": "fix",
-          "label": "Fixat",
-          "rank": 1,
-          "scope": null,
-          "text": "stabil kronologisk ordning av matcher på deltagarprofilen"
-        },
-        {
-          "hash": "fb9b2b5",
-          "date": "2026-06-14",
-          "typ": "fix",
-          "label": "Fixat",
-          "rank": 1,
-          "scope": null,
-          "text": "robustare BALLDONTLIE-källa så live-minuten alltid finns"
-        },
-        {
-          "hash": "7a610cb",
-          "date": "2026-06-14",
-          "typ": "fix",
-          "label": "Fixat",
-          "rank": 1,
-          "scope": null,
-          "text": "live-poäng på matchkort + riktig matchminut"
-        }
-      ]
-    },
-    {
-      "date": "2026-06-13",
-      "items": [
-        {
-          "hash": "06fde8c",
-          "date": "2026-06-13",
-          "typ": "fix",
-          "label": "Fixat",
-          "rank": 1,
-          "scope": null,
-          "text": "rätt Netlify-syntax för schemalagda funktioner ([functions.\"namn\"])"
-        },
-        {
-          "hash": "3e303ea",
-          "date": "2026-06-13",
-          "typ": "fix",
-          "label": "Fixat",
-          "rank": 1,
-          "scope": null,
-          "text": "matcher fastnar inte i 'Pågår nu' efter slut"
-        },
-        {
-          "hash": "4ebb37d",
-          "date": "2026-06-13",
-          "typ": "fix",
-          "label": "Fixat",
-          "rank": 1,
-          "scope": null,
-          "text": "robust resultatmatchning + synliggör omatchade matcher"
-        },
-        {
-          "hash": "edd19dd",
-          "date": "2026-06-13",
-          "typ": "perf",
-          "label": "Prestanda",
-          "rank": 2,
-          "scope": null,
-          "text": "koppla topplistans läs-cache till sync-results (TTL 10min→60s)"
         }
       ]
     },
@@ -475,15 +244,6 @@
           "rank": 0,
           "scope": null,
           "text": "min ställning på startsidan (poäng, placering, gap, slutplaceringsprognos) + Min sida-länk"
-        },
-        {
-          "hash": "02de62b",
-          "date": "2026-06-12",
-          "typ": "fix",
-          "label": "Fixat",
-          "rank": 1,
-          "scope": null,
-          "text": "räkna bara senaste tips/svar per nyckel + live skytteliga"
         }
       ]
     },
@@ -498,24 +258,6 @@
           "rank": 0,
           "scope": null,
           "text": "live scores, green dot rest period, UX fixes"
-        },
-        {
-          "hash": "ffabc82",
-          "date": "2026-06-11",
-          "typ": "fix",
-          "label": "Fixat",
-          "rank": 1,
-          "scope": null,
-          "text": "green dot before June 26 + fetch live scores by date"
-        },
-        {
-          "hash": "62d5d05",
-          "date": "2026-06-11",
-          "typ": "fix",
-          "label": "Fixat",
-          "rank": 1,
-          "scope": null,
-          "text": "push gruppspel deadline to 19:00 + fix my-status match filter"
         }
       ]
     },
@@ -548,24 +290,6 @@
           "rank": 0,
           "scope": null,
           "text": "Swedish time conversion, date adjustment, extended today's matches & best-of-evening widget"
-        },
-        {
-          "hash": "8422037",
-          "date": "2026-06-10",
-          "typ": "fix",
-          "label": "Fixat",
-          "rank": 1,
-          "scope": null,
-          "text": "use grupp !== Slutspel filter + slutspel round support in my-status"
-        },
-        {
-          "hash": "bcd483e",
-          "date": "2026-06-10",
-          "typ": "fix",
-          "label": "Fixat",
-          "rank": 1,
-          "scope": null,
-          "text": "remove stray slash from GRUPPSPEL_DEADLINE export"
         }
       ]
     },
@@ -589,24 +313,6 @@
           "rank": 0,
           "scope": null,
           "text": "add admin-resend-vin-mail function (missed in previous commit)"
-        },
-        {
-          "hash": "3ae510e",
-          "date": "2026-06-09",
-          "typ": "fix",
-          "label": "Fixat",
-          "rank": 1,
-          "scope": null,
-          "text": "add Swish number to all confirmation and reminder emails"
-        },
-        {
-          "hash": "6b6fc3b",
-          "date": "2026-06-09",
-          "typ": "fix",
-          "label": "Fixat",
-          "rank": 1,
-          "scope": null,
-          "text": "await email in viner-spara + admin resend confirmation mail"
         }
       ]
     },
@@ -644,20 +350,6 @@
           "rank": 0,
           "scope": null,
           "text": "add wine reminder feature + fix netlify dev vite proxy"
-        }
-      ]
-    },
-    {
-      "date": "2026-05-17",
-      "items": [
-        {
-          "hash": "216a898",
-          "date": "2026-05-17",
-          "typ": "fix",
-          "label": "Fixat",
-          "rank": 1,
-          "scope": null,
-          "text": "utöka Google Sheets-ranges till 100000 rader för att hämta alla tips korrekt"
         }
       ]
     },
@@ -783,15 +475,6 @@
           "rank": 0,
           "scope": null,
           "text": "update Info.jsx with full deadline schedule"
-        },
-        {
-          "hash": "c8a6714",
-          "date": "2026-05-03",
-          "typ": "fix",
-          "label": "Fixat",
-          "rank": 1,
-          "scope": null,
-          "text": "correct match grouping for knockout rounds"
         }
       ]
     },
@@ -815,15 +498,6 @@
           "rank": 0,
           "scope": null,
           "text": "add forum with unread badge, admin moderation & auth gate"
-        },
-        {
-          "hash": "5f01677",
-          "date": "2026-05-02",
-          "typ": "fix",
-          "label": "Fixat",
-          "rank": 1,
-          "scope": null,
-          "text": "resolve leaderboard showing \"Okänd\" and SPA reload 404"
         }
       ]
     },
@@ -838,24 +512,6 @@
           "rank": 0,
           "scope": null,
           "text": "glömt lösenord & återställningsflöde"
-        },
-        {
-          "hash": "cf8d10f",
-          "date": "2026-04-27",
-          "typ": "fix",
-          "label": "Fixat",
-          "rank": 1,
-          "scope": null,
-          "text": "rätta filnamns-casing för ForgotPassword och ResetPassword"
-        },
-        {
-          "hash": "5ce7721",
-          "date": "2026-04-27",
-          "typ": "fix",
-          "label": "Fixat",
-          "rank": 1,
-          "scope": null,
-          "text": "useSettings tolkar tips_låst som boolean korrekt"
         }
       ]
     },
