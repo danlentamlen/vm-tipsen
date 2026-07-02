@@ -265,18 +265,48 @@ export default function AdminBetStatus() {
 
   function selectNone() { setSelected(new Set()) }
 
-  async function sendReminder(type, round) {
-    if (selected.size === 0) { visaToast('Välj minst en deltagare'); return }
-    const key = type === 'group' ? 'group' : `knockout:${round}`
+  /**
+   * Kör påminnelser tills ALLA fått. Servern skickar i batchar inom sin
+   * tidsbudget och returnerar { done, total, sent, failed, remaining }.
+   * Vi återupptar med `remaining` tills done — sidan håller alltså koll på
+   * vilka som mailats och kör om tills ingen är kvar.
+   */
+  async function körPåminnelse(förstaBody, key) {
     setSending(key)
+    let body = förstaBody
+    let totalSkickade = 0
+    let total = 0
+    const allaFel = []
+    const MAX_RUNDOR = 50 // säkerhetsspärr mot oändlig loop
+
     try {
-      const res = await fetch('/.netlify/functions/admin-reminder', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminSecret}` },
-        body: JSON.stringify({ user_ids: [...selected], type, ...(round ? { round } : {}) }),
-      })
-      const d = await res.json()
-      visaToast(res.ok ? `📧 ${d.message}` : `❌ ${d.error || 'Fel'}`)
+      for (let runda = 0; runda < MAX_RUNDOR; runda++) {
+        const res = await fetch('/.netlify/functions/admin-reminder', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminSecret}` },
+          body: JSON.stringify(body),
+        })
+        const d = await res.json()
+        if (!res.ok) { visaToast(`❌ ${d.error || 'Fel'}`); return }
+
+        totalSkickade += (d.sent?.length ?? 0)
+        if (d.total) total = Math.max(total, d.total)
+        if (Array.isArray(d.failed)) allaFel.push(...d.failed)
+
+        if (d.done || !d.remaining?.length) break
+
+        // Fortsätt med dem som är kvar — visa löpande progress
+        visaToast(`📧 Skickar… ${totalSkickade}/${total || '?'}`, 60000)
+        body = { user_ids: d.remaining, type: förstaBody.type, ...(förstaBody.round ? { round: förstaBody.round } : {}) }
+      }
+
+      const misslyckade = allaFel.length
+      visaToast(
+        misslyckade === 0
+          ? `✅ ${totalSkickade}/${total || totalSkickade} mail skickade`
+          : `⚠️ ${totalSkickade} skickade · ${misslyckade} misslyckades`
+      )
+      if (misslyckade > 0) console.warn('[påminnelse] misslyckade:', allaFel)
     } catch {
       visaToast('❌ Kunde inte skicka påminnelse')
     } finally {
@@ -284,22 +314,14 @@ export default function AdminBetStatus() {
     }
   }
 
+  async function sendReminder(type, round) {
+    if (selected.size === 0) { visaToast('Välj minst en deltagare'); return }
+    const key = type === 'group' ? 'group' : `knockout:${round}`
+    await körPåminnelse({ user_ids: [...selected], type, ...(round ? { round } : {}) }, key)
+  }
+
   async function sendReminderAll(round) {
-    const key = `all:${round}`
-    setSending(key)
-    try {
-      const res = await fetch('/.netlify/functions/admin-reminder', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminSecret}` },
-        body: JSON.stringify({ all: true, type: 'knockout', round }),
-      })
-      const d = await res.json()
-      visaToast(res.ok ? `📧 ${d.message}` : `❌ ${d.error || 'Fel'}`)
-    } catch {
-      visaToast('❌ Kunde inte skicka påminnelse')
-    } finally {
-      setSending(null)
-    }
+    await körPåminnelse({ all: true, type: 'knockout', round }, `all:${round}`)
   }
 
   async function taBortAnvändare() {
