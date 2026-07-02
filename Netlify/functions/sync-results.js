@@ -125,28 +125,40 @@ export default async () => {
     // ── 6b. Rätta redan sparade resultat som ändrats (självläkning) ─────────
     // Tidigare skrevs bara NYA rader; ett en gång felskrivet resultat (t.ex. en
     // knockout-match sparad med förlängningsresultat innan 90-min-resultatet
-    // fanns) blev då permanent fel. Nu skriver vi över rader vars mål eller
-    // vinnare skiljer sig från den aktuella (ordinarie-tids-)beräkningen.
+    // fanns) blev då permanent fel. Nu skriver vi över rader vars mål skiljer sig
+    // från den aktuella (ordinarie-tids-)beräkningen.
+    //
+    // Vinnare (kolumn D): en källa utan vinnaruppgift (tom sträng) får ALDRIG
+    // nolla en redan känd vinnare — annars skulle D "flappa" fram och tillbaka
+    // mellan körningar beroende på vilken källa som svarade (football-data sätter
+    // vinnare även för gruppspel, TheSportsDB oftast inte). Vi behåller därför den
+    // kända vinnaren och uppdaterar bara D när den nya källan har en (icke-tom)
+    // avvikande vinnare.
     const ändrade = []
     for (const rad of mappade) {
       const idx = befintligaRader.findIndex((r) => r[0] === rad[0])
       if (idx === -1) continue // saknas → hanteras som "ny" ovan
       const gammal = befintligaRader[idx]
+      const gammalVinnare = String(gammal[3] ?? '')
+      const nyVinnare     = String(rad[3] ?? '')
+      const slutVinnare   = nyVinnare !== '' ? nyVinnare : gammalVinnare
+      const nyRad = [rad[0], String(rad[1] ?? ''), String(rad[2] ?? ''), slutVinnare]
+
       const skiljerSig =
-        String(gammal[1] ?? '') !== String(rad[1] ?? '') ||
-        String(gammal[2] ?? '') !== String(rad[2] ?? '') ||
-        String(gammal[3] ?? '') !== String(rad[3] ?? '')
+        String(gammal[1] ?? '') !== nyRad[1] ||
+        String(gammal[2] ?? '') !== nyRad[2] ||
+        gammalVinnare !== slutVinnare
       if (!skiljerSig) continue
       const rowNum = idx + 2 // A2 = första dataraden
       await sheets.spreadsheets.values.update({
         spreadsheetId: process.env.GOOGLE_SHEET_ID,
         range: `Resultat!A${rowNum}:D${rowNum}`,
         valueInputOption: 'RAW',
-        requestBody: { values: [rad] },
+        requestBody: { values: [nyRad] },
       })
-      console.warn(`[sync-results] 🔧 Rättade ${rad[0]}: ${gammal[1]}–${gammal[2]} → ${rad[1]}–${rad[2]}`)
-      befintligaRader[idx] = rad
-      ändrade.push(rad[0])
+      console.warn(`[sync-results] 🔧 Rättade ${nyRad[0]}: ${gammal[1]}–${gammal[2]} → ${nyRad[1]}–${nyRad[2]}`)
+      befintligaRader[idx] = nyRad
+      ändrade.push(nyRad[0])
     }
     if (ändrade.length > 0) {
       console.log(`[sync-results] ✅ Rättade ${ändrade.length} ändrade resultat`)

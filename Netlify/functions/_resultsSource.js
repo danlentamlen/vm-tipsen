@@ -175,14 +175,26 @@ export function tsdbV1Normalize(ev) {
   let borta = toNum(ev.intAwayScore)
   const penH = toNum(ev.intHomeScoresPenaltyScore) ?? toNum(ev.intHomePenaltyScore) ?? null
   const penB = toNum(ev.intAwayScoresPenaltyScore) ?? toNum(ev.intAwayPenaltyScore) ?? null
+  const etHRaw = toNum(ev.intHomeExtraTime)
+  const etBRaw = toNum(ev.intAwayExtraTime)
   if (['AET', 'PEN'].includes(s) && hemma != null && borta != null) {
-    const etH = toNum(ev.intHomeExtraTime) ?? 0
-    const etB = toNum(ev.intAwayExtraTime) ?? 0
-    hemma -= etH
-    borta -= etB
-    if (s === 'PEN' && penH != null && penB != null) {
-      hemma -= penH
-      borta -= penB
+    // TSDB saknar ett fält för 90-min-resultatet. Vi kan bara rekonstruera det
+    // om ET-uppdelningen (och för PEN även straffmålen) finns. Saknas den kan vi
+    // INTE räkna bort förlängningsmålen → vi skulle annars spara ett förlängnings-
+    // resultat (t.ex. 3-2 i st.f. 2-2). Avstå då helt och låt football-data.org
+    // (som har score.regularTime) vara källan för knockout-slutresultat.
+    const saknarET  = etHRaw == null || etBRaw == null
+    const saknarPen = s === 'PEN' && (penH == null || penB == null)
+    if (saknarET || saknarPen) {
+      hemma = null
+      borta = null
+    } else {
+      hemma -= etHRaw
+      borta -= etBRaw
+      if (s === 'PEN') {
+        hemma -= penH
+        borta -= penB
+      }
     }
   }
 
@@ -256,14 +268,23 @@ export function tsdbV2Normalize(ev) {
   let borta = toNum(ev.intAwayScore)
   const penH = toNum(ev.intHomeScoresPenaltyScore) ?? toNum(ev.intHomePenaltyScore) ?? null
   const penB = toNum(ev.intAwayScoresPenaltyScore) ?? toNum(ev.intAwayPenaltyScore) ?? null
+  const etHRaw = toNum(ev.intHomeExtraTime)
+  const etBRaw = toNum(ev.intAwayExtraTime)
   if (['AET', 'PEN'].includes(s) && hemma != null && borta != null) {
-    const etH = toNum(ev.intHomeExtraTime) ?? 0
-    const etB = toNum(ev.intAwayExtraTime) ?? 0
-    hemma -= etH
-    borta -= etB
-    if (s === 'PEN' && penH != null && penB != null) {
-      hemma -= penH
-      borta -= penB
+    // Se tsdbV1Normalize: kan vi inte räkna bort ET/straffar avstår vi hellre än
+    // att spara ett förlängningsresultat. football-data.org (regularTime) är källan.
+    const saknarET  = etHRaw == null || etBRaw == null
+    const saknarPen = s === 'PEN' && (penH == null || penB == null)
+    if (saknarET || saknarPen) {
+      hemma = null
+      borta = null
+    } else {
+      hemma -= etHRaw
+      borta -= etBRaw
+      if (s === 'PEN') {
+        hemma -= penH
+        borta -= penB
+      }
     }
   }
 

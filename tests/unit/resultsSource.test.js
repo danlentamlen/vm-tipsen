@@ -197,6 +197,33 @@ describe('tsdbV1Normalize — AET/PEN-fall', () => {
     expect(r.borta).toBe(1)    // 2 − 1 = 1 (90-min)
     expect(r.vinnare).toBe('H') // France vann på straff
   })
+
+  it('AET utan ET-uppdelning: avstår (null) i st.f. att spara förlängningsresultat', () => {
+    // Match 82-scenariot i TSDB: AET 3-2 men intHomeExtraTime saknas → vi kan inte
+    // räkna bort ET-målet. Då ska vi INTE emittera 3-2 (som annars klubbar FD:s 2-2).
+    const ev = {
+      strHomeTeam: 'Spain', strAwayTeam: 'Germany',
+      intHomeScore: '3', intAwayScore: '2',
+      strStatus: 'AET', strProgress: null,
+      // ingen intHomeExtraTime/intAwayExtraTime
+    }
+    const r = tsdbV1Normalize(ev)
+    expect(r.hemma).toBeNull()
+    expect(r.borta).toBeNull()
+  })
+
+  it('PEN utan straffuppdelning: avstår (null)', () => {
+    const ev = {
+      strHomeTeam: 'Spain', strAwayTeam: 'Germany',
+      intHomeScore: '4', intAwayScore: '5',
+      intHomeExtraTime: '0', intAwayExtraTime: '0',
+      strStatus: 'PEN', strProgress: null,
+      // inga penaltyscores
+    }
+    const r = tsdbV1Normalize(ev)
+    expect(r.hemma).toBeNull()
+    expect(r.borta).toBeNull()
+  })
 })
 
 describe('tsdbV2Normalize — AET/PEN-fall', () => {
