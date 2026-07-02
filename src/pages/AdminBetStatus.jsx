@@ -267,29 +267,61 @@ export default function AdminBetStatus() {
 
   /**
    * Kör påminnelser tills ALLA fått. Servern skickar i batchar inom sin
-   * tidsbudget och returnerar { done, total, sent, failed, remaining }.
+   * tidsbudget och returnerar { done, total, sent, alreadySent, failed, remaining }.
    * Vi återupptar med `remaining` tills done — sidan håller alltså koll på
    * vilka som mailats och kör om tills ingen är kvar.
+   *
+   * Robusthet:
+   * - batch_id skickas med i varje anrop. Servern loggar varje skickat mail
+   *   i fliken Maillogg och hoppar över redan loggade → vi kan säkert köra
+   *   om samma anrop efter nätverksfel/timeout utan dubblettmail.
+   * - Nätverksfel/5xx → automatisk retry av SAMMA body (upp till 3 försök
+   *   med backoff) i stället för att avbryta hela utskicket.
    */
   async function körPåminnelse(förstaBody, key) {
     setSending(key)
-    let body = förstaBody
+    // Återanvänd batch_id från ett tidigare AVBRUTET utskick (samma knapp)
+    // så att en manuell omkörning inte dubbelmailar dem som redan fått.
+    // Rensas när utskicket gått klart → ett medvetet nytt utskick senare
+    // får ett nytt batch_id och når alla igen.
+    const batchKey = `påminnelse-batch:${key}`
+    let batchId = localStorage.getItem(batchKey)
+    if (!batchId) {
+      batchId = `påm-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+      localStorage.setItem(batchKey, batchId)
+    }
+    let body = { ...förstaBody, batch_id: batchId }
     let totalSkickade = 0
     let total = 0
     const allaFel = []
     const MAX_RUNDOR = 50 // säkerhetsspärr mot oändlig loop
+    const MAX_RETRIES = 3
+    const vänta = (ms) => new Promise((r) => setTimeout(r, ms))
 
     try {
       for (let runda = 0; runda < MAX_RUNDOR; runda++) {
-        const res = await fetch('/.netlify/functions/admin-reminder', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminSecret}` },
-          body: JSON.stringify(body),
-        })
-        const d = await res.json()
-        if (!res.ok) { visaToast(`❌ ${d.error || 'Fel'}`); return }
+        // Hämta med retry — servern är idempotent per batch_id så en
+        // omkörning av samma body är säker.
+        let d = null
+        for (let försök = 0; försök <= MAX_RETRIES; försök++) {
+          try {
+            const res = await fetch('/.netlify/functions/admin-reminder', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminSecret}` },
+              body: JSON.stringify(body),
+            })
+            if (res.status >= 500) throw new Error(`Serverfel ${res.status}`)
+            d = await res.json()
+            if (!res.ok) { visaToast(`❌ ${d.error || 'Fel'}`); return }
+            break
+          } catch (err) {
+            if (försök === MAX_RETRIES) throw err
+            visaToast(`🔁 Nätverksfel — försöker igen… (${försök + 1}/${MAX_RETRIES})`, 60000)
+            await vänta(1000 * 2 ** försök) // 1s, 2s, 4s
+          }
+        }
 
-        totalSkickade += (d.sent?.length ?? 0)
+        totalSkickade += (d.sent?.length ?? 0) + (d.alreadySent?.length ?? 0)
         if (d.total) total = Math.max(total, d.total)
         if (Array.isArray(d.failed)) allaFel.push(...d.failed)
 
@@ -297,18 +329,24 @@ export default function AdminBetStatus() {
 
         // Fortsätt med dem som är kvar — visa löpande progress
         visaToast(`📧 Skickar… ${totalSkickade}/${total || '?'}`, 60000)
-        body = { user_ids: d.remaining, type: förstaBody.type, ...(förstaBody.round ? { round: förstaBody.round } : {}) }
+        body = {
+          user_ids: d.remaining,
+          type: förstaBody.type,
+          batch_id: batchId,
+          ...(förstaBody.round ? { round: förstaBody.round } : {}),
+        }
       }
 
       const misslyckade = allaFel.length
+      localStorage.removeItem(batchKey) // klart — nästa utskick blir en ny batch
       visaToast(
         misslyckade === 0
           ? `✅ ${totalSkickade}/${total || totalSkickade} mail skickade`
-          : `⚠️ ${totalSkickade} skickade · ${misslyckade} misslyckades`
+          : `⚠️ ${totalSkickade} skickade · ${misslyckade} misslyckades — se konsolen`
       )
       if (misslyckade > 0) console.warn('[påminnelse] misslyckade:', allaFel)
     } catch {
-      visaToast('❌ Kunde inte skicka påminnelse')
+      visaToast(`❌ Avbrutet efter flera försök — ${totalSkickade} mail hann skickas. Kör igen för att nå resten.`)
     } finally {
       setSending(null)
     }

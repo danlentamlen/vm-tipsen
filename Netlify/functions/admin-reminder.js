@@ -4,23 +4,104 @@
  * Sends a reminder email to one or more participants.
  *
  * Body:
- *   { user_ids: string[], type: 'group' | 'knockout', round?: string }
+ *   { user_ids: string[], type: 'group' | 'knockout', round?: string, batch_id?: string }
  *
  * type='group'    → Reminder about group stage + questions deadline (June 11, 16:00 CEST)
  * type='knockout' → Reminder about a specific knockout round closing soon
  *                   round = e.g. 'Round of 16'
+ * batch_id        → Idempotens-nyckel. Varje skickat mail loggas i fliken
+ *                   Maillogg med sitt batch_id. Anrop med samma batch_id
+ *                   hoppar över redan loggade mottagare — klienten kan
+ *                   därmed säkert köra om/återuppta utan dubblettmail.
  *
  * Auth: Bearer admin secret required.
  */
-import { getSheets, getRows } from './_sheets.js'
-import { skickaMail } from './_mail.js'
+import { getSheets, getRows, appendRow, ensureSheet } from './_sheets.js'
+import { skickaMail, skapaPooladTransporter } from './_mail.js'
 import { getMatcher } from './_lockedData.js'
 import { beräknaOmgångsDeadline } from './_settings.js'
+
+// Hur länge vi som mest skickar innan vi returnerar och låter klienten
+// återuppta med `remaining`. Netlifys synkrona funktioner dödas vid 10s —
+// budget + max ett mail-timeout (PER_MAIL_TIMEOUT_MS) måste hålla oss under.
+const TIME_BUDGET_MS = 6500
+
+// Max väntan per enskilt mail. Utan denna kan ETT hängande SMTP-anrop få
+// Netlify att döda hela funktionen vid 10s → klienten får trasigt svar och
+// vet inte vilka som fått mail. Timeout → mottagaren läggs i failed och
+// klienten kan försöka igen.
+const PER_MAIL_TIMEOUT_MS = 2500
+
+const MAILLOGG_FLIK = 'Maillogg'
+
+// Modulcache: har vi säkerställt att Maillogg-fliken finns? (varm funktion
+// slipper extra API-anrop)
+let mailloggFinns = false
+
+/** Kör en promise med timeout — kastar Error('timeout') om den drar över. */
+export function medTimeout(promise, ms) {
+  let timer
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`Mail-timeout efter ${ms}ms`)), ms)
+    }),
+  ]).finally(() => clearTimeout(timer))
+}
+
+/**
+ * Ren funktion (testbar): filtrera bort mottagare som redan loggats
+ * i Maillogg för det aktuella batch_id:t.
+ * Loggrad = [batch_id, user_id, type, round, tidsstämpel].
+ *
+ * @returns {{ kvar: object[], redanSkickade: string[] }}
+ */
+export function filtreraRedanSkickade(mottagare, loggRader, batchId) {
+  if (!batchId) return { kvar: mottagare, redanSkickade: [] }
+  const skickadeIds = new Set(
+    (loggRader || [])
+      .filter((r) => r?.[0] === batchId && r?.[1])
+      .map((r) => r[1])
+  )
+  const kvar = []
+  const redanSkickade = []
+  for (const m of mottagare) {
+    if (skickadeIds.has(m.user_id)) redanSkickade.push(m.user_id)
+    else kvar.push(m)
+  }
+  return { kvar, redanSkickade }
+}
 
 function verifyAdmin(req) {
   const auth = req.headers.get('authorization')
   if (!auth) return false
   return auth.replace('Bearer ', '') === process.env.ADMIN_SECRET
+}
+
+/**
+ * Ren funktion (testbar): bestäm vilka som ska få mail utifrån Användare-rader.
+ * Rad = [user_id, namn, email].
+ *
+ * @returns {{ mottagare: {user_id,namn,email}[], utanEpost: string[] }}
+ *   mottagare = de med giltig e-post, i sheet-ordning
+ *   utanEpost = user_ids som matchade men saknar e-post (rapporteras som failed)
+ */
+export function planeraMottagare(användareRader, { all, user_ids }) {
+  const målIds = all === true
+    ? null // null = alla
+    : new Set(Array.isArray(user_ids) ? user_ids : [])
+
+  const mottagare = []
+  const utanEpost = []
+  for (const rad of användareRader) {
+    const uid = rad?.[0]
+    if (!uid) continue
+    if (målIds && !målIds.has(uid)) continue
+    const email = rad[2]
+    if (!email) { utanEpost.push(uid); continue }
+    mottagare.push({ user_id: uid, namn: rad[1] || 'Deltagare', email })
+  }
+  return { mottagare, utanEpost }
 }
 
 const SITE_URL = process.env.SITE_URL || 'http://localhost:8888'
@@ -165,7 +246,7 @@ export default async (req) => {
   }
 
   try {
-    const { user_ids, all, type, round } = await req.json()
+    const { user_ids, all, type, round, batch_id } = await req.json()
 
     if (!all && (!Array.isArray(user_ids) || user_ids.length === 0)) {
       return new Response(JSON.stringify({ error: 'Ange antingen { all: true } eller { user_ids: [...] }' }), {
@@ -203,38 +284,82 @@ export default async (req) => {
       knockoutDeadlineStr = formateraDeadline(deadline)
     }
 
-    // Om all:true — skicka till samtliga användare med e-post
-    const målIds = all === true
-      ? new Set(användareRader.map((r) => r[0]).filter(Boolean))
-      : new Set(user_ids)
+    const { mottagare: allaMottagare, utanEpost } = planeraMottagare(användareRader, { all, user_ids })
 
-    const results = []
-    for (const rad of användareRader) {
-      const uid = rad[0]
-      if (!uid || !målIds.has(uid)) continue
-      const namn = rad[1]
-      const email = rad[2]
-      if (!email) {
-        results.push({ user_id: uid, ok: false, error: 'Ingen e-postadress' })
-        continue
+    // Idempotens: hoppa över mottagare som redan loggats i Maillogg för
+    // detta batch_id (skyddar mot dubblettmail när klienten kör om).
+    let mottagare = allaMottagare
+    let redanSkickade = []
+    if (batch_id) {
+      if (!mailloggFinns) {
+        await ensureSheet(sheets, MAILLOGG_FLIK)
+        mailloggFinns = true
       }
-
-      const { subject, html } =
-        type === 'group'
-          ? groupReminderMail(namn)
-          : knockoutReminderMail(namn, round, knockoutDeadlineStr)
-
-      try {
-        await skickaMail(email, subject, html)
-        results.push({ user_id: uid, namn, ok: true })
-      } catch (err) {
-        results.push({ user_id: uid, namn, ok: false, error: err.message })
-      }
+      const loggRader = await getRows(sheets, `${MAILLOGG_FLIK}!A1:B10000`)
+      ;({ kvar: mottagare, redanSkickade } = filtreraRedanSkickade(allaMottagare, loggRader, batch_id))
     }
 
-    const skickade = results.filter((r) => r.ok).length
+    const total = allaMottagare.length + utanEpost.length
+
+    // De utan e-post rapporteras direkt som misslyckade (aldrig i remaining)
+    const failed = utanEpost.map((uid) => ({ user_id: uid, error: 'Ingen e-postadress' }))
+    const sent = []
+
+    // Poolad SMTP-anslutning för hela batchen (snabbare än en per mail)
+    const transporter = skapaPooladTransporter()
+    const start = Date.now()
+    let stannadeIdx = mottagare.length // hur långt vi hann
+
+    try {
+      for (let i = 0; i < mottagare.length; i++) {
+        // Tidsbudget: lämna resten till nästa anrop innan Netlify dödar oss
+        if (Date.now() - start > TIME_BUDGET_MS) { stannadeIdx = i; break }
+
+        const p = mottagare[i]
+        const { subject, html } =
+          type === 'group'
+            ? groupReminderMail(p.namn)
+            : knockoutReminderMail(p.namn, round, knockoutDeadlineStr)
+
+        try {
+          await medTimeout(skickaMail(p.email, subject, html, transporter), PER_MAIL_TIMEOUT_MS)
+          sent.push(p.user_id)
+          // Logga direkt efter lyckad sändning → omkörning med samma
+          // batch_id skickar aldrig om till denna mottagare.
+          if (batch_id) {
+            try {
+              await appendRow(sheets, `${MAILLOGG_FLIK}!A:E`, [
+                batch_id, p.user_id, type, round || '', new Date().toISOString(),
+              ])
+            } catch (loggErr) {
+              // Loggfel får inte stoppa utskicket — värsta fallet är att
+              // en omkörning skickar ett extra mail till denna person.
+              console.warn('[admin-reminder] kunde inte logga:', loggErr.message)
+            }
+          }
+        } catch (err) {
+          failed.push({ user_id: p.user_id, namn: p.namn, error: err.message })
+        }
+      }
+    } finally {
+      transporter.close()
+    }
+
+    // Allt som ligger kvar efter där vi stannade → klienten återupptar med dessa
+    const remaining = mottagare.slice(stannadeIdx).map((p) => p.user_id)
+    const done = remaining.length === 0
+    const skickatTotalt = sent.length + redanSkickade.length
+
     return new Response(
-      JSON.stringify({ message: `${skickade}/${results.length} mail skickade`, results }),
+      JSON.stringify({
+        done,
+        total,
+        sent,
+        alreadySent: redanSkickade,
+        failed,
+        remaining,
+        message: `${skickatTotalt}/${total} mail skickade${done ? '' : ' — fortsätter…'}`,
+      }),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     )
   } catch (err) {

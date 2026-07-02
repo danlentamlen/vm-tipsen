@@ -11,6 +11,22 @@ export function skapaTransporter() {
   })
 }
 
+// Poolad transporter — återanvänder EN SMTP-anslutning för många mail i rad
+// (t.ex. massutskick av påminnelser). Dramatiskt snabbare än en ny anslutning
+// per mail. Kom ihåg att stänga med transporter.close() när batchen är klar.
+export function skapaPooladTransporter() {
+  return nodemailer.createTransport({
+    service: 'gmail',
+    pool: true,
+    maxConnections: 3,
+    maxMessages: 100,
+    auth: {
+      user: process.env.GMAIL_USER,
+      pass: process.env.GMAIL_APP_PASSWORD,
+    },
+  })
+}
+
 const SITE_URL = process.env.SITE_URL || 'http://localhost:8888'
 
 function header() {
@@ -209,13 +225,15 @@ export function betalningsMail(namn, vinNamn, vinPris, status) {
 }
 
 // ── Skicka mail ─────────────────────────────────────────────
-export async function skickaMail(till, subject, html) {
+// Valfri `transporter` — skicka in en poolad transporter för att återanvända
+// SMTP-anslutningen vid massutskick. Utan den skapas en ny (bakåtkompatibelt).
+export async function skickaMail(till, subject, html, transporter = null) {
   if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
     console.warn('[mail] GMAIL_USER eller GMAIL_APP_PASSWORD saknas — mail skickas ej')
     return
   }
-  const transporter = skapaTransporter()
-  await transporter.sendMail({
+  const t = transporter || skapaTransporter()
+  await t.sendMail({
     from: `VM-tipsen 2026 <${process.env.GMAIL_USER}>`,
     to: till,
     subject,

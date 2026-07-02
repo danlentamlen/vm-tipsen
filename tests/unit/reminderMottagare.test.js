@@ -5,7 +5,7 @@
  * som avgör vilka som ska få påminnelse. Rader = [user_id, namn, email].
  */
 import { describe, it, expect } from 'vitest'
-import { planeraMottagare } from '../../Netlify/functions/admin-reminder.js'
+import { planeraMottagare, filtreraRedanSkickade, medTimeout } from '../../Netlify/functions/admin-reminder.js'
 
 const rader = [
   ['u1', 'Anna Andersson', 'anna@example.com'],
@@ -49,5 +49,64 @@ describe('planeraMottagare — user_ids', () => {
   it('tom lista ger inga mottagare', () => {
     const { mottagare } = planeraMottagare(rader, { user_ids: [] })
     expect(mottagare).toEqual([])
+  })
+})
+
+// ── Idempotens via Maillogg ─────────────────────────────────────────────────
+const mottagare = [
+  { user_id: 'u1', namn: 'Anna', email: 'anna@example.com' },
+  { user_id: 'u2', namn: 'Bertil', email: 'bertil@example.com' },
+  { user_id: 'u4', namn: 'David', email: 'david@example.com' },
+]
+
+describe('filtreraRedanSkickade', () => {
+  it('hoppar över mottagare som redan loggats för samma batch', () => {
+    const logg = [
+      ['batch-A', 'u1'],
+      ['batch-A', 'u4'],
+    ]
+    const { kvar, redanSkickade } = filtreraRedanSkickade(mottagare, logg, 'batch-A')
+    expect(kvar.map((m) => m.user_id)).toEqual(['u2'])
+    expect(redanSkickade).toEqual(['u1', 'u4'])
+  })
+
+  it('ignorerar loggrader från andra batchar', () => {
+    const logg = [['batch-B', 'u1'], ['batch-B', 'u2']]
+    const { kvar, redanSkickade } = filtreraRedanSkickade(mottagare, logg, 'batch-A')
+    expect(kvar).toHaveLength(3)
+    expect(redanSkickade).toEqual([])
+  })
+
+  it('utan batch_id filtreras inget (bakåtkompatibelt)', () => {
+    const { kvar, redanSkickade } = filtreraRedanSkickade(mottagare, [['x', 'u1']], undefined)
+    expect(kvar).toHaveLength(3)
+    expect(redanSkickade).toEqual([])
+  })
+
+  it('tål tom/saknad logg och trasiga rader', () => {
+    expect(filtreraRedanSkickade(mottagare, null, 'batch-A').kvar).toHaveLength(3)
+    expect(filtreraRedanSkickade(mottagare, [[], [null, null], ['batch-A']], 'batch-A').kvar).toHaveLength(3)
+  })
+
+  it('alla redan skickade → kvar är tom (servern svarar done)', () => {
+    const logg = mottagare.map((m) => ['batch-A', m.user_id])
+    const { kvar, redanSkickade } = filtreraRedanSkickade(mottagare, logg, 'batch-A')
+    expect(kvar).toEqual([])
+    expect(redanSkickade).toEqual(['u1', 'u2', 'u4'])
+  })
+})
+
+describe('medTimeout', () => {
+  it('släpper igenom snabb promise', async () => {
+    await expect(medTimeout(Promise.resolve('ok'), 100)).resolves.toBe('ok')
+  })
+
+  it('kastar vid timeout', async () => {
+    const långsam = new Promise((r) => setTimeout(r, 500))
+    await expect(medTimeout(långsam, 30)).rejects.toThrow(/timeout/i)
+  })
+
+  it('propagerar fel från själva promisen', async () => {
+    await expect(medTimeout(Promise.reject(new Error('smtp-fel')), 100)).rejects.toThrow('smtp-fel')
   })
 })
