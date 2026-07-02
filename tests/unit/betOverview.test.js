@@ -13,7 +13,8 @@ import { byggBettingöversikt } from '../../Netlify/functions/_scoring.js'
 const matcherRader = [
   ['match_001', '2026-06-13', '18:00 UTC-4', 'USA', 'Paraguay', 'A'],
   ['match_002', '2026-06-14', '21:00 UTC-4', 'Sweden', 'Brazil', 'B'],
-  ['ko_001',    '2026-07-04', '21:00 UTC-4', 'Vinnare A', 'Tvåa B', 'Slutspel'], // ska filtreras bort
+  ['ko_001',    '2026-07-04', '21:00 UTC-4', 'USA', 'Brazil', 'Slutspel'],  // kända lag → tas med
+  ['ko_002',    '2026-07-05', '21:00 UTC-4', 'W73', '1A',     'Slutspel'],  // platshållare → filtreras bort
 ]
 
 // Tips: A=tip_id,B=user_id,C=match_id,D=hemma,E=borta
@@ -48,8 +49,10 @@ const frågorSvarRader = [
 const res = byggBettingöversikt({ matcherRader, tipsRader, resultatRader, frågorRader, frågorSvarRader })
 
 describe('byggBettingöversikt — matcher', () => {
-  it('filtrerar bort slutspel (bara gruppspel)', () => {
-    expect(res.matcher.map((m) => m.match_id)).toEqual(['match_001', 'match_002'])
+  it('tar med slutspel med kända lag men filtrerar bort platshållar-slutspel', () => {
+    // Sedan 1c85f39 visas knockout-matcher i översikten när lagen är kända
+    // (Slutspel-chippet). Matcher med platshållare ("W73", "1A") hoppas över.
+    expect(res.matcher.map((m) => m.match_id)).toEqual(['match_001', 'match_002', 'ko_001'])
   })
 
   it('dedupli, räknar och procentfördelar tippade resultat', () => {
