@@ -84,36 +84,53 @@ async function fdFetch(query) {
   return res.json()
 }
 
-// football-data.org v4 lagrar ett KUMULATIVT resultat i score.fullTime:
-//   REGULAR_TIME    : fullTime = 90-min-mål               (korrekt as-is)
-//   EXTRA_TIME      : fullTime = 90-min-mål + ET-mål
-//   PENALTY_SHOOTOUT: fullTime = 90-min-mål + ET-mål + straffmål  ← (!!)
+// Tävlingen räknar ENBART ordinarie tid (90 min). En match kan ha upp till tre
+// delar: ordinarie tid, förlängning och straffar — men bara ordinarie tid ger
+// poäng (både på resultat- och antal mål-delen).
 //
-// score.extraTime  = enbart mål gjorda UNDER förlängningstiden (ej kumulativa)
-// score.penalties  = enbart straffmål (ej kumulativa med fältmål)
+// football-data.org v4 (se docs.football-data.org/general/v4/overtime.html):
+//   score.fullTime    = LÖPANDE/slutresultat, KUMULATIVT (inkl. ET- och straffmål)
+//   score.regularTime = mål efter 90 min  ← exakt det tävlingen vill ha
+//   score.extraTime   = enbart mål gjorda under förlängningen
+//   score.penalties   = enbart straffmål
+//
+// Primärt använder vi score.regularTime rakt av. Om fältet saknas (äldre/ofull-
+// ständig feed) faller vi tillbaka på att subtrahera ET- och straffmål från
+// fullTime — vilket per dokumentationen ger samma 90-min-resultat.
 //
 // Bekräftat med rå API-data (2026-06-30):
 //   Germany-Paraguay 1-1 FT → straffar 3-4 → FD rapporterar fullTime={4,5}
 //   Netherlands-Morocco 1-1 FT → straffar 2-3 → FD rapporterar fullTime={3,4}
-//
-// Vi subtraherar ET-mål och straffmål för att få 90-min-resultatet.
 export function fdNormalize(m) {
-  const duration = m.score?.duration   // 'REGULAR_TIME' | 'EXTRA_TIME' | 'PENALTY_SHOOTOUT'
-  const ft   = m.score?.fullTime   ?? m.score?.halfTime ?? {}
-  const et   = m.score?.extraTime  ?? {}
-  const pens = m.score?.penalties  ?? {}
+  const duration = m.score?.duration   // 'REGULAR'/'REGULAR_TIME' | 'EXTRA_TIME' | 'PENALTY_SHOOTOUT'
+  const ft   = m.score?.fullTime    ?? m.score?.halfTime ?? {}
+  const rt   = m.score?.regularTime ?? {}
+  const et   = m.score?.extraTime   ?? {}
+  const pens = m.score?.penalties   ?? {}
 
-  let hemma = ft.home ?? null
-  let borta = ft.away ?? null
+  // Vissa svar använder home/away, dokumentationens exempel homeTeam/awayTeam.
+  const rtHome = rt.home ?? rt.homeTeam ?? null
+  const rtAway = rt.away ?? rt.awayTeam ?? null
 
-  if (hemma != null && borta != null) {
-    if (duration === 'EXTRA_TIME' || duration === 'PENALTY_SHOOTOUT') {
-      hemma -= et.home ?? 0
-      borta -= et.away ?? 0
-    }
-    if (duration === 'PENALTY_SHOOTOUT') {
-      hemma -= pens.home ?? 0
-      borta -= pens.away ?? 0
+  let hemma, borta
+
+  if (rtHome != null && rtAway != null) {
+    // Bästa källan: officiellt 90-min-resultat.
+    hemma = rtHome
+    borta = rtAway
+  } else {
+    // Fallback: rekonstruera 90-min-resultatet ur det kumulativa fullTime.
+    hemma = ft.home ?? null
+    borta = ft.away ?? null
+    if (hemma != null && borta != null) {
+      if (duration === 'EXTRA_TIME' || duration === 'PENALTY_SHOOTOUT') {
+        hemma -= et.home ?? 0
+        borta -= et.away ?? 0
+      }
+      if (duration === 'PENALTY_SHOOTOUT') {
+        hemma -= pens.home ?? 0
+        borta -= pens.away ?? 0
+      }
     }
   }
 

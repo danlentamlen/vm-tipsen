@@ -44,22 +44,27 @@ export default async (req) => {
 
     let totalMål = 0
     matcher.forEach((m) => {
-      // football-data.org v4: score.fullTime är KUMULATIVT — inkluderar ET-mål och straffmål.
-      // score.extraTime  = enbart mål gjorda under förlängningstiden (ej kumulativa)
-      // score.penalties  = enbart straffmål (ej kumulativa)
-      // score.duration   = 'REGULAR_TIME' | 'EXTRA_TIME' | 'PENALTY_SHOOTOUT'
-      //
-      // Vi räknar bara ordinarie-tidsmål → subtrahera ET-mål och straffmål.
-      const duration = m.score?.duration
-      let hemma = m.score?.fullTime?.home ?? 0
-      let borta = m.score?.fullTime?.away ?? 0
-      if (duration === 'EXTRA_TIME' || duration === 'PENALTY_SHOOTOUT') {
-        hemma -= m.score?.extraTime?.home ?? 0
-        borta -= m.score?.extraTime?.away ?? 0
-      }
-      if (duration === 'PENALTY_SHOOTOUT') {
-        hemma -= m.score?.penalties?.home ?? 0
-        borta -= m.score?.penalties?.away ?? 0
+      // Vi räknar BARA mål i ordinarie tid (90 min) — ej förlängning/straffar.
+      // score.regularTime = mål efter 90 min (bästa källan, se overtime-docs).
+      // score.fullTime är KUMULATIVT (inkl. ET- och straffmål) → fallback där vi
+      // subtraherar ET- och straffmål.
+      const rt = m.score?.regularTime
+      let hemma, borta
+      if (rt && (rt.home ?? rt.homeTeam) != null && (rt.away ?? rt.awayTeam) != null) {
+        hemma = rt.home ?? rt.homeTeam
+        borta = rt.away ?? rt.awayTeam
+      } else {
+        const duration = m.score?.duration
+        hemma = m.score?.fullTime?.home ?? 0
+        borta = m.score?.fullTime?.away ?? 0
+        if (duration === 'EXTRA_TIME' || duration === 'PENALTY_SHOOTOUT') {
+          hemma -= m.score?.extraTime?.home ?? 0
+          borta -= m.score?.extraTime?.away ?? 0
+        }
+        if (duration === 'PENALTY_SHOOTOUT') {
+          hemma -= m.score?.penalties?.home ?? 0
+          borta -= m.score?.penalties?.away ?? 0
+        }
       }
       totalMål += hemma + borta
     })

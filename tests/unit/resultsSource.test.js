@@ -286,6 +286,51 @@ describe('fdNormalize — AET/PEN-fall', () => {
     expect(r.borta).toBe(0)   // 0 - 0 = 0
     expect(r.vinnare).toBe('H')
   })
+
+  // score.regularTime (mål efter 90 min) är den officiella 90-min-poängen och
+  // ska användas rakt av när den finns — oavsett fullTime/extraTime.
+  it('EXTRA_TIME med regularTime: använder 90-min-resultatet (match 82: 2-2, ej 3-2)', () => {
+    // Match 82: 2-2 efter ordinarie tid, 3-2 efter förlängning.
+    const r = fdNormalize(makeMatch({
+      duration: 'EXTRA_TIME',
+      winner: 'HOME_TEAM',
+      fullTime:    { home: 3, away: 2 },
+      regularTime: { home: 2, away: 2 },
+      extraTime:   { home: 1, away: 0 },
+      penalties:   { home: null, away: null },
+    }))
+    expect(r.hemma).toBe(2)
+    expect(r.borta).toBe(2)
+    expect(r.vinnare).toBe('H') // bracket-propagering följer FD:s winner
+  })
+
+  it('regularTime prioriteras även om extraTime skulle saknas', () => {
+    // Feed utan extraTime-uppdelning: enbart regularTime räddar 90-min-resultatet.
+    const r = fdNormalize(makeMatch({
+      duration: 'EXTRA_TIME',
+      winner: 'AWAY_TEAM',
+      fullTime:    { home: 1, away: 2 },
+      regularTime: { home: 1, away: 1 },
+      extraTime:   { home: null, away: null },
+      penalties:   { home: null, away: null },
+    }))
+    expect(r.hemma).toBe(1)
+    expect(r.borta).toBe(1)
+  })
+
+  it('regularTime med homeTeam/awayTeam-nycklar stöds', () => {
+    const r = fdNormalize(makeMatch({
+      duration: 'PENALTY_SHOOTOUT',
+      winner: 'HOME_TEAM',
+      fullTime:    { home: 7, away: 6 },
+      regularTime: { homeTeam: 1, awayTeam: 1 },
+      extraTime:   { home: 0, away: 0 },
+      penalties:   { home: 6, away: 5 },
+    }))
+    expect(r.hemma).toBe(1)
+    expect(r.borta).toBe(1)
+    expect(r.vinnare).toBe('H')
+  })
 })
 
 describe('filtreraEjLive', () => {
