@@ -65,18 +65,18 @@ const FÖREGÅENDE_OMGÅNG = {
  * @param {object}   match        - { match_id, datum, tid, omgång, grupp }
  * @param {object[]} allaMatcher  - alla matcher (för tidsberäkningar)
  * @param {Array[]}  resultatRader - rader från Resultat-arket (A=match_id, ...)
+ * @param {Date}     nu           - injicerbar klocka (default: new Date()) — gör
+ *                                  logiken deterministiskt testbar
  * @returns {boolean}
  */
-export function ärMatchLåst(match, allaMatcher, resultatRader = []) {
-  const nu = new Date()
-
+export function ärMatchLåst(match, allaMatcher, resultatRader = [], nu = new Date()) {
   // Tilläggsfrågor och gruppspel: enbart tidsbaserat
   if (!match.omgång || !SLUTSPELS_OMGÅNGAR.includes(match.omgång)) {
     return nu >= GRUPPSPEL_DEADLINE
   }
 
   // Slutspelsmatch — alltid låst tills gruppspelet är låst
-  if (!gruppspelLåst()) return true
+  if (nu < GRUPPSPEL_DEADLINE) return true
 
   // Lås 2h innan omgångens första match (gäller alla slutspelsomgångar)
   const omgångsMatcher = allaMatcher.filter((m) => m.omgång === match.omgång)
@@ -158,11 +158,12 @@ export function beräknaOmgångsDeadline(omgång, allaMatcher) {
  *
  * @param {object[]} allaMatcher  - alla matcher
  * @param {Array[]}  resultatRader - rader från Resultat-arket (A=match_id)
+ * @param {Date}     nu           - injicerbar klocka (default: new Date())
  */
-export function byggLåsMap(allaMatcher, resultatRader = []) {
+export function byggLåsMap(allaMatcher, resultatRader = [], nu = new Date()) {
   const map = {}
   allaMatcher.forEach((m) => {
-    map[m.match_id] = ärMatchLåst(m, allaMatcher, resultatRader)
+    map[m.match_id] = ärMatchLåst(m, allaMatcher, resultatRader, nu)
   })
   return map
 }
