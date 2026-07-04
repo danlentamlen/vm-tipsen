@@ -222,6 +222,11 @@ const sv = {
     ingaSvar:       'Inga svar än.',
     fler:           'fler',
     färre:          'Visa färre',
+    fickRätt:       '{{antal}} av {{totalt}} fick rätt',
+    harChans:       'svar har fortfarande chans',
+    uträknad:       'Kan inte längre bli rätt',
+    uträknadeMarkeras: 'Uträknade svar markeras',
+    snabbasteNu:    'Snabbaste målet hittills: minut {{minut}}',
     filter: {
       allt:        'Allt',
       allaGrupper: 'Alla',

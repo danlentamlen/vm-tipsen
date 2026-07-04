@@ -310,6 +310,114 @@ export function beräknaTipsPoäng(tipsRader = [], resultatMap = {}) {
   })
 }
 
+// ── Snabbaste målet ──────────────────────────────────────────────────────────
+/**
+ * Tolkar Inställningar-värdet snabbaste_målet till minuter (tal).
+ * Stödjer "2", "1,5" och "1:30" (min:sek). Ogiltigt/saknas → null.
+ */
+export function parseSnabbasteMål(värde) {
+  const s = String(värde ?? '').trim()
+  if (!s) return null
+  const kolon = s.match(/^(\d+):([0-5]?\d)$/)
+  if (kolon) return parseInt(kolon[1]) + parseInt(kolon[2]) / 60
+  const tal = parseFloat(s.replace(',', '.'))
+  return Number.isFinite(tal) ? tal : null
+}
+
+// ── Utslagna lag ─────────────────────────────────────────────────────────────
+/**
+ * Platshållarnamn i Matcher-arket (lag ej kända än): "1A", "3ABC", "W73", "L74".
+ */
+export const ärPlaceholder = (namn) =>
+  !namn || /^[12][A-L]$/.test(namn) || /^3[A-L]/.test(namn) || /^[WL]\d+$/.test(namn)
+
+// Bracket-ordning för utslagning (bronsmatchen hanteras separat — dess lag har
+// redan förlorat semifinalen och kan varken vinna VM eller förlora finalen).
+const BRACKET_ORDNING = [
+  'Round of 32', 'Round of 16', 'Quarter-final', 'Semi-final', 'Final',
+]
+
+/**
+ * Härleder vilka lag som är UTSLAGNA ur turneringen, helt ur Matcher + Resultat:
+ *
+ *   1. Gruppspel: när Round of 32 är FULLT populerat med riktiga lagnamn är
+ *      alla gruppspelslag som inte finns där utslagna. (Innan dess vet vi inte
+ *      säkert vilka som går vidare → ingen markeras.)
+ *   2. Slutspel: laget som förlorade på ORDINARIE TID är utslaget. Vid oavgjort
+ *      (straffar — Resultat lagrar bara 90 min) avgörs det av vem som dykt upp
+ *      i en senare omgång: har motståndaren gått vidare är laget utslaget,
+ *      annars markeras ingen (säkert default tills syncen fyllt nästa omgång).
+ *   3. Bronsmatchens lag är per definition utslagna (förlorade semin).
+ *
+ * Används för att markera omöjliga svar på lagfrågor (typ "team") i
+ * bettingöversikten, t.ex. "Vem vinner VM?" och "Vem förlorar finalen?".
+ *
+ * @param {Array[]} matcherRader  A=match_id,B=datum,C=tid,D=hemma,E=borta,F=grupp,G=omgång
+ * @param {Array[]} resultatRader A=match_id,B=hemma,C=borta
+ * @returns {Set<string>} lagnamn i gemener
+ */
+export function byggUtslagnaLag(matcherRader = [], resultatRader = []) {
+  const resultat = byggResultatMap(resultatRader)
+  const utslagna = new Set()
+  const norm = (s) => String(s || '').trim().toLowerCase()
+
+  // Slutspelsmatcher med kända lag
+  const slutspel = matcherRader.filter((rad) =>
+    rad && rad[0] && rad[5] === 'Slutspel' && rad[6] &&
+    !ärPlaceholder(rad[3]) && !ärPlaceholder(rad[4]))
+
+  // 1. Gruppspelslag som inte finns i ett fullt populerat Round of 32
+  const r32Alla = matcherRader.filter((rad) => rad && rad[5] === 'Slutspel' && rad[6] === 'Round of 32')
+  const r32Fullt = r32Alla.length > 0 &&
+    r32Alla.every((rad) => !ärPlaceholder(rad[3]) && !ärPlaceholder(rad[4]))
+  if (r32Fullt) {
+    const vidare = new Set(r32Alla.flatMap((rad) => [norm(rad[3]), norm(rad[4])]))
+    matcherRader
+      .filter((rad) => rad && rad[5] && rad[5] !== 'Slutspel')
+      .forEach((rad) => {
+        for (const lag of [rad[3], rad[4]]) {
+          if (lag && !ärPlaceholder(lag) && !vidare.has(norm(lag))) utslagna.add(norm(lag))
+        }
+      })
+  }
+
+  // Djupaste omgång per lag (exkl. bronsmatch)
+  const djupast = new Map() // lag → { rad, idx }
+  for (const rad of slutspel) {
+    const idx = BRACKET_ORDNING.indexOf(rad[6])
+    if (idx === -1) continue
+    for (const lag of [rad[3], rad[4]]) {
+      const n = norm(lag)
+      const nuvarande = djupast.get(n)
+      if (!nuvarande || idx > nuvarande.idx) djupast.set(n, { rad, idx })
+    }
+  }
+
+  // 2. Avgör per lag utifrån dess djupaste match
+  for (const [lag, { rad, idx }] of djupast) {
+    const res = resultat[rad[0]]
+    if (!res) continue // ej spelad → kvar
+    const ärHemma = norm(rad[3]) === lag
+    const mina  = ärHemma ? res.hemma : res.borta
+    const deras = ärHemma ? res.borta : res.hemma
+    if (mina < deras) { utslagna.add(lag); continue }  // förlust på 90 min
+    if (mina > deras) continue                          // vinst på 90 min → kvar
+    // Oavgjort → avgjort på straffar: utslagen om motståndaren gått vidare
+    const motståndare = djupast.get(norm(ärHemma ? rad[4] : rad[3]))
+    if (motståndare && motståndare.idx > idx) utslagna.add(lag)
+  }
+
+  // 3. Bronsmatchens lag förlorade semin
+  for (const rad of slutspel) {
+    if (rad[6] === 'Match for third place') {
+      utslagna.add(norm(rad[3]))
+      utslagna.add(norm(rad[4]))
+    }
+  }
+
+  return utslagna
+}
+
 // ── Bettingöversikt ──────────────────────────────────────────────────────────
 /**
  * Bygger den publika bettingöversikten:
@@ -328,10 +436,10 @@ export function beräknaTipsPoäng(tipsRader = [], resultatMap = {}) {
  * att en användares redigerade tips bara räknas en gång (annars uppblåst %).
  *
  * @param {Object}  args
- * @param {Array[]} args.matcherRader    A=match_id,B=datum,C=tid,D=hemma,E=borta,F=grupp
+ * @param {Array[]} args.matcherRader    A=match_id,B=datum,C=tid,D=hemma,E=borta,F=grupp,G=omgång
  * @param {Array[]} args.tipsRader       A=tip_id,B=user_id,C=match_id,D=hemma,E=borta
  * @param {Array[]} args.resultatRader   A=match_id,B=hemma,C=borta
- * @param {Array[]} args.frågorRader     A=id,B=fråga,C=poäng,D=typ,E=rätt_svar,F=fråga_en
+ * @param {Array[]} args.frågorRader     A=id,B=fråga,C=poäng,D=typ,E=rätt_svar,F=fråga_en,G=typ_en,H=fel_svar
  * @param {Array[]} args.frågorSvarRader A=id,B=user_id,C=fråga_id,D=svar
  * @returns {{matcher:Array,frågor:Array}}
  */
@@ -351,9 +459,7 @@ export function byggBettingöversikt({
 
   // Alla matcher (gruppspel + slutspel) där match_id finns och lag är kända.
   // Matcher med platshållare (t.ex. "1A", "W73") hoppas över — de har inga tips.
-  const ärPlaceholder = (namn) =>
-    !namn || /^[12][A-L]$/.test(namn) || /^3[A-L]/.test(namn) || /^[WL]\d+$/.test(namn)
-
+  // (ärPlaceholder är modul-delad — används även av byggUtslagnaLag.)
   const matcher = matcherRader
     .filter((rad) => {
       if (!rad || !rad[0] || !rad[5]) return false
@@ -394,23 +500,44 @@ export function byggBettingöversikt({
     svarPerFråga[fid].push((String(rad[3] ?? '').trim()) || '–')
   })
 
+  // Utslagna lag → svar på lagfrågor (typ "team") som inte längre kan bli rätt.
+  const utslagnaLag = byggUtslagnaLag(matcherRader, resultatRader)
+
   const frågor = frågorRader
     .filter((rad) => rad && rad[0])
     .map((rad) => {
       const fråga_id = rad[0]
       const facit     = (rad[4] || '').trim() || null   // null tills admin fyllt i
+      const typ        = ((rad[3] || '').split('|')[0] || 'text').split(':')[0]
       const svar       = svarPerFråga[fråga_id] || []
       const totalt     = svar.length
+
+      // Manuellt fel-markerade svar (kolumn H, semikolonseparerat) — låter
+      // admin bocka av svar som redan är omöjliga innan facit finns.
+      const felSvar = new Set(
+        (rad[7] || '').split(';').map((s) => s.trim().toLowerCase()).filter(Boolean),
+      )
 
       const räknare = {}
       svar.forEach((s) => { räknare[s] = (räknare[s] || 0) + 1 })
       const fördelning = Object.entries(räknare)
-        .map(([svarText, antal]) => ({
-          svar: svarText,
-          antal,
-          procent: totalt ? Math.round((antal / totalt) * 100) : 0,
-          rätt: facit != null && facit.split(';').map((s) => s.trim().toLowerCase()).includes(svarText.toLowerCase()),
-        }))
+        .map(([svarText, antal]) => {
+          const nyckel = svarText.toLowerCase()
+          const rätt = facit != null &&
+            facit.split(';').map((s) => s.trim().toLowerCase()).includes(nyckel)
+          // Uträknad = manuellt fel-markerad ELLER utslaget lag (lagfrågor).
+          // Ett facit-rätt svar markeras aldrig som uträknat.
+          const uträknad = !rätt && (
+            felSvar.has(nyckel) || (typ === 'team' && utslagnaLag.has(nyckel))
+          )
+          return {
+            svar: svarText,
+            antal,
+            procent: totalt ? Math.round((antal / totalt) * 100) : 0,
+            rätt,
+            uträknad,
+          }
+        })
         .sort((a, b) => b.antal - a.antal || (a.svar < b.svar ? -1 : 1))
 
       return {
@@ -418,6 +545,7 @@ export function byggBettingöversikt({
         fråga:    rad[1] || '',
         fråga_en: (rad[5] || '').trim() || null,
         poäng:    parseInt(rad[2]) || 0,
+        typ,
         rätt_svar: facit,
         totalt, fördelning,
       }

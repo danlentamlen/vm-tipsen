@@ -220,6 +220,11 @@ const en = {
     ingaSvar:       'No answers yet.',
     fler:           'more',
     färre:          'Show less',
+    fickRätt:       '{{antal}} of {{totalt}} got it right',
+    harChans:       'answers still have a chance',
+    uträknad:       'Can no longer be correct',
+    uträknadeMarkeras: 'Eliminated answers are marked',
+    snabbasteNu:    'Fastest goal so far: minute {{minut}}',
     filter: {
       allt:        'All',
       allaGrupper: 'All',

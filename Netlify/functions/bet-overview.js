@@ -20,9 +20,9 @@
  */
 import { getSheets, getMultipleRanges } from './_sheets.js'
 import { getMatcher } from './_lockedData.js'
-import { gruppspelLåst } from './_settings.js'
+import { gruppspelLåst, getSettings } from './_settings.js'
 import { getCached } from './_persistentCache.js'
-import { byggBettingöversikt } from './_scoring.js'
+import { byggBettingöversikt, parseSnabbasteMål } from './_scoring.js'
 
 const CACHE_TTL = 5 * 60 * 1000 // 5 min
 
@@ -35,17 +35,21 @@ export default async () => {
   }
 
   try {
-    const data = await getCached('bet-overview:v1', CACHE_TTL, async () => {
+    const data = await getCached('bet-overview:v2', CACHE_TTL, async () => {
       const sheets = await getSheets()
       const matcherRader = await getMatcher() // låst ark, cachat
       const [tipsRader, resultatRader, frågorRader, frågorSvarRader] =
         await getMultipleRanges(sheets, [
           'Tips!A2:E100000',
           'Resultat!A2:C1000',
-          'Frågor!A2:G1000',
+          'Frågor!A2:H1000', // H = fel_svar (manuell fel-markering)
           'FrågorSvar!A2:D100000',
         ])
-      return byggBettingöversikt({ matcherRader, tipsRader, resultatRader, frågorRader, frågorSvarRader })
+      const översikt = byggBettingöversikt({ matcherRader, tipsRader, resultatRader, frågorRader, frågorSvarRader })
+      // Nuvarande snabbaste mål (minuter) — sätts av admin i Inställningar-arket
+      // som raden "snabbaste_målet". Används för att markera uträknade tips.
+      const settings = await getSettings()
+      return { ...översikt, snabbasteMål: parseSnabbasteMål(settings['snabbaste_målet']) }
     })
 
     return new Response(JSON.stringify(data), {

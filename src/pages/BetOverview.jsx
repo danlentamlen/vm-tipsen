@@ -18,6 +18,26 @@ const TOPP = 3 // antal rader som visas innan "fler"
 // Känner igen "totalt antal mål"-frågan (text innehåller mål + total).
 const ärMålFråga = (text) => /m[åa]l/i.test(text || '') && /total/i.test(text || '')
 
+// Känner igen "snabbaste målet"-frågan (sv "snabbast", en "fastest").
+const ärSnabbastFråga = (text) => /snabbast|fastest/i.test(text || '')
+
+// Tolkar ett tippat svar till minuter: "2" → 2, "1,5" → 1.5, "1:30" → 1.5.
+const parseMinut = (svar) => {
+  const s = String(svar ?? '').trim()
+  const kolon = s.match(/^(\d+):([0-5]?\d)$/)
+  if (kolon) return parseInt(kolon[1]) + parseInt(kolon[2]) / 60
+  const m = s.replace(',', '.').match(/\d+(\.\d+)?/)
+  return m ? parseFloat(m[0]) : NaN
+}
+
+// Formaterar minuter för visning: 1.5 → "1:30", 2 → "2".
+const formatMinut = (min) => {
+  if (!Number.isFinite(min)) return ''
+  const hel = Math.floor(min)
+  const sek = Math.round((min - hel) * 60)
+  return sek > 0 ? `${hel}:${String(sek).padStart(2, '0')}` : String(hel)
+}
+
 // Deep-link: hitta fråga-id att scrolla till från ?fokus=mal|skytteliga.
 function matchaFokusFråga(frågor, fokus) {
   if (!fokus) return null
@@ -76,6 +96,7 @@ const STYLES = `
   .bo-facit { display:inline-flex; align-items:center; gap:5px; margin-bottom:.4rem; font-family:var(--font-text); font-size:.78rem; }
   .bo-facit-lbl { color:var(--c-text-4); }
   .bo-facit-val { font-weight:700; color:#1a7a40; }
+  .bo-facit-antal { color:var(--c-text-3); }
   .bo-row.omöjlig .bo-row-key { text-decoration:line-through; color:var(--c-röd); opacity:.85; }
   .bo-row.omöjlig .bo-bar { background:rgba(200,16,46,.28); }
   .bo-cross { color:var(--c-röd); font-weight:700; flex-shrink:0; font-size:.8rem; }
@@ -159,7 +180,7 @@ function MatchKort({ m, t }) {
   )
 }
 
-function FrågaKort({ f, t, språk, totalMål = 0 }) {
+function FrågaKort({ f, t, språk, totalMål = 0, snabbasteMål = null }) {
   const [öppen, setÖppen] = useState(false)
   const text = (språk === 'en' && f.fråga_en) ? f.fråga_en : f.fråga
   const rader = synligaRader(f.fördelning, öppen)
@@ -168,19 +189,31 @@ function FrågaKort({ f, t, språk, totalMål = 0 }) {
   // "Totalt antal mål"-frågan: svar lägre än redan gjorda mål är omöjliga att
   // vinna → markeras tydligt som fel (även innan facit finns).
   const målFråga = ärMålFråga(f.fråga) && !f.rätt_svar && totalMål > 0
-  const ärOmöjlig = (svar) => {
-    if (!målFråga) return false
-    const n = Number(svar)
-    return Number.isFinite(n) && n < totalMål
+
+  // "Snabbaste målet"-frågan: tips LÅNGSAMMARE än nuvarande snabbaste mål är
+  // uträknade (rekordet kan bara bli snabbare).
+  const snabbFråga = ärSnabbastFråga(`${f.fråga || ''} ${f.fråga_en || ''}`) &&
+    !f.rätt_svar && Number.isFinite(snabbasteMål)
+
+  const ärOmöjlig = (d) => {
+    if (d.rätt) return false
+    if (d.uträknad) return true // backend: utslaget lag eller manuellt fel-markerad
+    if (målFråga) {
+      const n = Number(d.svar)
+      if (Number.isFinite(n) && n < totalMål) return true
+    }
+    if (snabbFråga) {
+      const n = parseMinut(d.svar)
+      if (Number.isFinite(n) && n > snabbasteMål) return true
+    }
+    return false
   }
-  // Antal tips som fortfarande kan vinna = svar ≥ nuvarande målantal
-  // (mål kan bara öka, så tips under är uträknade).
-  const kvarChans = målFråga
-    ? f.fördelning.reduce((s, d) => {
-        const n = Number(d.svar)
-        return s + (Number.isFinite(n) && n >= totalMål ? (d.antal || 0) : 0)
-      }, 0)
-    : 0
+
+  // Antal tips som fortfarande kan vinna resp. som fick rätt — kul mätare på
+  // hur svår frågan är.
+  const rättAntal = f.fördelning.reduce((s, d) => s + (d.rätt ? d.antal || 0 : 0), 0)
+  const kvarChans = f.fördelning.reduce((s, d) => s + (ärOmöjlig(d) ? 0 : d.antal || 0), 0)
+  const harUträknade = kvarChans < f.totalt
 
   return (
     <div id={`fraga-${f.fråga_id}`} className={`bo-card${f.rätt_svar ? ' klar' : ''}`}>
@@ -192,6 +225,11 @@ function FrågaKort({ f, t, språk, totalMål = 0 }) {
         <div className="bo-facit">
           <span className="bo-facit-lbl">{t('betOverview.rättSvar')}:</span>
           <span className="bo-facit-val">{f.rätt_svar}</span>
+          {f.totalt > 0 && (
+            <span className="bo-facit-antal">
+              — {t('betOverview.fickRätt', { antal: rättAntal, totalt: f.totalt })}
+            </span>
+          )}
         </div>
       )}
       {målFråga && (
@@ -199,12 +237,22 @@ function FrågaKort({ f, t, språk, totalMål = 0 }) {
           Redan {totalMål} mål gjorda — <strong>{kvarChans} av {f.totalt}</strong> tips har fortfarande chans. Tips under {totalMål} är uträknade ✗
         </div>
       )}
+      {snabbFråga && (
+        <div className="bo-mal-note">
+          {t('betOverview.snabbasteNu', { minut: formatMinut(snabbasteMål) })} — <strong>{kvarChans} av {f.totalt}</strong> {t('betOverview.harChans')}. ✗
+        </div>
+      )}
+      {!målFråga && !snabbFråga && !f.rätt_svar && harUträknade && f.totalt > 0 && (
+        <div className="bo-mal-note">
+          <strong>{kvarChans} av {f.totalt}</strong> {t('betOverview.harChans')}. {t('betOverview.uträknadeMarkeras')} ✗
+        </div>
+      )}
       {f.totalt === 0 ? (
         <p className="bo-tom">{t('betOverview.ingaSvar')}</p>
       ) : (
         <div className="bo-dist">
           {rader.map((d) => {
-            const omöjlig = ärOmöjlig(d.svar)
+            const omöjlig = ärOmöjlig(d)
             const fel = !!f.rätt_svar && !d.rätt        // frågan avgjord men detta svar är fel
             const markeraFel = omöjlig || fel
             return (
@@ -212,7 +260,7 @@ function FrågaKort({ f, t, språk, totalMål = 0 }) {
                 <span className="bo-row-key" style={{ minWidth: 0, flex: '0 1 auto', maxWidth: '45%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.svar}</span>
                 <div className="bo-bar-wrap"><div className="bo-bar" style={{ width: `${d.procent}%` }} /></div>
                 {d.rätt && <span className="bo-check" aria-label={t('betOverview.rättSvar')}>✓</span>}
-                {markeraFel && !d.rätt && <span className="bo-cross" title={omöjlig ? `Lägre än nuvarande ${totalMål} mål` : 'Fel svar'} aria-label="Fel">✗</span>}
+                {markeraFel && !d.rätt && <span className="bo-cross" title={t('betOverview.uträknad')} aria-label="Fel">✗</span>}
                 <span className="bo-row-pct">{d.procent}%</span>
                 <span className="bo-row-cnt">{d.antal} {t('betOverview.svar')}</span>
               </div>
@@ -429,7 +477,9 @@ export default function BetOverview() {
       {visaFrågor && (
         <>
           <h3 className="bo-section-titel">🎯 {t('betOverview.tilläggsfrågor')}</h3>
-          {frågor.map((f) => <FrågaKort key={f.fråga_id} f={f} t={t} språk={språk} totalMål={totalMål} />)}
+          {frågor.map((f) => (
+            <FrågaKort key={f.fråga_id} f={f} t={t} språk={språk} totalMål={totalMål} snabbasteMål={data?.snabbasteMål ?? null} />
+          ))}
         </>
       )}
 
