@@ -13,6 +13,7 @@ export default async () => {
       grupp:    rad[5],
       omgång:   rad[6],
       arena:    rad[7],
+      kanal:    rad[8] || null, // svensk TV-kanal (Matcher kolumn I)
     }))
 
     return new Response(JSON.stringify(matcher), {

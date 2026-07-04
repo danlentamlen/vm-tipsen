@@ -39,16 +39,18 @@ export async function getLockedSnapshot() {
 }
 
 // ── Matcher — kort TTL för att fånga upp slutspels-uppdateringar ──────────
-const MATCHER_KEY = 'matcher:v1'
+const MATCHER_KEY = 'matcher:v2' // v2: kolumn I (tv_kanal) ingår
 const MATCHER_TTL = 5 * 60 * 1000 // 5 min — lagnamn uppdateras löpande i slutspelet
 
 /**
  * Läser Matcher-sheetet med kort cache. Ändringar i sheetet syns inom 5 min.
+ * Kolumner: A=match_id, B=datum, C=tid, D=hemma, E=borta, F=grupp, G=omgång,
+ * H=arena, I=tv_kanal (svensk TV-kanal, t.ex. "SVT1"/"TV4").
  */
 export async function getMatcher() {
   return getCached(MATCHER_KEY, MATCHER_TTL, async () => {
     const sheets = await getSheets()
-    return getRows(sheets, 'Matcher!A2:H1000')
+    return getRows(sheets, 'Matcher!A2:I1000')
   })
 }
 

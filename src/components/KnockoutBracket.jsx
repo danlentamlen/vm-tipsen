@@ -311,11 +311,12 @@ function MatchCell({ match, matchStats, liveScores, minaTips, compact, onClick, 
         </div>
       )}
 
-      {/* Datum/tid-fot (full vy, ospelad match) + ev. NÄSTA-markör */}
+      {/* Datum/tid-fot (full vy, ospelad match) + ev. NÄSTA-markör + TV-kanal */}
       {!compact && !score && match.datum && (
         <div className={['bkt-when', isNext ? 'bkt-when-next-row' : ''].filter(Boolean).join(' ')}>
           {isNext && <span className="bkt-when-next">NÄSTA</span>}
           <span className="bkt-when-txt">{formatBracketNär(match)}</span>
+          {match.kanal && <span className="bkt-kanal">{match.kanal}</span>}
         </div>
       )}
 
@@ -612,6 +613,13 @@ const BRACKET_CSS = `
     color:#07101f; background:#F0D060; border-radius:3px; padding:1px 5px;
   }
   .bkt-when-txt { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .bkt-kanal {
+    margin-left:auto; flex-shrink:0;
+    font-size:8px; font-weight:800; letter-spacing:.08em; text-transform:uppercase;
+    color:rgba(255,255,255,.55); background:rgba(255,255,255,.08);
+    border-radius:3px; padding:1px 5px;
+  }
+  .bkt-when-next-row .bkt-kanal { color:rgba(240,208,96,.95); background:rgba(240,208,96,.12); }
 
   /* ── Centrera bracket-griden ── */
   .bkt-grid-full, .bkt-grid-compact {

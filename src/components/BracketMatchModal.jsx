@@ -423,11 +423,13 @@ export default function BracketMatchModal({ match, matchStats, liveScores, tip, 
               </div>
             </div>
 
-            {/* Meta-info: datum + arena */}
+            {/* Meta-info: datum + arena + TV-kanal */}
             <div className="bmm-meta">
               {match.datum && <span>{formatDatum(match.datum)}</span>}
               {match.datum && match.arena && <span className="bmm-meta-sep" />}
               {match.arena && <span>{match.arena}</span>}
+              {(match.datum || match.arena) && match.kanal && <span className="bmm-meta-sep" />}
+              {match.kanal && <span>📺 {match.kanal}</span>}
             </div>
           </div>
 
