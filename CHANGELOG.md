@@ -1,5 +1,26 @@
 # vm-tipsen — Komplett förbättringspaket
 
+## Frågesvar-poäng i Sheets + maxpoäng per spelare (2026-07-06)
+
+**Nytt:** Writern (`sync-results`, var 5:e min) bedömer nu varje frågesvar och
+skriver resultatet till Sheets:
+
+- **FrågorSvar kolumn E ("poäng")** — samma mönster som Tips kolumn F: frågans
+  poäng vid rätt facit, **0** när svaret är fel eller redan **uträknat**, tomt
+  när frågan fortfarande är öppen. Uträknat = utslaget lag (lagfrågor), spelare
+  fel-markerad i Frågor kolumn H (t.ex. skytteligan, fråga 005), måltips som
+  understiger redan gjorda mål, eller snabbaste mål-tips långsammare än
+  nuvarande rekord (`snabbaste_målet` i Inställningar).
+- **Topplista kolumn I ("max")** — teoretiskt maximal slutpoäng per spelare:
+  nuvarande poäng + poäng för frågor som fortfarande är öppna + 5 p per match
+  utan resultat som spelaren kan få poäng på (tippade matcher + slutspels-
+  matcher som ännu inte startat). `scores.js` läser bara A2:H → inget bryts.
+
+Logiken är rena funktioner i `_scoring.js` (`bedömFrågeSvar`,
+`beräknaFrågeSvarPoäng`, `beräknaMaxPoäng`) och delar regler med betting-
+översiktens ✗-markeringar. Tester: `tests/unit/maxPoang.test.js`. Bedömningen
+är inkapslad i try/catch — misslyckas den skrivs topplistan ändå (max lämnas tom).
+
 ## Korrekthet: dedupe av tips/svar + live skytteliga (2026-06-12)
 
 **Bugg (åtgärdad):** Topplistan och deltagarprofilen dubbelräknade poäng. Tips-

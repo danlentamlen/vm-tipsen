@@ -418,6 +418,188 @@ export function byggUtslagnaLag(matcherRader = [], resultatRader = []) {
   return utslagna
 }
 
+// ── Frågesvar: avgjorda och uträknade svar ───────────────────────────────────
+// Känner igen "totalt antal mål"-frågan resp. "snabbaste målet"-frågan på
+// frågetexten — samma regex som frontend (BetOverview.jsx) använder.
+export const ärMålFråga     = (text) => /m[åa]l/i.test(text || '') && /total/i.test(text || '')
+export const ärSnabbastFråga = (text) => /snabbast|fastest/i.test(text || '')
+
+/**
+ * Bedömer varje FrågorSvar-rad och returnerar en array (samma ordning som
+ * frågorSvarRader) med { status, poäng }:
+ *
+ *   - 'rätt'    → facit finns och svaret matchar          → poäng = frågans poäng
+ *   - 'fel'     → facit finns och svaret matchar inte      → poäng = 0
+ *   - 'uträknad'→ inget facit än, men svaret KAN inte längre bli rätt → poäng = 0
+ *   - 'öppen'   → svaret kan fortfarande bli rätt          → poäng = null
+ *   - 'ogiltig' → okänd fråga eller tomt svar              → poäng = null
+ *
+ * Ett svar räknas som uträknat när (samma regler som bettingöversikten):
+ *   1. Admin har fel-markerat det i Frågor kolumn H (t.ex. utslagna spelare
+ *      i skytteligafrågan 005), semikolonseparerat.
+ *   2. Lagfrågor (typ "team"): laget är utslaget enligt [[byggUtslagnaLag]]
+ *      — utslagna lag kan varken vinna VM eller förlora finalen.
+ *   3. "Totalt antal mål"-frågan: tippat antal UNDERSTIGER redan gjorda mål
+ *      (totalMål) — målen kan bara bli fler. Lika många = fortfarande möjligt.
+ *   4. "Snabbaste målet"-frågan: tippad tid är LÅNGSAMMARE än nuvarande
+ *      snabbaste mål (snabbasteMål, minuter) — rekordet kan bara bli snabbare.
+ *
+ * SÄKERHET: bedömningen härleds enbart ur data admin redan gjort synlig
+ * (facit, kolumn H, resultat, Inställningar) — inget facit läcks i förväg.
+ *
+ * @param {Object}  args
+ * @param {Array[]} args.frågorRader     A=id,B=fråga,C=poäng,D=typ,E=rätt_svar,F=fråga_en,G=typ_en,H=fel_svar
+ * @param {Array[]} args.frågorSvarRader A=id,B=user_id,C=fråga_id,D=svar
+ * @param {Array[]} args.matcherRader    för byggUtslagnaLag
+ * @param {Array[]} args.resultatRader   för byggUtslagnaLag
+ * @param {number?} args.snabbasteMål    nuvarande snabbaste mål i minuter (null = okänt)
+ * @param {number?} args.totalMål        antal gjorda mål hittills (null = okänt)
+ * @returns {Array<{status:string, poäng:(number|null)}>}
+ */
+export function bedömFrågeSvar({
+  frågorRader = [], frågorSvarRader = [],
+  matcherRader = [], resultatRader = [],
+  snabbasteMål = null, totalMål = null,
+} = {}) {
+  const utslagnaLag = byggUtslagnaLag(matcherRader, resultatRader)
+
+  const frågor = {}
+  for (const rad of frågorRader) {
+    if (!rad || !rad[0]) continue
+    const facitRå = (rad[4] || '').trim()
+    frågor[rad[0]] = {
+      poäng:  parseInt(rad[2]) || 0,
+      typ:    ((rad[3] || '').split('|')[0] || 'text').split(':')[0],
+      facit:  facitRå ? facitRå.split(';').map((s) => s.trim().toLowerCase()).filter(Boolean) : null,
+      felSvar: new Set((rad[7] || '').split(';').map((s) => s.trim().toLowerCase()).filter(Boolean)),
+      målFråga:   ärMålFråga(rad[1]),
+      snabbFråga: ärSnabbastFråga(`${rad[1] || ''} ${rad[5] || ''}`),
+    }
+  }
+
+  return frågorSvarRader.map((rad) => {
+    const fråga  = frågor[rad && rad[2]]
+    const svarRå = String((rad && rad[3]) ?? '').trim()
+    if (!fråga || !svarRå) return { status: 'ogiltig', poäng: null }
+    const svar = svarRå.toLowerCase()
+
+    // Facit finns → frågan är avgjord
+    if (fråga.facit) {
+      return fråga.facit.includes(svar)
+        ? { status: 'rätt', poäng: fråga.poäng }
+        : { status: 'fel', poäng: 0 }
+    }
+
+    // Inget facit än → är svaret redan uträknat?
+    if (fråga.felSvar.has(svar)) return { status: 'uträknad', poäng: 0 }
+    if (fråga.typ === 'team' && utslagnaLag.has(svar)) return { status: 'uträknad', poäng: 0 }
+    if (fråga.målFråga && Number.isFinite(totalMål) && totalMål > 0) {
+      const n = Number(svarRå)
+      if (Number.isFinite(n) && n < totalMål) return { status: 'uträknad', poäng: 0 }
+    }
+    if (fråga.snabbFråga && Number.isFinite(snabbasteMål)) {
+      const n = parseSnabbasteMål(svarRå)
+      if (n != null && n > snabbasteMål) return { status: 'uträknad', poäng: 0 }
+    }
+    return { status: 'öppen', poäng: null }
+  })
+}
+
+/**
+ * Poäng per FrågorSvar-rad — för poängkolumnen (E) på FrågorSvar-arket.
+ * Samma mönster som [[beräknaTipsPoäng]]: array i SAMMA ordning som
+ * frågorSvarRader. Frågans poäng vid rätt, 0 vid fel/uträknad, '' när
+ * frågan fortfarande är öppen (eller raden är ogiltig).
+ */
+export function beräknaFrågeSvarPoäng(args = {}) {
+  return bedömFrågeSvar(args).map(({ status, poäng }) =>
+    status === 'öppen' || status === 'ogiltig' ? '' : poäng)
+}
+
+// ── Maximal möjlig poäng ─────────────────────────────────────────────────────
+/**
+ * Räknar ut den teoretiskt maximala slutpoängen per användare:
+ *
+ *   max = nuvarande poäng
+ *       + Σ poäng för frågor vars svar fortfarande är ÖPPNA (se bedömFrågeSvar)
+ *       + 5 × antal matcher utan resultat som användaren fortfarande kan få
+ *             poäng på: matcher hen redan tippat, plus slutspelsmatcher som
+ *             inte startat än (de går fortfarande att tippa när omgången
+ *             öppnar). En otippad, redan låst match kan aldrig ge poäng.
+ *
+ * @param {Object}  args
+ * @param {Array}   args.standings       resultat från beräknaTopplista (poäng per user)
+ * @param {Array[]} args.tipsRader       A=tip_id,B=user_id,C=match_id,D=hemma,E=borta
+ * @param {Array[]} args.matcherRader    A=match_id,B=datum,C=tid,D=hemma,E=borta,F=grupp,G=omgång
+ * @param {Array[]} args.resultatRader   A=match_id,B=hemma,C=borta
+ * @param {Array[]} args.frågorRader     som bedömFrågeSvar
+ * @param {Array[]} args.frågorSvarRader som bedömFrågeSvar
+ * @param {number?} args.snabbasteMål    som bedömFrågeSvar
+ * @param {number?} args.totalMål        som bedömFrågeSvar
+ * @param {Date}    args.nu              "nu" — injicerbar för test
+ * @returns {Object} user_id → maxpoäng (number)
+ */
+export function beräknaMaxPoäng({
+  standings = [],
+  tipsRader = [],
+  matcherRader = [],
+  resultatRader = [],
+  frågorRader = [],
+  frågorSvarRader = [],
+  snabbasteMål = null,
+  totalMål = null,
+  nu = new Date(),
+} = {}) {
+  const resultatMap = byggResultatMap(resultatRader)
+
+  // Matcher utan resultat
+  const öppnaMatcher   = matcherRader.filter((r) => r && r[0] && !resultatMap[r[0]])
+  const öppnaMatchIds  = new Set(öppnaMatcher.map((r) => r[0]))
+  // Slutspelsmatcher som inte startat → kan fortfarande tippas av alla
+  const tippbaraFramåt = new Set(
+    öppnaMatcher
+      .filter((r) => {
+        if (r[5] !== 'Slutspel') return false
+        const start = parseMatchStart(r[1], r[2])
+        return !start || start > nu // okänd starttid → räkna generöst
+      })
+      .map((r) => r[0]),
+  )
+
+  // Användarens tippade matcher utan resultat
+  const tippadeÖppna = {} // user_id → Set(match_id)
+  dedupliceraTips(tipsRader).forEach((rad) => {
+    const user_id = rad[1], match_id = rad[2]
+    if (!öppnaMatchIds.has(match_id)) return
+    if (!tippadeÖppna[user_id]) tippadeÖppna[user_id] = new Set()
+    tippadeÖppna[user_id].add(match_id)
+  })
+
+  // Öppna frågepoäng per användare (bara senaste svaret per fråga räknas)
+  const frågePoängMap = {}
+  frågorRader.forEach((rad) => { if (rad && rad[0]) frågePoängMap[rad[0]] = parseInt(rad[2]) || 0 })
+  const dedupade = dedupliceraSvar(frågorSvarRader)
+  const bedömningar = bedömFrågeSvar({
+    frågorRader, frågorSvarRader: dedupade,
+    matcherRader, resultatRader, snabbasteMål, totalMål,
+  })
+  const öppenFrågePoäng = {} // user_id → summa
+  dedupade.forEach((rad, i) => {
+    if (bedömningar[i].status !== 'öppen') return
+    const user_id = rad[1]
+    öppenFrågePoäng[user_id] = (öppenFrågePoäng[user_id] || 0) + (frågePoängMap[rad[2]] || 0)
+  })
+
+  const max = {}
+  for (const r of standings) {
+    // Union: tippade öppna matcher + otippade som fortfarande går att tippa
+    const räknadeMatcher = new Set(tippadeÖppna[r.user_id] || [])
+    for (const id of tippbaraFramåt) räknadeMatcher.add(id)
+    max[r.user_id] = r.poäng + (öppenFrågePoäng[r.user_id] || 0) + 5 * räknadeMatcher.size
+  }
+  return max
+}
+
 // ── Bettingöversikt ──────────────────────────────────────────────────────────
 /**
  * Bygger den publika bettingöversikten:

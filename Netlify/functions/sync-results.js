@@ -25,12 +25,15 @@ import { getFinishedResults, mappaAvslutadeTillMatchId, getTopScorers, getAllKno
 import {
   beräknaTopplista, beräknaIgår, beräknaTipsPoäng,
   byggResultatMap, byggIgårMatchIds,
+  beräknaFrågeSvarPoäng, beräknaMaxPoäng, parseSnabbasteMål,
 } from './_scoring.js'
 import { setCached } from './_persistentCache.js'
-import { SLUTSPELS_OMGÅNGAR } from './_settings.js'
+import { SLUTSPELS_OMGÅNGAR, getSettings } from './_settings.js'
 
 const TOPPLISTA_SHEET = 'Topplista'
-const TOPPLISTA_HEADER = ['user_id', 'namn', 'poäng', 'exakta', 'rätta', 'frågepoäng', 'plats', 'uppdaterad']
+// OBS: 'max' ligger SIST (kolumn I) — scores.js läser bara A2:H positionellt,
+// så en ny kolumn efter 'uppdaterad' bryter inte befintliga läsare.
+const TOPPLISTA_HEADER = ['user_id', 'namn', 'poäng', 'exakta', 'rätta', 'frågepoäng', 'plats', 'uppdaterad', 'max']
 
 const SKYTTELIGA_SHEET = 'Skytteliga'
 const SKYTTELIGA_HEADER = ['Spelare', 'Land', 'Mål']
@@ -196,15 +199,49 @@ async function räknaOmSnapshots(sheets, matcherRader, resultatRader) {
     vinerRader: viner,
   })
 
+  // ── Frågesvar-poäng + maxpoäng ──
+  // Frågor läses HÄR med kolumn H (fel_svar) — locked-snapshoten stannar vid G,
+  // och H uppdateras löpande av admin (t.ex. utslagna spelare i skytteligan).
+  // totalMål = gjorda mål hittills ur Resultat-arket (ordinarie tid, samma
+  // regel som poängräkningen). snabbaste_målet sätts av admin i Inställningar.
+  let frågeSvarPoäng = null
+  let maxMap = {}
+  try {
+    const frågorMedH = await getRows(sheets, 'Frågor!A2:H1000')
+    const settings    = await getSettings()
+    const snabbasteMål = parseSnabbasteMål(settings['snabbaste_målet'])
+    const totalMål = resultatRader.reduce(
+      (s, r) => s + (Number(r?.[1]) || 0) + (Number(r?.[2]) || 0), 0)
+
+    const bedömArgs = {
+      frågorRader: frågorMedH, frågorSvarRader: frågorSvar,
+      matcherRader, resultatRader, snabbasteMål, totalMål,
+    }
+    frågeSvarPoäng = beräknaFrågeSvarPoäng(bedömArgs)
+    maxMap = beräknaMaxPoäng({ ...bedömArgs, standings, tipsRader })
+  } catch (err) {
+    // Får ALDRIG stoppa topplistan — utan bedömning skrivs bara max/poäng tomt.
+    console.error('[sync-results] Kunde inte bedöma frågesvar/maxpoäng:', err.message)
+  }
+
   const uppdaterad = new Date().toISOString()
   await ensureSheet(sheets, TOPPLISTA_SHEET)
   await overwriteRange(sheets, TOPPLISTA_SHEET, [
     TOPPLISTA_HEADER,
     ...standings.map((r) => [
       r.user_id, r.namn, r.poäng, r.exakta, r.rätta, r.frågepoäng, r.plats, uppdaterad,
+      maxMap[r.user_id] ?? '',
     ]),
   ])
   await setCached('standings:v1', standings)
+
+  // ── Frågesvar-poäng → FrågorSvar kolumn E ──
+  // Samma mönster som Tips kolumn F: frågans poäng vid rätt, 0 när svaret är
+  // fel eller uträknat (utslaget lag/spelare, för lågt måltips, för långsam
+  // snabbaste mål-tid), tomt när frågan fortfarande är öppen.
+  if (frågeSvarPoäng && frågorSvar.length > 0) {
+    await writeColumn(sheets, `FrågorSvar!E1:E${frågorSvar.length + 1}`, ['poäng', ...frågeSvarPoäng])
+  }
 
   // ── Bäst igår ──
   const nu = new Date()
