@@ -31,6 +31,7 @@ const STYLES = `
   .lb-vin-pris { font-family:var(--font-bred); font-size:.7rem; font-weight:700; color:#C5A028; margin-left:3px; white-space:nowrap; }
   .lb-finallag { display:flex; flex-direction:column; gap:1px; margin-top:3px; align-items:flex-end; }
   .lb-finallag-rad { font-family:var(--font-text); font-size:.7rem; color:var(--c-text-4); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:150px; }
+  .lb-finallag-rad.ut { color:var(--c-röd); text-decoration:line-through; text-decoration-color:rgba(200,16,46,.5); }
   .lb-finallag-lbl { font-weight:700; }
   .lb-legend { display:flex; gap:1rem; flex-wrap:wrap; margin-top:1.25rem; padding-top:1rem; border-top:1px solid rgba(0,0,0,.06); }
   .lb-legend-post { display:flex; align-items:center; gap:6px; font-size:.78rem; color:#666; }
@@ -147,12 +148,18 @@ export default function Leaderboard() {
               {(finallag?.vinnare || finallag?.förlorare) && (
                 <div className="lb-finallag" title={t('leaderboard.finallagen.titel')}>
                   {finallag.vinnare && (
-                    <span className="lb-finallag-rad" title={`${t('leaderboard.finallagen.vinnare')}: ${finallag.vinnare}`}>
+                    <span
+                      className={`lb-finallag-rad${finallag.vinnareUt ? ' ut' : ''}`}
+                      title={`${t('leaderboard.finallagen.vinnare')}: ${finallag.vinnare}${finallag.vinnareUt ? ` (${t('leaderboard.finallagen.utslagen')})` : ''}`}
+                    >
                       🏆 {getFlag(finallag.vinnare)} {finallag.vinnare}
                     </span>
                   )}
                   {finallag.förlorare && (
-                    <span className="lb-finallag-rad" title={`${t('leaderboard.finallagen.förlorare')}: ${finallag.förlorare}`}>
+                    <span
+                      className={`lb-finallag-rad${finallag.förlorareUt ? ' ut' : ''}`}
+                      title={`${t('leaderboard.finallagen.förlorare')}: ${finallag.förlorare}${finallag.förlorareUt ? ` (${t('leaderboard.finallagen.utslagen')})` : ''}`}
+                    >
                       🥈 {getFlag(finallag.förlorare)} {finallag.förlorare}
                     </span>
                   )}

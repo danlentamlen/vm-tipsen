@@ -1,11 +1,14 @@
 import { getSheets, getRows } from './_sheets.js'
+import { byggUtslagnaLag } from './_scoring.js'
 
 /**
  * finallagen.js — deltagarnas tippade finallag
  *
- * Returnerar { [user_id]: { vinnare, förlorare } } där:
- *   vinnare   = svar på "Vem vinner VM?"        (team-fråga med "vinner" i texten)
- *   förlorare = svar på "Vem förlorar finalen?" (team-fråga med "förlorar" i texten)
+ * Returnerar { [user_id]: { vinnare, förlorare, vinnareUt, förlorareUt } } där:
+ *   vinnare     = svar på "Vem vinner VM?"        (team-fråga med "vinner" i texten)
+ *   förlorare   = svar på "Vem förlorar finalen?" (team-fråga med "förlorar" i texten)
+ *   vinnareUt   = true om det tippade laget redan är utslaget ur turneringen
+ *   förlorareUt = true om det tippade laget redan är utslaget ur turneringen
  *
  * Kolumnstruktur:
  *   Frågor:     A=fråga_id, B=fråga (sv), C=poäng, D=typ, E=rätt_svar
@@ -21,8 +24,10 @@ import { getSheets, getRows } from './_sheets.js'
  *
  * @param {Array[]} frågorRader  A=id, B=fråga (sv), C=poäng, D=typ
  * @param {Array[]} svarRader    A=id, B=user_id, C=fråga_id, D=svar
+ * @param {Set<string>} utslagnaLag  lagnamn i gemener (från byggUtslagnaLag)
  */
-export function byggFinallagMap(frågorRader = [], svarRader = []) {
+export function byggFinallagMap(frågorRader = [], svarRader = [], utslagnaLag = new Set()) {
+  const ärUtslagen = (lag) => !!lag && utslagnaLag.has(String(lag).trim().toLowerCase())
   let vinnareFrågaId   = null
   let förlorareFrågaId = null
   frågorRader.forEach((rad) => {
@@ -61,6 +66,12 @@ export function byggFinallagMap(frågorRader = [], svarRader = []) {
     if (fråga_id === förlorareFrågaId && !map[user_id].förlorare) map[user_id].förlorare = svar
   })
 
+  // Markera utslagna lag (för röd färg i UI:t).
+  Object.values(map).forEach((rad) => {
+    rad.vinnareUt   = ärUtslagen(rad.vinnare)
+    rad.förlorareUt = ärUtslagen(rad.förlorare)
+  })
+
   return map
 }
 
@@ -72,13 +83,16 @@ export default async (req) => {
   try {
     const sheets = await getSheets()
     // Läs samma vida range som övrig kod (100000) annars tappas svar för
-    // deltagare längre ner i arket.
-    const [frågor, svarRader] = await Promise.all([
+    // deltagare längre ner i arket. Matcher + Resultat → utslagna lag.
+    const [frågor, svarRader, matcherRader, resultatRader] = await Promise.all([
       getRows(sheets, 'Frågor!A2:D1000'),
       getRows(sheets, 'FrågorSvar!A2:D100000'),
+      getRows(sheets, 'Matcher!A2:G1000'),
+      getRows(sheets, 'Resultat!A2:C1000'),
     ])
 
-    const map = byggFinallagMap(frågor, svarRader)
+    const utslagnaLag = byggUtslagnaLag(matcherRader, resultatRader)
+    const map = byggFinallagMap(frågor, svarRader, utslagnaLag)
 
     return new Response(JSON.stringify(map), {
       status: 200,

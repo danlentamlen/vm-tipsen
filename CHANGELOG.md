@@ -11,6 +11,9 @@ under deltagarnamnet och Finallagen ligger där vinet låg (högerkolumnen).
   som fallback. Logiken är en ren funktion (`byggFinallagMap`) → enhetstestad.
 - **Säkerhet:** avslöjas bara när tipsen är låsta (`tips_låst`), samma mönster
   som Deltagare-sidan → ingen kan kopiera andras finaltips i förväg.
+- **Utslagna lag visas rött** och överstruket: endpointen återanvänder
+  `byggUtslagnaLag` (Matcher + Resultat) och markerar `vinnareUt`/`förlorareUt`
+  per rad. Samma utslagningslogik som betting-översikten → konsekvent.
 - i18n-strängar tillagda (sv + en). Inget befintligt bryts — `scores.js` och
   övriga endpoints är orörda.
 

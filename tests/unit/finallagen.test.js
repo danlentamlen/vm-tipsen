@@ -26,9 +26,17 @@ const SVAR = [
 describe('byggFinallagMap', () => {
   it('mappar vinnare och förlorare per användare', () => {
     const map = byggFinallagMap(FRAGOR, SVAR)
-    expect(map.u1).toEqual({ vinnare: 'Spain', förlorare: 'England' })
-    expect(map.u2).toEqual({ vinnare: 'Brazil', förlorare: null })
-    expect(map.u3).toEqual({ vinnare: null, förlorare: 'France' })
+    expect(map.u1).toEqual({ vinnare: 'Spain', förlorare: 'England', vinnareUt: false, förlorareUt: false })
+    expect(map.u2).toEqual({ vinnare: 'Brazil', förlorare: null, vinnareUt: false, förlorareUt: false })
+    expect(map.u3).toEqual({ vinnare: null, förlorare: 'France', vinnareUt: false, förlorareUt: false })
+  })
+
+  it('markerar utslagna lag (skiftlägesokänsligt)', () => {
+    const utslagna = new Set(['england', 'brazil'])
+    const map = byggFinallagMap(FRAGOR, SVAR, utslagna)
+    expect(map.u1).toEqual({ vinnare: 'Spain', förlorare: 'England', vinnareUt: false, förlorareUt: true })
+    expect(map.u2.vinnareUt).toBe(true)
+    expect(map.u3.förlorareUt).toBe(false)
   })
 
   it('ignorerar icke-team-frågor', () => {
@@ -42,7 +50,8 @@ describe('byggFinallagMap', () => {
       ['q1', 'Vem vinner VM?',        '10', 'team'],
     ]
     const map = byggFinallagMap(frågor, SVAR)
-    expect(map.u1).toEqual({ vinnare: 'Spain', förlorare: 'England' })
+    expect(map.u1.vinnare).toBe('Spain')
+    expect(map.u1.förlorare).toBe('England')
   })
 
   it('faller tillbaka på ordning om texten inte matchar', () => {
@@ -51,7 +60,8 @@ describe('byggFinallagMap', () => {
       ['q2', 'Finallag B', '5',  'team'],
     ]
     const map = byggFinallagMap(frågor, SVAR)
-    expect(map.u1).toEqual({ vinnare: 'Spain', förlorare: 'England' })
+    expect(map.u1.vinnare).toBe('Spain')
+    expect(map.u1.förlorare).toBe('England')
   })
 
   it('returnerar tom map utan team-frågor', () => {

@@ -200,6 +200,7 @@ const sv = {
       titel:     'Finallagen',
       vinnare:   'Vinner finalen',
       förlorare: 'Förlorar finalen',
+      utslagen:  'utslagen',
     },
   },
 

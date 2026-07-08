@@ -198,6 +198,7 @@ const en = {
       titel:     'Final teams',
       vinnare:   'Wins the final',
       förlorare: 'Loses the final',
+      utslagen:  'eliminated',
     },
   },
 
