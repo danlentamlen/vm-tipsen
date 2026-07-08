@@ -7,11 +7,11 @@
 import { describe, it, expect } from 'vitest'
 import { byggFinallagMap } from '../../Netlify/functions/finallagen.js'
 
-// Frågor: A=id, B=fråga, C=poäng, D=typ
+// Frågor: A=id, B=fråga, C=poäng, D=typ, E=rätt_svar, F, G, H=fel_svar
 const FRAGOR = [
-  ['q1', 'Vem vinner VM?',        '10', 'team'],
-  ['q2', 'Vem förlorar finalen?', '5',  'team'],
-  ['q3', 'Antal mål totalt?',     '3',  'number'],
+  ['q1', 'Vem vinner VM?',        '10', 'team', '', '', '', ''],
+  ['q2', 'Vem förlorar finalen?', '5',  'team', '', '', '', ''],
+  ['q3', 'Antal mål totalt?',     '3',  'number', '', '', '', ''],
 ]
 
 // FrågorSvar: A=id, B=user_id, C=fråga_id, D=svar
@@ -37,6 +37,28 @@ describe('byggFinallagMap', () => {
     expect(map.u1).toEqual({ vinnare: 'Spain', förlorare: 'England', vinnareUt: false, förlorareUt: true })
     expect(map.u2.vinnareUt).toBe(true)
     expect(map.u3.förlorareUt).toBe(false)
+  })
+
+  it('markerar manuellt fel-markerade lag (Frågor kolumn H)', () => {
+    // q1 (vinnare) fel-markerar Spain; q2 (förlorare) fel-markerar France.
+    const frågor = [
+      ['q1', 'Vem vinner VM?',        '10', 'team', '', '', '', 'Spain;Germany'],
+      ['q2', 'Vem förlorar finalen?', '5',  'team', '', '', '', 'France'],
+    ]
+    const map = byggFinallagMap(frågor, SVAR)
+    expect(map.u1.vinnareUt).toBe(true)    // Spain fel-markerad i q1
+    expect(map.u1.förlorareUt).toBe(false) // England ej markerad
+    expect(map.u3.förlorareUt).toBe(true)  // France fel-markerad i q2
+  })
+
+  it('markerar aldrig rätt facit (kolumn E) som utslaget', () => {
+    const frågor = [
+      ['q1', 'Vem vinner VM?',        '10', 'team', 'Spain', '', '', ''],
+      ['q2', 'Vem förlorar finalen?', '5',  'team', '', '', '', ''],
+    ]
+    // Spain är både facit OCH i utslagna-setet → facit vinner, ej röd.
+    const map = byggFinallagMap(frågor, SVAR, new Set(['spain']))
+    expect(map.u1.vinnareUt).toBe(false)
   })
 
   it('ignorerar icke-team-frågor', () => {

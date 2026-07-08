@@ -11,49 +11,74 @@ import { byggUtslagnaLag } from './_scoring.js'
  *   förlorareUt = true om det tippade laget redan är utslaget ur turneringen
  *
  * Kolumnstruktur:
- *   Frågor:     A=fråga_id, B=fråga (sv), C=poäng, D=typ, E=rätt_svar
+ *   Frågor:     A=fråga_id, B=fråga (sv), C=poäng, D=typ, E=rätt_svar, …, H=fel_svar
  *   FrågorSvar: A=id, B=user_id, C=fråga_id, D=svar
+ *
+ * "Utslaget" speglar EXAKT samma regel som bettingöversikten (_scoring.js):
+ * ett lag är rött om det (a) är utslaget enligt Matcher/Resultat (byggUtslagnaLag)
+ * ELLER (b) är manuellt fel-markerat i Frågor kolumn H (fel_svar) för sin fråga.
+ * Ett lag som är rätt facit (kolumn E) markeras aldrig rött.
  *
  * OBS säkerhet: frontenden avslöjar bara detta när tipsen är låsta (tips_låst),
  * samma mönster som Deltagare-sidan → ingen kan kopiera andras finaltips i förväg.
  */
+// Semikolon-separerad cell → Set av trimmade gemener.
+function toLowerSet(cell) {
+  return new Set(
+    String(cell || '').split(';').map((s) => s.trim().toLowerCase()).filter(Boolean),
+  )
+}
+
 /**
  * Klassar team-frågorna som vinnare/förlorare (via frågetext, med ordning som
- * fallback) och bygger { [user_id]: { vinnare, förlorare } }.
+ * fallback) och bygger { [user_id]: { vinnare, förlorare, vinnareUt, förlorareUt } }.
  * Ren funktion → enhetstestbar utan Sheets.
  *
- * @param {Array[]} frågorRader  A=id, B=fråga (sv), C=poäng, D=typ
+ * @param {Array[]} frågorRader  A=id, B=fråga (sv), C=poäng, D=typ, E=rätt_svar, H=fel_svar
  * @param {Array[]} svarRader    A=id, B=user_id, C=fråga_id, D=svar
  * @param {Set<string>} utslagnaLag  lagnamn i gemener (från byggUtslagnaLag)
  */
 export function byggFinallagMap(frågorRader = [], svarRader = [], utslagnaLag = new Set()) {
-  const ärUtslagen = (lag) => !!lag && utslagnaLag.has(String(lag).trim().toLowerCase())
-  let vinnareFrågaId   = null
-  let förlorareFrågaId = null
+  let vinnareFråga   = null
+  let förlorareFråga = null
   frågorRader.forEach((rad) => {
     const id   = rad[0]
     const text = (rad[1] || '').toLowerCase()
     const typ  = (rad[3] || '').trim()
     if (typ !== 'team' || !id) return
     if (text.includes('förlorar') || text.includes('forlorar')) {
-      if (!förlorareFrågaId) förlorareFrågaId = id
+      if (!förlorareFråga) förlorareFråga = rad
     } else if (text.includes('vinner')) {
-      if (!vinnareFrågaId) vinnareFrågaId = id
+      if (!vinnareFråga) vinnareFråga = rad
     }
   })
 
   // Fallback: om texten inte matchar (t.ex. äldre data) — ta team-frågorna i
   // ordning: första = vinnare, andra = förlorare.
-  if (!vinnareFrågaId || !förlorareFrågaId) {
-    const teamIds = frågorRader
-      .filter((rad) => (rad[3] || '').trim() === 'team' && rad[0])
-      .map((rad) => rad[0])
-    if (!vinnareFrågaId)   vinnareFrågaId   = teamIds[0] || null
-    if (!förlorareFrågaId) förlorareFrågaId = teamIds.find((id) => id !== vinnareFrågaId) || null
+  if (!vinnareFråga || !förlorareFråga) {
+    const teamRader = frågorRader.filter((rad) => (rad[3] || '').trim() === 'team' && rad[0])
+    if (!vinnareFråga)   vinnareFråga   = teamRader[0] || null
+    if (!förlorareFråga) förlorareFråga = teamRader.find((rad) => rad !== vinnareFråga) || null
   }
 
   const map = {}
+  const vinnareFrågaId   = vinnareFråga ? vinnareFråga[0] : null
+  const förlorareFrågaId = förlorareFråga ? förlorareFråga[0] : null
   if (!vinnareFrågaId && !förlorareFrågaId) return map
+
+  // Per fråga: manuellt fel-markerade lag (kolumn H) och facit (kolumn E).
+  const felSvarVinnare   = toLowerSet(vinnareFråga && vinnareFråga[7])
+  const felSvarFörlorare = toLowerSet(förlorareFråga && förlorareFråga[7])
+  const facitVinnare     = toLowerSet(vinnareFråga && vinnareFråga[4])
+  const facitFörlorare   = toLowerSet(förlorareFråga && förlorareFråga[4])
+
+  // Uträknad = INTE rätt facit OCH (utslaget lag ELLER manuellt fel-markerat).
+  const ärUt = (lag, felSvar, facit) => {
+    if (!lag) return false
+    const n = String(lag).trim().toLowerCase()
+    if (facit.has(n)) return false
+    return utslagnaLag.has(n) || felSvar.has(n)
+  }
 
   svarRader.forEach((rad) => {
     const user_id  = rad[1]
@@ -66,10 +91,10 @@ export function byggFinallagMap(frågorRader = [], svarRader = [], utslagnaLag =
     if (fråga_id === förlorareFrågaId && !map[user_id].förlorare) map[user_id].förlorare = svar
   })
 
-  // Markera utslagna lag (för röd färg i UI:t).
+  // Markera utslagna/uträknade lag (för röd färg i UI:t).
   Object.values(map).forEach((rad) => {
-    rad.vinnareUt   = ärUtslagen(rad.vinnare)
-    rad.förlorareUt = ärUtslagen(rad.förlorare)
+    rad.vinnareUt   = ärUt(rad.vinnare, felSvarVinnare, facitVinnare)
+    rad.förlorareUt = ärUt(rad.förlorare, felSvarFörlorare, facitFörlorare)
   })
 
   return map
@@ -85,7 +110,7 @@ export default async (req) => {
     // Läs samma vida range som övrig kod (100000) annars tappas svar för
     // deltagare längre ner i arket. Matcher + Resultat → utslagna lag.
     const [frågor, svarRader, matcherRader, resultatRader] = await Promise.all([
-      getRows(sheets, 'Frågor!A2:D1000'),
+      getRows(sheets, 'Frågor!A2:H1000'), // H = fel_svar (manuell fel-markering)
       getRows(sheets, 'FrågorSvar!A2:D100000'),
       getRows(sheets, 'Matcher!A2:G1000'),
       getRows(sheets, 'Resultat!A2:C1000'),
