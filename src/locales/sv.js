@@ -196,6 +196,11 @@ const sv = {
       rätt:  'Rätt utgång = 2p',
       bonus: 'Bonusfrågor = varierar',
     },
+    finallagen: {
+      titel:     'Finallagen',
+      vinnare:   'Vinner finalen',
+      förlorare: 'Förlorar finalen',
+    },
   },
 
   releaseNotes: {

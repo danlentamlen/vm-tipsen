@@ -194,6 +194,11 @@ const en = {
       rätt:  'Correct outcome = 2p',
       bonus: 'Bonus questions = varies',
     },
+    finallagen: {
+      titel:     'Final teams',
+      vinnare:   'Wins the final',
+      förlorare: 'Loses the final',
+    },
   },
 
   releaseNotes: {

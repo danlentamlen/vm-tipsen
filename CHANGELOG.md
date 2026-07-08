@@ -1,5 +1,19 @@
 # vm-tipsen — Komplett förbättringspaket
 
+## Finallagen i topplistekortet (2026-07-08)
+
+**Nytt:** Varje rad i topplistan visar nu deltagarens tippade **Finallag** —
+🏆 vinnaren och 🥈 förloraren av finalen, med flaggor. Vinet flyttades ner
+under deltagarnamnet och Finallagen ligger där vinet låg (högerkolumnen).
+
+- Ny funktion `finallagen.js` returnerar `{ user_id: { vinnare, förlorare } }`.
+  Team-frågorna klassas via frågetext ("vinner" / "förlorar") med ark-ordning
+  som fallback. Logiken är en ren funktion (`byggFinallagMap`) → enhetstestad.
+- **Säkerhet:** avslöjas bara när tipsen är låsta (`tips_låst`), samma mönster
+  som Deltagare-sidan → ingen kan kopiera andras finaltips i förväg.
+- i18n-strängar tillagda (sv + en). Inget befintligt bryts — `scores.js` och
+  övriga endpoints är orörda.
+
 ## Frågesvar-poäng i Sheets + maxpoäng per spelare (2026-07-06)
 
 **Nytt:** Writern (`sync-results`, var 5:e min) bedömer nu varje frågesvar och
