@@ -205,6 +205,7 @@ const DASHBOARD_STYLES = `
   .sk-leader-goals-lbl { font-family:'Barlow Condensed',sans-serif; font-size:.6rem; font-weight:600; letter-spacing:.2em; text-transform:uppercase; color:rgba(255,255,255,.35); }
   .sk-leader-name { font-family:'Barlow',sans-serif; font-size:.88rem; font-weight:500; color:#fff; text-align:center; margin-top:2px; }
   .sk-leader-country { font-family:'Barlow',sans-serif; font-size:.72rem; color:rgba(255,255,255,.45); }
+  .sk-leader-assist { font-family:'Barlow',sans-serif; font-size:.62rem; color:rgba(240,208,96,.7); margin-top:1px; }
   .sk-sub-col { display:flex; flex-direction:column; gap:.6rem; }
   .sk-card { background:#fff; border:1px solid rgba(0,0,0,.07); border-radius:12px; padding:.9rem 1rem; display:flex; flex-direction:column; align-items:center; gap:4px; box-shadow:0 1px 3px rgba(0,0,0,.04); flex:1; }
   .sk-card-medal { font-size:.95rem; line-height:1; }
@@ -212,6 +213,7 @@ const DASHBOARD_STYLES = `
   .sk-card-goals { font-family:'Barlow Condensed',sans-serif; font-size:1.75rem; font-weight:700; color:#0a1628; line-height:1; }
   .sk-card-name { font-family:'Barlow',sans-serif; font-size:.78rem; font-weight:500; color:#0a1628; text-align:center; }
   .sk-card-country { font-family:'Barlow',sans-serif; font-size:.68rem; color:#aaa; }
+  .sk-card-assist { font-family:'Barlow',sans-serif; font-size:.6rem; color:#bbb; }
   .sk-rest-card { background:#fff; border:1px solid rgba(0,0,0,.07); border-radius:12px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,.04); }
   .sk-rest-row { display:flex; align-items:center; gap:10px; padding:.6rem 1rem; border-bottom:.5px solid rgba(0,0,0,.05); }
   .sk-rest-row:last-child { border-bottom:none; }
@@ -219,6 +221,7 @@ const DASHBOARD_STYLES = `
   .sk-rest-flag { font-size:1.1rem; line-height:1; flex-shrink:0; }
   .sk-rest-name { flex:1; font-family:'Barlow',sans-serif; font-size:.88rem; font-weight:500; color:#0a1628; }
   .sk-rest-goals { font-family:'Barlow Condensed',sans-serif; font-size:.9rem; font-weight:700; color:#0a1628; white-space:nowrap; }
+  .sk-rest-assist { font-family:'Barlow',sans-serif; font-size:.68rem; color:#bbb; white-space:nowrap; flex-shrink:0; }
 
   .dash-empty { background:#fff; border:1px solid rgba(0,0,0,.07); border-radius:12px; padding:1.5rem 1rem; text-align:center; font-family:'Barlow',sans-serif; font-size:.88rem; color:#aaa; box-shadow:0 1px 3px rgba(0,0,0,.04); }
 
@@ -950,6 +953,9 @@ export default function Home() {
                 <span className="sk-leader-goals-lbl">mål</span>
                 <span className="sk-leader-name">{topScorers[0].spelare}</span>
                 <span className="sk-leader-country">{topScorers[0].land}</span>
+                {topScorers[0].assists > 0 && (
+                  <span className="sk-leader-assist">{topScorers[0].assists} ass.</span>
+                )}
               </Link>
 
               <div className="sk-sub-col">
@@ -960,6 +966,9 @@ export default function Home() {
                     <span className="sk-card-goals">{topScorers[1].mål}</span>
                     <span className="sk-card-name">{topScorers[1].spelare}</span>
                     <span className="sk-card-country">{topScorers[1].land}</span>
+                    {topScorers[1].assists > 0 && (
+                      <span className="sk-card-assist">{topScorers[1].assists} ass.</span>
+                    )}
                   </div>
                 )}
                 {topScorers[2] && (
@@ -969,6 +978,9 @@ export default function Home() {
                     <span className="sk-card-goals">{topScorers[2].mål}</span>
                     <span className="sk-card-name">{topScorers[2].spelare}</span>
                     <span className="sk-card-country">{topScorers[2].land}</span>
+                    {topScorers[2].assists > 0 && (
+                      <span className="sk-card-assist">{topScorers[2].assists} ass.</span>
+                    )}
                   </div>
                 )}
               </div>
@@ -982,6 +994,7 @@ export default function Home() {
                     <span className="sk-rest-pos">{i + 4}</span>
                     <span className="sk-rest-flag">{getFlag(s.land)}</span>
                     <span className="sk-rest-name">{s.spelare}</span>
+                    {s.assists > 0 && <span className="sk-rest-assist">{s.assists} ass.</span>}
                     <span className="sk-rest-goals">{s.mål} mål</span>
                   </div>
                 ))}
