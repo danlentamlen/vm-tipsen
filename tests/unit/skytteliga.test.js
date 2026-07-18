@@ -112,6 +112,59 @@ describe('byggWidgetSkytteliga', () => {
   it('respekterar topp-gränsen', () => {
     expect(byggWidgetSkytteliga(rader, karta, 2)).toHaveLength(2)
   })
+
+  it('låter arkets kolumn D (assists) styra före football-data', () => {
+    // Messi & Mbappé båda 8 mål. Arket säger Messi 4 ass, Mbappé 3 → Messi först.
+    const ark = [
+      ['Kylian Mbappé', 'France', '8', '3'],
+      ['Lionel Messi', 'Argentina', '8', '4'],
+    ]
+    // football-data säger tvärtom (ska ignoreras när D finns)
+    const fdKarta = byggAssistkarta([
+      { player: { name: 'Kylian Mbappé' }, assists: 9 },
+      { player: { name: 'Lionel Messi' }, assists: 0 },
+    ])
+    const r = byggWidgetSkytteliga(ark, fdKarta, 5)
+    expect(r.map((x) => x.spelare)).toEqual(['Lionel Messi', 'Kylian Mbappé'])
+    expect(r.map((x) => x.assists)).toEqual([4, 3])
+  })
+
+  it('faller tillbaka på football-data när kolumn D är tom', () => {
+    const ark = [
+      ['Kylian Mbappé', 'France', '8', ''],
+      ['Lionel Messi', 'Argentina', '8'],   // ingen D-cell alls
+    ]
+    const fdKarta = byggAssistkarta([
+      { player: { name: 'Kylian Mbappé' }, assists: 3 },
+      { player: { name: 'Lionel Messi' }, assists: 4 },
+    ])
+    const r = byggWidgetSkytteliga(ark, fdKarta, 5)
+    expect(r.map((x) => x.spelare)).toEqual(['Lionel Messi', 'Kylian Mbappé'])
+    expect(r.map((x) => x.assists)).toEqual([4, 3])
+  })
+
+  it('kan blanda arkets D och football-data-fallback per spelare', () => {
+    const ark = [
+      ['Kylian Mbappé', 'France', '8', '3'],  // D ifylld
+      ['Lionel Messi', 'Argentina', '8'],      // D saknas → fallback
+    ]
+    const fdKarta = byggAssistkarta([{ player: { name: 'Lionel Messi' }, assists: 4 }])
+    const r = byggWidgetSkytteliga(ark, fdKarta, 5)
+    expect(r.map((x) => [x.spelare, x.assists])).toEqual([
+      ['Lionel Messi', 4], ['Kylian Mbappé', 3],
+    ])
+  })
+
+  it('behandlar D=0 som ett riktigt värde (inte tomt)', () => {
+    const ark = [
+      ['A', 'X', '5', '0'],
+      ['B', 'Y', '5', '2'],
+    ]
+    // football-data skulle ge A högre — men D=0 ska gälla
+    const fdKarta = byggAssistkarta([{ player: { name: 'A' }, assists: 9 }])
+    const r = byggWidgetSkytteliga(ark, fdKarta, 5)
+    expect(r.map((x) => x.spelare)).toEqual(['B', 'A'])
+  })
 })
 
 describe('rankaFdScorers', () => {

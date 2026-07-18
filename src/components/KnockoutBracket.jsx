@@ -328,6 +328,49 @@ function MatchCell({ match, matchStats, liveScores, minaTips, compact, onClick, 
   )
 }
 
+// ── Är namnet ett riktigt lag (inte en platshållare)? ───────────────────────
+// Platshållare = "Vinnare semifinal 1", "Winner ...", bracketkoder "W101"/"L102",
+// grupp-koder "1A"/"2B"/"3E". Riktiga lagnamn ska alltid visas.
+export function ärRiktigtLag(namn) {
+  if (!namn) return false
+  const n = namn.toLowerCase().trim()
+  if (n.includes('vinnare') || n.includes('winner') ||
+      n.includes('förlorare') || n.includes('forlorare') || n.includes('loser')) return false
+  if (/^[wl]\d+$/i.test(n)) return false
+  if (/^[12][a-l]$/i.test(n)) return false
+  if (/^3[a-l]/i.test(n)) return false
+  return true
+}
+
+// ── Mini-resultat: två lagrader (flagga + namn + ev. mål) ────────────────────
+// Används för finalist-boxen och bronsmatchen — visar lagen så snart de är kända,
+// oberoende av om matchen har spelats än.
+function MiniResultat({ match, score, winnerNamn, fullMode }) {
+  if (!match) return <span className="bkt-finalist-val">– vs –</span>
+  const lag = [match.hemmalag, match.bortalag]
+  return (
+    <div className="bkt-fr" style={{ marginTop: 3 }}>
+      {lag.map((namn, idx) => {
+        const riktig    = ärRiktigtLag(namn)
+        const ärVinnare = winnerNamn && winnerNamn === namn
+        const ärUtslagen = winnerNamn && riktig && !ärVinnare
+        const mål = score ? (idx === 0 ? score.hemma : score.borta) : null
+        return (
+          <div
+            key={idx}
+            className={['bkt-fr-row', ärVinnare ? 'bkt-fr-win' : ärUtslagen ? 'bkt-fr-lose' : ''].filter(Boolean).join(' ')}
+            style={{ fontSize: fullMode ? 13 : 11 }}
+          >
+            <span className="bkt-fr-flag">{riktig ? getFlag(namn) : ''}</span>
+            <span className="bkt-fr-name">{riktig ? namn : '–'}</span>
+            {mål != null && <span className="bkt-fr-score">{mål}</span>}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 // ── SVG connector-ritare ─────────────────────────────────────────────────────
 function drawConnectors(svgEl, pairs, targets, dir) {
   if (!svgEl) return
@@ -531,6 +574,33 @@ const BRACKET_CSS = `
     font-size:11px; font-weight:700; color:rgba(255,255,255,.45);
   }
 
+  /* ── Finalist/brons mini-rader ── */
+  .bkt-fr { display:flex; flex-direction:column; gap:2px; }
+  .bkt-fr-row {
+    display:flex; align-items:center; gap:4px;
+    font-family:'Barlow Condensed',sans-serif; font-weight:700;
+    color:rgba(255,255,255,.5); line-height:1.2;
+  }
+  .bkt-fr-flag { flex-shrink:0; }
+  .bkt-fr-name { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:left; }
+  .bkt-fr-score { flex-shrink:0; font-weight:800; color:#F0D060; }
+  .bkt-fr-win  { color:#fff !important; }
+  .bkt-fr-lose { opacity:.4; }
+
+  /* ── Bronsmatch-box (center, under finalen) ── */
+  .bkt-bronze-box {
+    background:rgba(205,127,50,.08);
+    border:1px solid rgba(205,127,50,.22);
+    border-radius:5px; padding:4px 7px; margin-top:6px; width:100%;
+    cursor:pointer; transition:border-color .15s, background .15s;
+  }
+  .bkt-bronze-box:hover { border-color:rgba(205,127,50,.4); background:rgba(205,127,50,.12); }
+  .bkt-bronze-lbl {
+    font-family:'Barlow Condensed',sans-serif;
+    font-size:7px; font-weight:700; letter-spacing:.1em;
+    text-transform:uppercase; color:rgba(205,127,50,.85); display:block; margin-bottom:1px;
+  }
+
   /* ── Kompakt grid ── */
   .bkt-grid-compact {
     display:grid;
@@ -690,6 +760,7 @@ const BRACKET_CSS = `
 // ── Mobil stående: runda-för-runda-vy ───────────────────────────────────────
 function MobileBracket({
   rounds, left, right, finalMatch, finalScore, finalWinner,
+  bronsMatch, bronsScore, bronsWinner,
   matchStats, liveScores, minaTips, winnerMap, nextMatchId, onSelect,
 }) {
   // Starta på den omgång som innehåller nästa match (annars första omgången)
@@ -752,24 +823,22 @@ function MobileBracket({
           <div className="bkt-trophy bkt-trophy-full">🏆</div>
           <div className="bkt-final-lbl">Final · 19 juli 2026</div>
           <div className="bkt-final-date">MetLife Stadium, NJ</div>
-          {finalScore ? (
-            <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: 15, fontWeight: 700, color: finalWinner === finalMatch.hemmalag ? '#fff' : 'rgba(255,255,255,.45)', display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <span>{getFlag(finalMatch.hemmalag)}</span> {finalMatch.hemmalag}
-                </span>
-                <span style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: 16, fontWeight: 800, color: '#F0D060' }}>
-                  {finalScore.hemma}–{finalScore.borta}
-                </span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <span style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: 15, fontWeight: 700, color: finalWinner === finalMatch.bortalag ? '#fff' : 'rgba(255,255,255,.45)', display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <span>{getFlag(finalMatch.bortalag)}</span> {finalMatch.bortalag}
-                </span>
-              </div>
+          <div style={{ marginTop: 12 }}>
+            <MiniResultat match={finalMatch} score={finalScore} winnerNamn={finalWinner} fullMode />
+          </div>
+
+          {bronsMatch && (
+            <div
+              className="bkt-bronze-box"
+              style={{ marginTop: 14 }}
+              onClick={(e) => { e.stopPropagation(); onSelect(bronsMatch) }}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && (e.stopPropagation(), onSelect(bronsMatch))}
+            >
+              <span className="bkt-bronze-lbl">🥉 Match om 3:e plats</span>
+              <MiniResultat match={bronsMatch} score={bronsScore} winnerNamn={bronsWinner} fullMode />
             </div>
-          ) : (
-            <div className="bkt-finalist-val" style={{ marginTop: 12 }}>– vs –</div>
           )}
         </div>
       ) : (
@@ -803,7 +872,7 @@ export default function KnockoutBracket({
   const wrapRef    = useRef(null)
   const vp         = useViewport()
 
-  const { left, right, activeRounds, knockout } = buildBracket(matcher)
+  const { left, right, activeRounds, knockout, byRound } = buildBracket(matcher)
   const winnerMap   = buildWinnerMap(knockout, matchStats)
   const nextMatchId = findNextMatchId(knockout, matchStats, liveScores)
 
@@ -822,7 +891,17 @@ export default function KnockoutBracket({
   const bracketRounds = activeRounds.filter((r) => r !== 'Final')
   const finalMatch = left['Final']?.[0] || null
   const finalScore = finalMatch ? matchScore(finalMatch, matchStats, liveScores) : null
-  const finalWinner = finalMatch && finalScore ? winner(finalMatch, finalScore) : null
+  // winnerMap är auktoritativ (klarar straffar/förlängning); fall tillbaka på mål.
+  const finalWinner = finalMatch
+    ? (winnerMap[finalMatch.match_id] || (finalScore ? winner(finalMatch, finalScore) : null))
+    : null
+
+  // Bronsmatch (Match for third place) — ingår inte i ROUND_ORDER, hämtas separat.
+  const bronsMatch = byRound?.['Match for third place']?.[0] || null
+  const bronsScore = bronsMatch ? matchScore(bronsMatch, matchStats, liveScores) : null
+  const bronsWinner = bronsMatch
+    ? (winnerMap[bronsMatch.match_id] || (bronsScore ? winner(bronsMatch, bronsScore) : null))
+    : null
 
   // ── Connector-ritning ────────────────────────────────────────────────────
   const ritaLinjer = useCallback(() => {
@@ -1042,7 +1121,7 @@ export default function KnockoutBracket({
   // Mobil stående → runda-för-runda. Liggande/desktop → trädvy (orört).
   // Gated på bredd så desktop aldrig påverkas.
   const mobilePortrait = fullMode && vp.w <= 600 && vp.portrait
-  const mobileRounds = finalMatch ? [...bracketRounds, 'Final'] : [...bracketRounds]
+  const mobileRounds = (finalMatch || bronsMatch) ? [...bracketRounds, 'Final'] : [...bracketRounds]
 
   return (
     <>
@@ -1075,6 +1154,9 @@ export default function KnockoutBracket({
           finalMatch={finalMatch}
           finalScore={finalScore}
           finalWinner={finalWinner}
+          bronsMatch={bronsMatch}
+          bronsScore={bronsScore}
+          bronsWinner={bronsWinner}
           matchStats={matchStats}
           liveScores={liveScores}
           minaTips={minaTips}
@@ -1121,7 +1203,7 @@ export default function KnockoutBracket({
             <div className="bkt-final-lbl">19 juli 2026</div>
             <div className="bkt-final-date">MetLife Stadium, NJ</div>
 
-            {/* Finalist-box — visas om vi vet vinnaren */}
+            {/* Finalist-box — visar finalisterna så snart de är kända */}
             {finalMatch && (
               <div
                 className="bkt-finalist-box"
@@ -1129,26 +1211,22 @@ export default function KnockoutBracket({
                 style={{ cursor: 'pointer' }}
                 onClick={() => finalMatch && setValdMatch(finalMatch)}
               >
-                <span className="bkt-finalist-lbl">Finalist</span>
-                {finalScore ? (
-                  <div style={{ marginTop: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'space-between' }}>
-                      <span style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: fullMode ? 13 : 11, fontWeight: 700, color: finalWinner === finalMatch.hemmalag ? '#fff' : 'rgba(255,255,255,.4)', display: 'flex', alignItems: 'center', gap: 3 }}>
-                        <span>{getFlag(finalMatch.hemmalag)}</span> {finalMatch.hemmalag}
-                      </span>
-                      <span style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: 14, fontWeight: 800, color: '#F0D060' }}>
-                        {finalScore.hemma}–{finalScore.borta}
-                      </span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-start' }}>
-                      <span style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: fullMode ? 13 : 11, fontWeight: 700, color: finalWinner === finalMatch.bortalag ? '#fff' : 'rgba(255,255,255,.4)', display: 'flex', alignItems: 'center', gap: 3 }}>
-                        <span>{getFlag(finalMatch.bortalag)}</span> {finalMatch.bortalag}
-                      </span>
-                    </div>
-                  </div>
-                ) : (
-                  <span className="bkt-finalist-val">– vs –</span>
-                )}
+                <span className="bkt-finalist-lbl">Finalister</span>
+                <MiniResultat match={finalMatch} score={finalScore} winnerNamn={finalWinner} fullMode={fullMode} />
+              </div>
+            )}
+
+            {/* Bronsmatch — Match om 3:e plats */}
+            {bronsMatch && (
+              <div
+                className="bkt-bronze-box"
+                onClick={() => setValdMatch(bronsMatch)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => e.key === 'Enter' && setValdMatch(bronsMatch)}
+              >
+                <span className="bkt-bronze-lbl">🥉 Match om 3:e plats</span>
+                <MiniResultat match={bronsMatch} score={bronsScore} winnerNamn={bronsWinner} fullMode={fullMode} />
               </div>
             )}
           </div>
