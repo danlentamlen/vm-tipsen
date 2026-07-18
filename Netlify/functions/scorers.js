@@ -1,4 +1,5 @@
 import { getSheets, getRows } from './_sheets.js'
+import { rankaFdScorers } from './_skytteliga.js'
 
 const API_BASE = 'https://api.football-data.org/v4'
 const COMPETITION_ID = 'WC'
@@ -44,14 +45,9 @@ export default async (req) => {
 
     const data = await res.json()
 
-    const scorers = (data.scorers || []).map((s, i) => ({
-      plats: i + 1,
-      namn: s.player?.name || '–',
-      lag: s.team?.name || '–',
-      mål: s.goals ?? 0,
-      assists: s.assists ?? 0,
-      matcher: s.playedMatches ?? 0,
-    }))
+    // FIFA-regel: mål först, assists som skiljedomare. Vi litar inte på
+    // football-datas egen ordning utan sorterar och sätter plats själva.
+    const scorers = rankaFdScorers(data.scorers || [])
 
     const result = {
       scorers,

@@ -1,23 +1,46 @@
 import { getSheets, getRows } from './_sheets.js'
 import { withCache } from './_cache.js'
+import { byggAssistkarta, byggWidgetSkytteliga } from './_skytteliga.js'
 
 const CACHE_TTL = 10 * 60 * 1000 // 10 minutes — updated manually between matches
+const FD_BASE = 'https://api.football-data.org/v4'
+
+/**
+ * Hämtar assists från football-data (mål räknas fortfarande manuellt i arket).
+ * Returnerar tom lista vid fel/saknad nyckel så tiebreak degraderar till mål-only
+ * i stället för att krascha widgeten.
+ */
+async function hämtaFdScorers() {
+  if (!process.env.FOOTBALL_DATA_KEY) return []
+  try {
+    const res = await fetch(
+      `${FD_BASE}/competitions/WC/scorers?season=2026&limit=100`,
+      { headers: { 'X-Auth-Token': process.env.FOOTBALL_DATA_KEY } },
+    )
+    if (!res.ok) {
+      console.warn(`[top-scorers] football-data svarade ${res.status} — kör mål-only`)
+      return []
+    }
+    const data = await res.json()
+    return data.scorers || []
+  } catch (err) {
+    console.warn('[top-scorers] kunde inte hämta assists:', err.message)
+    return []
+  }
+}
 
 export default async (req) => {
   try {
     const scorers = await withCache('top-scorers', CACHE_TTL, async () => {
       const sheets = await getSheets()
-      const rader = await getRows(sheets, 'Skytteliga!A2:C100')
-      return rader
-        .filter((r) => r[0] && r[2] !== '' && r[2] !== undefined)
-        .map((r) => ({
-          spelare: r[0].trim(),
-          land:    (r[1] || '').trim(),
-          mål:     parseInt(r[2]) || 0,
-        }))
-        .filter((s) => s.mål > 0)
-        .sort((a, b) => b.mål - a.mål)
-        .slice(0, 5)
+      const [rader, fdScorers] = await Promise.all([
+        getRows(sheets, 'Skytteliga!A2:D100'),
+        hämtaFdScorers(),
+      ])
+      // Mål + assists = manuella arket (kolumn C resp. D, sanningskälla).
+      // football-data används bara som assist-reserv när kolumn D är tom.
+      const assistKarta = byggAssistkarta(fdScorers)
+      return byggWidgetSkytteliga(rader, assistKarta, 5)
     })
 
     return new Response(JSON.stringify(scorers), {

@@ -92,11 +92,23 @@ export function sorteraFifa(lista = []) {
   })
 }
 
+/** Tolkar ett heltal ur en cell; returnerar null om tom/ogiltig. */
+function parseAssistCell(v) {
+  if (v === '' || v === undefined || v === null) return null
+  const n = parseInt(v)
+  return Number.isFinite(n) ? n : null
+}
+
 /**
- * För Home-widgeten (manuella arket): kombinerar arkets mål med assists från
- * football-data, sorterar enligt FIFA och plockar topp N.
+ * För Home-widgeten (manuella arket): kombinerar arkets mål med assists,
+ * sorterar enligt FIFA och plockar topp N.
  *
- * @param {Array[]} sheetRader   Skytteliga!A2:C — [spelare, land, mål]
+ * Assist-källa i prioritetsordning:
+ *   1. Arkets kolumn D (manuellt ifylld) — sanningskälla, du styr den själv.
+ *   2. football-data (assistKarta) — reserv när D är tom.
+ *   3. 0 — degraderar till mål-only.
+ *
+ * @param {Array[]} sheetRader   Skytteliga!A2:D — [spelare, land, mål, assists?]
  * @param {{full:Map,fallback:Map}} assistKarta  från byggAssistkarta()
  * @param {number} topp          antal att returnera (default 5)
  */
@@ -104,12 +116,15 @@ export function byggWidgetSkytteliga(sheetRader = [], assistKarta = null, topp =
   return sorteraFifa(
     sheetRader
       .filter((r) => r[0] && r[2] !== '' && r[2] !== undefined)
-      .map((r) => ({
-        spelare: r[0].trim(),
-        land:    (r[1] || '').trim(),
-        mål:     parseInt(r[2]) || 0,
-        assists: slåUppAssists(r[0], assistKarta),
-      }))
+      .map((r) => {
+        const arketsAssist = parseAssistCell(r[3])
+        return {
+          spelare: r[0].trim(),
+          land:    (r[1] || '').trim(),
+          mål:     parseInt(r[2]) || 0,
+          assists: arketsAssist != null ? arketsAssist : slåUppAssists(r[0], assistKarta),
+        }
+      })
       .filter((s) => s.mål > 0),
   ).slice(0, topp)
 }
