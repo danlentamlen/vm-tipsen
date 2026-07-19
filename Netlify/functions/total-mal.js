@@ -1,20 +1,18 @@
 // Hämtar totalt antal mål i VM 2026 från football-data.org
 // Används av startsidans mål-tracker
 //
-// VIKTIGT — räknesätt (FIFA-officiellt):
-//   Vi räknar ALLA riktiga mål: ordinarie tid + förlängning + straffar som lagts
-//   under matchen (i spel). Vi räknar INTE straffläggning (shootout) efter oavgjort,
-//   eftersom shootout-mål inte är riktiga mål enligt FIFA:s statistik.
-//
-//   Detta skiljer sig MEDVETET från betting-/poänglogiken (_resultsSource.js),
-//   som bara använder 90-min-resultatet. Mål-trackern är en turneringsstatistik,
-//   inte en poängkälla — därför ska förlängningsmål räknas med här.
+// VIKTIGT — räknesätt (samma som poäng/betting: ENBART ordinarie tid, 90 min):
+//   Vi räknar mål gjorda under ordinarie matchtid — inkl. straffar som lagts i
+//   spel (de ligger i 90-min-resultatet). Vi räknar INTE förlängningsmål och
+//   INTE straffläggning (shootout). Detta gör att trackern EXAKT speglar
+//   Resultat-arket och poängräkningen (se _resultsSource.js / fdNormalize).
 //
 //   football-data score-fält (bekräftat 2026-06-30):
-//     score.fullTime  = KUMULATIVT (ordinarie + ET + shootout)
-//     score.extraTime = enbart förlängningsmål
-//     score.penalties = enbart straffläggning (shootout)
-//   → riktiga mål = fullTime − penalties(shootout)
+//     score.regularTime = officiellt 90-min-resultat (bästa källan)
+//     score.fullTime    = KUMULATIVT (ordinarie + ET + shootout)
+//     score.extraTime   = enbart förlängningsmål
+//     score.penalties   = enbart straffläggning (shootout)
+//   → 90-min-mål = regularTime om den finns, annars fullTime − ET − shootout
 
 const API_BASE = 'https://api.football-data.org/v4'
 const COMPETITION_ID = 'WC'
@@ -25,28 +23,33 @@ let cache = { data: null, timestamp: 0 }
 const CACHE_TTL = 15 * 60 * 1000
 
 /**
- * Antal riktiga mål i en match (ordinarie + förlängning + straffar i spel),
- * exkl. straffläggning (shootout). Ren funktion → enhetstestbar utan nätverk.
+ * Antal mål i ORDINARIE tid (90 min) i en match — inkl. straffar i spel, men
+ * exkl. förlängning och straffläggning. Speglar Resultat-arket/poängräkningen.
+ * Ren funktion → enhetstestbar utan nätverk.
  * @param {object} m - matchobjekt från football-data (/matches)
  * @returns {number}
  */
 export function målIMatch(m) {
   const s = m?.score || {}
-  const ft = s.fullTime || {}
-  const hemma = ft.home ?? 0
-  const borta = ft.away ?? 0
 
-  // Dra bort ENDAST straffläggning. Vid PENALTY_SHOOTOUT innehåller fullTime
-  // shootout-målen kumulativt → subtrahera penalties. Förlängningsmål (extraTime)
-  // är riktiga mål och behålls.
-  let shootoutHemma = 0
-  let shootoutBorta = 0
-  if (s.duration === 'PENALTY_SHOOTOUT') {
-    shootoutHemma = s.penalties?.home ?? 0
-    shootoutBorta = s.penalties?.away ?? 0
+  // Bästa källan: officiellt 90-min-resultat.
+  const rt = s.regularTime
+  const rtHome = rt?.home ?? rt?.homeTeam
+  const rtAway = rt?.away ?? rt?.awayTeam
+  if (rtHome != null && rtAway != null) return rtHome + rtAway
+
+  // Fallback: fullTime är kumulativt → subtrahera ET- och straffläggningsmål.
+  let hemma = s.fullTime?.home ?? 0
+  let borta = s.fullTime?.away ?? 0
+  if (s.duration === 'EXTRA_TIME' || s.duration === 'PENALTY_SHOOTOUT') {
+    hemma -= s.extraTime?.home ?? 0
+    borta -= s.extraTime?.away ?? 0
   }
-
-  return (hemma - shootoutHemma) + (borta - shootoutBorta)
+  if (s.duration === 'PENALTY_SHOOTOUT') {
+    hemma -= s.penalties?.home ?? 0
+    borta -= s.penalties?.away ?? 0
+  }
+  return hemma + borta
 }
 
 /**

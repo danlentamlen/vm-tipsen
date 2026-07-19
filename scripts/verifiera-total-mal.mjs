@@ -3,8 +3,8 @@
  *
  *   node scripts/verifiera-total-mal.mjs
  *
- * Visar nya mål-totalen (FIFA-officiellt: ordinarie + förlängning, exkl. shootout)
- * och listar alla ET/PEN-matcher så France–England-klassificeringen kan bekräftas.
+ * Visar mål-totalen (ENBART ordinarie tid, 90 min — speglar Resultat-arket)
+ * och listar alla ET/PEN-matcher så räkningen kan kontrolleras.
  */
 import { readFileSync } from 'fs'
 import { resolve, dirname } from 'path'
@@ -31,7 +31,7 @@ const data = await res.json()
 const matcher = data.matches || []
 
 const { totalMål, speladeMatcher, snitMålPerMatch } = räknaMål(matcher)
-console.log(`\nNYTT räknesätt (reg + förlängning, exkl. shootout):`)
+console.log(`\nRäknesätt (enbart ordinarie tid, 90 min):`)
 console.log(`  Mål totalt:       ${totalMål}`)
 console.log(`  Spelade matcher:  ${speladeMatcher}`)
 console.log(`  Snitt mål/match:  ${snitMålPerMatch}`)
