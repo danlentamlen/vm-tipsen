@@ -1,18 +1,22 @@
 // Hämtar totalt antal mål i VM 2026 från football-data.org
-// Används av startsidans mål-tracker
+// Används av startsidans mål-tracker OCH av betting-översikten (BetOverview)
+// samt av sync-results för "mål hittills" i frågesvar-bedömningen.
 //
-// VIKTIGT — räknesätt (samma som poäng/betting: ENBART ordinarie tid, 90 min):
-//   Vi räknar mål gjorda under ordinarie matchtid — inkl. straffar som lagts i
-//   spel (de ligger i 90-min-resultatet). Vi räknar INTE förlängningsmål och
-//   INTE straffläggning (shootout). Detta gör att trackern EXAKT speglar
-//   Resultat-arket och poängräkningen (se _resultsSource.js / fdNormalize).
+// VIKTIGT — räknesätt (FIFA-officiellt):
+//   Vi räknar ALLA riktiga mål: ordinarie tid + förlängning + straffar som lagts
+//   under matchen (i spel). Vi räknar INTE straffläggning (shootout) efter oavgjort,
+//   eftersom shootout-mål inte är riktiga mål enligt FIFA:s statistik.
+//
+//   OBS: detta skiljer sig MEDVETET från Resultat-arket/poängräkningen på match-
+//   nivå (_resultsSource.js/fdNormalize), som bara sparar 90-min-resultatet. Mål-
+//   räknaren är en turneringsstatistik (och facit-underlag för "antal mål"-frågan)
+//   — därför ska förlängningsmål räknas med här.
 //
 //   football-data score-fält (bekräftat 2026-06-30):
-//     score.regularTime = officiellt 90-min-resultat (bästa källan)
-//     score.fullTime    = KUMULATIVT (ordinarie + ET + shootout)
-//     score.extraTime   = enbart förlängningsmål
-//     score.penalties   = enbart straffläggning (shootout)
-//   → 90-min-mål = regularTime om den finns, annars fullTime − ET − shootout
+//     score.fullTime  = KUMULATIVT (ordinarie + ET + shootout)
+//     score.extraTime = enbart förlängningsmål
+//     score.penalties = enbart straffläggning (shootout)
+//   → riktiga mål = fullTime − penalties(shootout)
 
 const API_BASE = 'https://api.football-data.org/v4'
 const COMPETITION_ID = 'WC'
@@ -23,33 +27,28 @@ let cache = { data: null, timestamp: 0 }
 const CACHE_TTL = 15 * 60 * 1000
 
 /**
- * Antal mål i ORDINARIE tid (90 min) i en match — inkl. straffar i spel, men
- * exkl. förlängning och straffläggning. Speglar Resultat-arket/poängräkningen.
- * Ren funktion → enhetstestbar utan nätverk.
+ * Antal riktiga mål i en match (ordinarie + förlängning + straffar i spel),
+ * exkl. straffläggning (shootout). Ren funktion → enhetstestbar utan nätverk.
  * @param {object} m - matchobjekt från football-data (/matches)
  * @returns {number}
  */
 export function målIMatch(m) {
   const s = m?.score || {}
+  const ft = s.fullTime || {}
+  const hemma = ft.home ?? 0
+  const borta = ft.away ?? 0
 
-  // Bästa källan: officiellt 90-min-resultat.
-  const rt = s.regularTime
-  const rtHome = rt?.home ?? rt?.homeTeam
-  const rtAway = rt?.away ?? rt?.awayTeam
-  if (rtHome != null && rtAway != null) return rtHome + rtAway
-
-  // Fallback: fullTime är kumulativt → subtrahera ET- och straffläggningsmål.
-  let hemma = s.fullTime?.home ?? 0
-  let borta = s.fullTime?.away ?? 0
-  if (s.duration === 'EXTRA_TIME' || s.duration === 'PENALTY_SHOOTOUT') {
-    hemma -= s.extraTime?.home ?? 0
-    borta -= s.extraTime?.away ?? 0
-  }
+  // Dra bort ENDAST straffläggning. Vid PENALTY_SHOOTOUT innehåller fullTime
+  // shootout-målen kumulativt → subtrahera penalties. Förlängningsmål (extraTime)
+  // är riktiga mål och behålls.
+  let shootoutHemma = 0
+  let shootoutBorta = 0
   if (s.duration === 'PENALTY_SHOOTOUT') {
-    hemma -= s.penalties?.home ?? 0
-    borta -= s.penalties?.away ?? 0
+    shootoutHemma = s.penalties?.home ?? 0
+    shootoutBorta = s.penalties?.away ?? 0
   }
-  return hemma + borta
+
+  return (hemma - shootoutHemma) + (borta - shootoutBorta)
 }
 
 /**
@@ -69,6 +68,27 @@ export function räknaMål(matcher = []) {
   }
 }
 
+/**
+ * Hämtar och räknar FIFA-mål från football-data (avslutade matcher), cache 15 min.
+ * Delas av startsidans tracker, betting-översikten och sync-results så att ALLA
+ * använder exakt samma siffra. Kastar vid nät-/API-fel (anropare får hantera).
+ * @returns {Promise<{ totalMål:number, speladeMatcher:number, snitMålPerMatch:number, uppdaterad:string }>}
+ */
+export async function hämtaMålStatistik() {
+  if (cache.data && Date.now() - cache.timestamp < CACHE_TTL) return cache.data
+
+  const res = await fetch(
+    `${API_BASE}/competitions/${COMPETITION_ID}/matches?season=${SEASON}&status=FINISHED`,
+    { headers: { 'X-Auth-Token': process.env.FOOTBALL_DATA_KEY } }
+  )
+  if (!res.ok) throw new Error(`football-data svarade ${res.status}`)
+
+  const data = await res.json()
+  const result = { ...räknaMål(data.matches || []), uppdaterad: new Date().toISOString() }
+  cache = { data: result, timestamp: Date.now() }
+  return result
+}
+
 export default async (req) => {
   if (req.method !== 'GET') {
     return new Response('Method Not Allowed', { status: 405 })
@@ -80,41 +100,14 @@ export default async (req) => {
     })
   }
 
-  if (cache.data && Date.now() - cache.timestamp < CACHE_TTL) {
-    return new Response(JSON.stringify(cache.data), {
-      status: 200, headers: { 'Content-Type': 'application/json' },
-    })
-  }
-
   try {
-    const res = await fetch(
-      `${API_BASE}/competitions/${COMPETITION_ID}/matches?season=${SEASON}&status=FINISHED`,
-      { headers: { 'X-Auth-Token': process.env.FOOTBALL_DATA_KEY } }
-    )
-
-    if (!res.ok) {
-      console.warn(`[total-mal] API svarade ${res.status}`)
-      return new Response(JSON.stringify({ totalMål: 0, speladeMatcher: 0 }), {
-        status: 200, headers: { 'Content-Type': 'application/json' },
-      })
-    }
-
-    const data = await res.json()
-    const matcher = data.matches || []
-
-    const result = {
-      ...räknaMål(matcher),
-      uppdaterad: new Date().toISOString(),
-    }
-
-    cache = { data: result, timestamp: Date.now() }
+    const result = await hämtaMålStatistik()
     console.log(`[total-mal] ${result.totalMål} mål på ${result.speladeMatcher} matcher`)
-
     return new Response(JSON.stringify(result), {
       status: 200, headers: { 'Content-Type': 'application/json' },
     })
   } catch (err) {
-    console.error('[total-mal] FEL:', err)
+    console.warn('[total-mal] FEL:', err.message)
     return new Response(JSON.stringify({ totalMål: 0, speladeMatcher: 0 }), {
       status: 200, headers: { 'Content-Type': 'application/json' },
     })

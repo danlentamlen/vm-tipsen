@@ -28,6 +28,7 @@ import {
   beräknaFrågeSvarPoäng, beräknaMaxPoäng, parseSnabbasteMål,
 } from './_scoring.js'
 import { setCached } from './_persistentCache.js'
+import { hämtaMålStatistik } from './total-mal.js'
 import { SLUTSPELS_OMGÅNGAR, getSettings } from './_settings.js'
 
 const TOPPLISTA_SHEET = 'Topplista'
@@ -202,16 +203,25 @@ async function räknaOmSnapshots(sheets, matcherRader, resultatRader) {
   // ── Frågesvar-poäng + maxpoäng ──
   // Frågor läses HÄR med kolumn H (fel_svar) — locked-snapshoten stannar vid G,
   // och H uppdateras löpande av admin (t.ex. utslagna spelare i skytteligan).
-  // totalMål = gjorda mål hittills ur Resultat-arket (ordinarie tid, samma
-  // regel som poängräkningen). snabbaste_målet sätts av admin i Inställningar.
+  // totalMål = gjorda mål hittills enligt FIFA-räkning (ordinarie + förlängning,
+  // exkl. straffläggning) — SAMMA siffra som startsidans tracker och betting-
+  // översikten (total-mal.js). Används för "antal mål"-frågans utslagning.
+  // Faller tillbaka på arkets 90-min-summa om API:t inte svarar.
+  // snabbaste_målet sätts av admin i Inställningar.
   let frågeSvarPoäng = null
   let maxMap = {}
   try {
     const frågorMedH = await getRows(sheets, 'Frågor!A2:H1000')
     const settings    = await getSettings()
     const snabbasteMål = parseSnabbasteMål(settings['snabbaste_målet'])
-    const totalMål = resultatRader.reduce(
+    let totalMål = resultatRader.reduce(
       (s, r) => s + (Number(r?.[1]) || 0) + (Number(r?.[2]) || 0), 0)
+    try {
+      const { totalMål: fifaMål } = await hämtaMålStatistik()
+      if (Number.isFinite(fifaMål) && fifaMål > 0) totalMål = fifaMål
+    } catch (e) {
+      console.warn('[sync-results] FIFA-mål otillgängligt, använder arkets 90-min:', e.message)
+    }
 
     const bedömArgs = {
       frågorRader: frågorMedH, frågorSvarRader: frågorSvar,
